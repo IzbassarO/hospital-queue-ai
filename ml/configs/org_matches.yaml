@@ -1,0 +1,16 @@
+# Manual overrides for hospital (dim_organization.org_code) <-> ERSB (ersb_snapshot.ersb_id) matching.
+# Applied by ml/pipelines/ingest.py AFTER the automatic exact/fuzzy matching; see docs/data.md.
+#
+# accept: force org_code -> ersb_id (wins over any automatic result, incl. a rejected near-miss).
+# reject: forbid the pair org_code -> ersb_id; if the automatic matching produced it, the hospital
+#         becomes unmatched (no fallback to another candidate).
+# Both set match_method = "manual". Unknown codes/ids or contradictory entries stop the run.
+# Candidates to review: reports/01_org_matching.csv.
+# Always quote org_code: codes like 0286 would otherwise be read as the number 286.
+
+accept:
+  - org_code: '028V'
+    ersb_id: 792
+    note: 'same clinic: "№ 4" vs "№4", "общественного здравоохранения" vs "общественного здоровья" (Алматы)'
+
+reject: []

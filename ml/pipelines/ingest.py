@@ -8,6 +8,8 @@ Writes:
   data/processed/<table>.parquet, data/processed/_manifest.json
   ml/configs/regions.yaml           (region code dictionary, manual overrides preserved)
   reports/01_org_matching.csv       (fuzzy hospital <-> ERSB matches for review)
+Reads:
+  ml/configs/org_matches.yaml       (manual hospital <-> ERSB accept/reject overrides)
 data/raw is only read.
 """
 import argparse
@@ -79,7 +81,8 @@ def main() -> int:
     dictionaries.build_dim_profile(con, params)
     manifest["dim_region"] = dictionaries.build_dim_region(con, params, settings.configs_dir / "regions.yaml", waiting_codes)
     log(f"dim_region: {manifest['dim_region']}")
-    manifest["dim_organization"] = dictionaries.build_dim_organization(con, params, settings.reports_dir / "01_org_matching.csv")
+    manifest["dim_organization"] = dictionaries.build_dim_organization(
+        con, params, settings.reports_dir / "01_org_matching.csv", settings.configs_dir / "org_matches.yaml")
     log(f"dim_organization: {manifest['dim_organization']}")
     dictionaries.build_ersb_snapshot(con)
 

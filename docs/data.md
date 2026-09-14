@@ -142,8 +142,8 @@ have no code.
 | `n_referrals` | referrals in dataset 1 |
 | `n_origin_regions` | distinct origin region prefixes among its referrals |
 | `ersb_id` | matched dataset-4 row (`ersb_snapshot`), NULL if unmatched |
-| `match_score` | 100 for exact matches; `token_set_ratio` for fuzzy matches |
-| `match_method` | `exact`, `fuzzy`, or NULL |
+| `match_score` | 100 for exact matches; `token_set_ratio` for fuzzy matches; NULL for manual decisions |
+| `match_method` | `exact`, `fuzzy`, `manual` (decided in `ml/configs/org_matches.yaml`; `ersb_id` is NULL for a manual reject), or NULL (unmatched) |
 
 **ERSB matching:**
 
@@ -156,11 +156,38 @@ have no code.
    туберкулезная больница`) that `token_set_ratio` scores 100. The best accepted candidate wins
    (highest sort, then set score).
 3. otherwise unmatched (NULL).
+4. **manual overrides** from `ml/configs/org_matches.yaml` are applied last (see below).
 
 On the first run plain `token_set_ratio ≥ 90` on full names produced 17 fuzzy matches, of which
 about 11 were different organizations; the guarded rule accepts 6, all correct on manual review.
 `reports/01_org_matching.csv` lists every accepted fuzzy match and, for unmatched hospitals, the best
 rejected near-miss with the reason (`decision`, `reject_reason`, both scores).
+
+#### Manual overrides: `ml/configs/org_matches.yaml`
+
+Hand-maintained and versioned in git, the counterpart of `regions.yaml` for hospital ↔ ERSB matching.
+
+```yaml
+accept:
+  - {org_code: '028V', ersb_id: 792, note: "why this is the same organization"}
+reject:
+  - {org_code: 'XXXX', ersb_id: 123, note: "why this is not"}
+```
+
+| rule | effect |
+|---|---|
+| `accept` org_code → ersb_id | sets that ERSB row, whatever the automatic result was (exact, fuzzy, rejected near-miss or none); `match_method = manual`, `match_score = NULL` |
+| `reject` org_code → ersb_id | if the automatic matching produced exactly this pair, the hospital becomes unmatched (`ersb_id = NULL`, `match_method = manual`); there is no fallback to the next candidate. If the pair was not produced, the entry is kept as a guard and listed under `manual_rejects_not_triggered` in `_manifest.json` |
+| precedence | manual decisions always win over automatic ones (accept over automatic reject, reject over automatic accept) |
+| validation | the run stops if an `org_code` or `ersb_id` does not exist, if one org_code is accepted for two different ERSB rows, or if the same pair is both accepted and rejected |
+
+`org_code` must be quoted (YAML would read `0286` as the number 286). Manual decisions appear in
+`reports/01_org_matching.csv` with `decision = manual_accept / manual_reject` and the `note` as
+`reject_reason`. `ersb_snapshot.org_code` then follows the manual result.
+
+Seeded entry: `028V` → ERSB 792 — the same Almaty clinic, spelled `"Городская поликлиника № 4" …
+Управления общественного здравоохранения` in dataset 1 and `"Городская поликлиника №4" … Управления
+общественного здоровья` in ERSB; the automatic rule rejected it (`token_sort_ratio` 87 < 90).
 
 ### `ersb_snapshot` — dataset 4
 

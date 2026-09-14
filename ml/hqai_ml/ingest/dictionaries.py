@@ -150,7 +150,8 @@ def build_dim_region(con: duckdb.DuckDBPyConnection, p: IngestParams, regions_ya
 
 
 # ------------------------------------------------------------- dim_organization
-def build_dim_organization(con: duckdb.DuckDBPyConnection, p: IngestParams, matching_csv: Path) -> dict:
+def build_dim_organization(con: duckdb.DuckDBPyConnection, p: IngestParams, matching_csv: Path,
+                           overrides_yaml: Path) -> dict:
     con.execute(
         """CREATE OR REPLACE TABLE stg_org AS
         WITH names AS (SELECT org_code, hospital_mo, hospital_key, count(*) n FROM stg_referral GROUP BY ALL),
@@ -220,24 +221,22 @@ def build_dim_organization(con: duckdb.DuckDBPyConnection, p: IngestParams, matc
     overrides = load_org_overrides(overrides_yaml, set(orgs.org_code), set(int(i) for i in ersb.ersb_id))
     ersb_name = dict(zip(ersb.ersb_id.astype(int), ersb.org_name))
     review_by_org = {r["org_code"]: r for r in fuzzy_rows}
-    applied = {"accept": 0, "reject": 0, "reject_inactive": []}
-    for i, (org_code, ersb_id, score, method) in enumerate(matches):
+    applied = {"accept": 0, "reject": set()}
+    for i, (org_code, ersb_id, _score, _method) in enumerate(matches):
         if org_code in overrides["accept"]:
             new_id, note = overrides["accept"][org_code]
             matches[i] = (org_code, new_id, None, "manual")
             applied["accept"] += 1
             decision, reason, shown_id = "manual_accept", note, new_id
         elif (org_code, ersb_id) in overrides["reject"]:
+            # the rejected pair is removed; the hospital stays unmatched (no fallback to the next candidate)
             matches[i] = (org_code, None, None, "manual")
-            applied["reject"] += 1
+            applied["reject"].add((org_code, ersb_id))
             decision, reason, shown_id = "manual_reject", overrides["reject"][(org_code, ersb_id)], ersb_id
         else:
             continue
         row = review_by_org.setdefault(org_code, {"org_code": org_code})
         row.update({"decision": decision, "reject_reason": reason, "ersb_id": shown_id, "ersb_name": ersb_name[shown_id]})
-    applied["reject_inactive"] = sorted(f"{o}->{e}" for o, e in overrides["reject"]
-                                        if (o, e) not in {(m[0], m[1]) for m in matches if m[3] != "manual"}
-                                        and not any(m[0] == o and m[3] == "manual" for m in matches))
     fuzzy_rows = list(review_by_org.values())
 
     con.register("_org_match_df", pd.DataFrame(matches, columns=["org_code", "ersb_id", "match_score", "match_method"]))
@@ -253,21 +252,55 @@ def build_dim_organization(con: duckdb.DuckDBPyConnection, p: IngestParams, matc
     con.unregister("_org_match_df")
 
     matching_csv.parent.mkdir(parents=True, exist_ok=True)
-    fuzzy_rows.sort(key=lambda r: (r["decision"], r["token_set_ratio"], r["token_sort_ratio"]))
+    fuzzy_rows.sort(key=lambda r: (r["decision"], r.get("token_set_ratio") or 0, r.get("token_sort_ratio") or 0))
+    fields = ["decision", "reject_reason", "org_code", "org_name", "n_referrals", "ersb_id", "ersb_name",
+              "ersb_discharged_total", "token_set_ratio", "token_sort_ratio", "candidates_above_set_threshold"]
     with open(matching_csv, "w", newline="", encoding="utf-8-sig") as f:
-        w = csv.DictWriter(f, fieldnames=list(fuzzy_rows[0].keys()) if fuzzy_rows else ["org_code"])
+        w = csv.DictWriter(f, fieldnames=fields, restval="")
         w.writeheader()
         w.writerows(fuzzy_rows)
 
     stats = con.execute(
         """SELECT count(*), count(*) FILTER (WHERE match_method = 'exact'), count(*) FILTER (WHERE match_method = 'fuzzy'),
-                  count(*) FILTER (WHERE match_method IS NULL),
-                  count(*) FILTER (WHERE region_method = 'admission_refusals_region')
+                  count(*) FILTER (WHERE ersb_id IS NULL),
+                  count(*) FILTER (WHERE region_method = 'admission_refusals_region'),
+                  count(*) FILTER (WHERE match_method = 'manual')
            FROM dim_organization"""
     ).fetchone()
     return {"orgs": stats[0], "ersb_exact": stats[1], "ersb_fuzzy": stats[2], "ersb_unmatched": stats[3],
-            "region_from_admission_refusals": stats[4],
+            "region_from_admission_refusals": stats[4], "ersb_manual": stats[5],
+            "manual_accepts_applied": applied["accept"], "manual_rejects_applied": len(applied["reject"]),
+            # rejects whose pair the automatic matching did not produce this run (kept as guards)
+            "manual_rejects_not_triggered": sorted(f"{o}->{e}" for o, e in overrides["reject"] if (o, e) not in applied["reject"]),
             "fuzzy_rejected_near_misses": sum(r["decision"] == "rejected" for r in fuzzy_rows)}
+
+
+def load_org_overrides(path: Path, org_codes: set[str], ersb_ids: set[int]) -> dict:
+    """Read ml/configs/org_matches.yaml; fail loudly on unknown codes/ids or contradictory entries."""
+    result: dict = {"accept": {}, "reject": {}}
+    if not path.exists():
+        return result
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    errors = []
+    for kind in ("accept", "reject"):
+        for entry in data.get(kind) or []:
+            org_code, ersb_id, note = str(entry.get("org_code", "")), entry.get("ersb_id"), entry.get("note") or ""
+            if org_code not in org_codes:
+                errors.append(f"{kind}: unknown org_code {org_code!r}")
+            if not isinstance(ersb_id, int) or ersb_id not in ersb_ids:
+                errors.append(f"{kind}: unknown ersb_id {ersb_id!r} (org_code {org_code})")
+            if kind == "accept":
+                if org_code in result["accept"] and result["accept"][org_code][0] != ersb_id:
+                    errors.append(f"accept: org_code {org_code} accepted for two different ersb_ids")
+                result["accept"][org_code] = (ersb_id, note)
+            else:
+                result["reject"][(org_code, ersb_id)] = note
+    for org_code, (ersb_id, _) in result["accept"].items():
+        if (org_code, ersb_id) in result["reject"]:
+            errors.append(f"{org_code} -> {ersb_id} is both accepted and rejected")
+    if errors:
+        raise ValueError(f"{path}: " + "; ".join(errors))
+    return result
 
 
 def build_ersb_snapshot(con: duckdb.DuckDBPyConnection) -> None:
