@@ -1,0 +1,23 @@
+# Parameters of the ingest pipeline (ml/pipelines/ingest.py). Semantics: docs/data.md.
+
+# Calendar window of the daily aggregates (registration window of datasets 1-3).
+window_start: 2025-01-01
+window_end: 2025-03-31
+
+# planned_dt outside this range is treated as a placeholder and set to NULL.
+planned_dt_min: 2024-06-01
+planned_dt_max: 2026-06-30
+
+# dim_region: a region code is flagged ambiguous if the winning region name
+# gets less than this share of the referral-weighted votes.
+region_vote_min_share: 0.8
+
+# dim_organization -> ERSB (dataset 4), used only when there is no exact normalized-name match.
+# Scores are computed on names with legal-form boilerplate removed (see docs/data.md).
+# A candidate is accepted if token_set_ratio >= fuzzy_min_score AND
+# token_sort_ratio >= fuzzy_min_sort_score AND both names contain the same numbers.
+fuzzy_min_score: 90
+fuzzy_min_sort_score: 90
+
+day_hospital_code: DH
+day_hospital_name: Дневной стационар

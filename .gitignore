@@ -1,0 +1,18 @@
+# raw and processed data — never commit
+data/
+*.csv
+*.xlsx
+*.parquet
+*.duckdb
+# reports with raw samples stay local until reviewed
+reports/
+notebooks/
+artifacts/
+.venv/
+.env
+*.log
+# python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
