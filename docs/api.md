@@ -157,7 +157,8 @@ On the current data 652 hospital × profile rows trigger the rule and 253 of the
 - `queue_trend_4w ≥ 5%` per week, for rows with sufficient data **and `queue_now ≥ 10`** (a percentage trend on a
   queue of 1–9 is noise; `alerts.queue_trend_min_queue_now` in `serving.yaml`),
 
-highest `load_index` first, each with Russian `reasons`. 776 alerts on the current data.
+highest `load_index` first, each with Russian `reasons`. 776 alerts on the current data: 216 by `load_index` only,
+229 by both, **331 by the trend condition only** — read those with the queue-trend caveat in §7.
 
 ---
 
@@ -498,6 +499,14 @@ Regions (sorted by name) and all bed profiles, for dropdowns.
   68 of the 445 rows at `load_index ≥ 70` have `queue_now < 10`. The UI should always show `queue_now` and
   `components` next to the index. `load_index` compares within a profile; it is not a capacity measure (no bed counts
   in the data).
+- **Queue trends are inflated by the missing history.** No referrals before 2025-01-01 exist, so the reconstructed
+  queue is still "filling up" in March: step 3 found that the national queue growth in February–March is fully
+  explained by that artifact (`reports/02_models.md` §4 / `reports/01_baseline.md` §6). Over the trend weeks
+  (2025-03-03 … 03-30) the national queue grows +3.3% per week and the median hospital × profile row with sufficient
+  data +2.6% per week; 42% of those rows reach the 5% alert threshold. Consequences: the trend component (15% of
+  `load_index`) is biased upward — 32 of the 445 rows at `load_index ≥ 70` would fall below 70 without it — and many
+  of the 331 trend-only alerts are likely artifacts, especially for long-wait profiles. With a longer history the
+  bias disappears; until then a trend should be read relative to the national one (+3.3%/week), not against 0.
 - **Small numbers.** Rows need only 10 registrations in 28 days; refusal rates and medians behind them can rest on a
   handful of referrals (`n_waits_28d` is returned for that reason).
 - **Associations, not causes** — recommendations and explanation factors (see §4 and `docs/model_card.md` §7).
