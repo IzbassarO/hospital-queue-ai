@@ -1,0 +1,656 @@
+{
+  "status": {
+    "as_of_date": "2025-03-31",
+    "queue_now": 85,
+    "registrations_28d": 98,
+    "hospitalizations_28d": 22,
+    "refusals_28d": 48,
+    "refusal_rate_28d": 0.6857,
+    "n_waits_28d": 22,
+    "median_wait_28d": 19.0,
+    "daily_throughput_28d": 0.79,
+    "backlog_days": 108.2,
+    "forecast_registrations_14d": 53.1,
+    "forecast_hospitalizations_14d": 21.2,
+    "n_test_referrals": 99,
+    "high_risk_share": 1.0,
+    "queue_trend_raw_4w": 19.1,
+    "queue_trend_4w": 16.5,
+    "has_sufficient_data": true,
+    "load_index": 96.6,
+    "status": "high",
+    "status_label": "Высокая нагрузка",
+    "components": {
+      "backlog_score": 0.9875,
+      "refusal_score": 1.0,
+      "trend_score": 0.8262
+    },
+    "region_code": "71",
+    "region_name": "г. Астана",
+    "org_code": "ZIQ9",
+    "org_name": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны",
+    "profile_code": "241",
+    "profile_name": "Патологии беременности",
+    "forecast_method": "model",
+    "region_rank": 1,
+    "region_n_ranked": 244,
+    "in_region_top": true
+  },
+  "series": [
+    {
+      "date": "2025-02-02",
+      "registrations": 0,
+      "hospitalizations": 1,
+      "refusals": 1,
+      "queue": 56
+    },
+    {
+      "date": "2025-02-03",
+      "registrations": 2,
+      "hospitalizations": 3,
+      "refusals": 0,
+      "queue": 55
+    },
+    {
+      "date": "2025-02-04",
+      "registrations": 4,
+      "hospitalizations": 4,
+      "refusals": 2,
+      "queue": 53
+    },
+    {
+      "date": "2025-02-05",
+      "registrations": 4,
+      "hospitalizations": 1,
+      "refusals": 0,
+      "queue": 56
+    },
+    {
+      "date": "2025-02-06",
+      "registrations": 1,
+      "hospitalizations": 2,
+      "refusals": 0,
+      "queue": 55
+    },
+    {
+      "date": "2025-02-07",
+      "registrations": 2,
+      "hospitalizations": 4,
+      "refusals": 2,
+      "queue": 51
+    },
+    {
+      "date": "2025-02-08",
+      "registrations": 0,
+      "hospitalizations": 0,
+      "refusals": 1,
+      "queue": 50
+    },
+    {
+      "date": "2025-02-09",
+      "registrations": 0,
+      "hospitalizations": 0,
+      "refusals": 2,
+      "queue": 48
+    },
+    {
+      "date": "2025-02-10",
+      "registrations": 4,
+      "hospitalizations": 4,
+      "refusals": 1,
+      "queue": 47
+    },
+    {
+      "date": "2025-02-11",
+      "registrations": 4,
+      "hospitalizations": 2,
+      "refusals": 2,
+      "queue": 47
+    },
+    {
+      "date": "2025-02-12",
+      "registrations": 1,
+      "hospitalizations": 1,
+      "refusals": 3,
+      "queue": 44
+    },
+    {
+      "date": "2025-02-13",
+      "registrations": 4,
+      "hospitalizations": 6,
+      "refusals": 2,
+      "queue": 40
+    },
+    {
+      "date": "2025-02-14",
+      "registrations": 3,
+      "hospitalizations": 2,
+      "refusals": 2,
+      "queue": 39
+    },
+    {
+      "date": "2025-02-15",
+      "registrations": 0,
+      "hospitalizations": 0,
+      "refusals": 1,
+      "queue": 38
+    },
+    {
+      "date": "2025-02-16",
+      "registrations": 0,
+      "hospitalizations": 0,
+      "refusals": 1,
+      "queue": 37
+    },
+    {
+      "date": "2025-02-17",
+      "registrations": 18,
+      "hospitalizations": 1,
+      "refusals": 2,
+      "queue": 52
+    },
+    {
+      "date": "2025-02-18",
+      "registrations": 36,
+      "hospitalizations": 2,
+      "refusals": 0,
+      "queue": 86
+    },
+    {
+      "date": "2025-02-19",
+      "registrations": 6,
+      "hospitalizations": 2,
+      "refusals": 0,
+      "queue": 90
+    },
+    {
+      "date": "2025-02-20",
+      "registrations": 4,
+      "hospitalizations": 1,
+      "refusals": 2,
+      "queue": 91
+    },
+    {
+      "date": "2025-02-21",
+      "registrations": 1,
+      "hospitalizations": 5,
+      "refusals": 1,
+      "queue": 86
+    },
+    {
+      "date": "2025-02-22",
+      "registrations": 0,
+      "hospitalizations": 0,
+      "refusals": 1,
+      "queue": 85
+    },
+    {
+      "date": "2025-02-23",
+      "registrations": 0,
+      "hospitalizations": 0,
+      "refusals": 0,
+      "queue": 85
+    },
+    {
+      "date": "2025-02-24",
+      "registrations": 0,
+      "hospitalizations": 3,
+      "refusals": 0,
+      "queue": 82
+    },
+    {
+      "date": "2025-02-25",
+      "registrations": 5,
+      "hospitalizations": 3,
+      "refusals": 4,
+      "queue": 80
+    },
+    {
+      "date": "2025-02-26",
+      "registrations": 2,
+      "hospitalizations": 1,
+      "refusals": 4,
+      "queue": 77
+    },
+    {
+      "date": "2025-02-27",
+      "registrations": 1,
+      "hospitalizations": 3,
+      "refusals": 5,
+      "queue": 70
+    },
+    {
+      "date": "2025-02-28",
+      "registrations": 1,
+      "hospitalizations": 3,
+      "refusals": 2,
+      "queue": 66
+    },
+    {
+      "date": "2025-03-01",
+      "registrations": 0,
+      "hospitalizations": 2,
+      "refusals": 0,
+      "queue": 64
+    },
+    {
+      "date": "2025-03-02",
+      "registrations": 0,
+      "hospitalizations": 1,
+      "refusals": 1,
+      "queue": 62
+    },
+    {
+      "date": "2025-03-03",
+      "registrations": 1,
+      "hospitalizations": 6,
+      "refusals": 0,
+      "queue": 57
+    },
+    {
+      "date": "2025-03-04",
+      "registrations": 3,
+      "hospitalizations": 1,
+      "refusals": 4,
+      "queue": 55
+    },
+    {
+      "date": "2025-03-05",
+      "registrations": 2,
+      "hospitalizations": 2,
+      "refusals": 3,
+      "queue": 52
+    },
+    {
+      "date": "2025-03-06",
+      "registrations": 3,
+      "hospitalizations": 0,
+      "refusals": 0,
+      "queue": 55
+    },
+    {
+      "date": "2025-03-07",
+      "registrations": 4,
+      "hospitalizations": 0,
+      "refusals": 2,
+      "queue": 57
+    },
+    {
+      "date": "2025-03-08",
+      "registrations": 0,
+      "hospitalizations": 1,
+      "refusals": 1,
+      "queue": 55
+    },
+    {
+      "date": "2025-03-09",
+      "registrations": 0,
+      "hospitalizations": 0,
+      "refusals": 2,
+      "queue": 53
+    },
+    {
+      "date": "2025-03-10",
+      "registrations": 0,
+      "hospitalizations": 0,
+      "refusals": 1,
+      "queue": 52
+    },
+    {
+      "date": "2025-03-11",
+      "registrations": 2,
+      "hospitalizations": 1,
+      "refusals": 2,
+      "queue": 51
+    },
+    {
+      "date": "2025-03-12",
+      "registrations": 2,
+      "hospitalizations": 1,
+      "refusals": 0,
+      "queue": 52
+    },
+    {
+      "date": "2025-03-13",
+      "registrations": 1,
+      "hospitalizations": 0,
+      "refusals": 1,
+      "queue": 52
+    },
+    {
+      "date": "2025-03-14",
+      "registrations": 9,
+      "hospitalizations": 0,
+      "refusals": 0,
+      "queue": 61
+    },
+    {
+      "date": "2025-03-15",
+      "registrations": 0,
+      "hospitalizations": 0,
+      "refusals": 0,
+      "queue": 61
+    },
+    {
+      "date": "2025-03-16",
+      "registrations": 0,
+      "hospitalizations": 1,
+      "refusals": 1,
+      "queue": 59
+    },
+    {
+      "date": "2025-03-17",
+      "registrations": 2,
+      "hospitalizations": 1,
+      "refusals": 4,
+      "queue": 56
+    },
+    {
+      "date": "2025-03-18",
+      "registrations": 4,
+      "hospitalizations": 1,
+      "refusals": 1,
+      "queue": 58
+    },
+    {
+      "date": "2025-03-19",
+      "registrations": 20,
+      "hospitalizations": 2,
+      "refusals": 1,
+      "queue": 75
+    },
+    {
+      "date": "2025-03-20",
+      "registrations": 29,
+      "hospitalizations": 1,
+      "refusals": 2,
+      "queue": 101
+    },
+    {
+      "date": "2025-03-21",
+      "registrations": 0,
+      "hospitalizations": 0,
+      "refusals": 1,
+      "queue": 100
+    },
+    {
+      "date": "2025-03-22",
+      "registrations": 0,
+      "hospitalizations": 0,
+      "refusals": 3,
+      "queue": 97
+    },
+    {
+      "date": "2025-03-23",
+      "registrations": 0,
+      "hospitalizations": 1,
+      "refusals": 1,
+      "queue": 95
+    },
+    {
+      "date": "2025-03-24",
+      "registrations": 0,
+      "hospitalizations": 0,
+      "refusals": 2,
+      "queue": 93
+    },
+    {
+      "date": "2025-03-25",
+      "registrations": 0,
+      "hospitalizations": 1,
+      "refusals": 1,
+      "queue": 91
+    },
+    {
+      "date": "2025-03-26",
+      "registrations": 2,
+      "hospitalizations": 0,
+      "refusals": 3,
+      "queue": 90
+    },
+    {
+      "date": "2025-03-27",
+      "registrations": 10,
+      "hospitalizations": 6,
+      "refusals": 3,
+      "queue": 91
+    },
+    {
+      "date": "2025-03-28",
+      "registrations": 5,
+      "hospitalizations": 1,
+      "refusals": 2,
+      "queue": 93
+    },
+    {
+      "date": "2025-03-29",
+      "registrations": 0,
+      "hospitalizations": 0,
+      "refusals": 4,
+      "queue": 89
+    },
+    {
+      "date": "2025-03-30",
+      "registrations": 0,
+      "hospitalizations": 0,
+      "refusals": 0,
+      "queue": 89
+    },
+    {
+      "date": "2025-03-31",
+      "registrations": 0,
+      "hospitalizations": 1,
+      "refusals": 3,
+      "queue": 85
+    }
+  ],
+  "forecast": {
+    "origin_date": "2025-03-31",
+    "model_version": "20260914-1918",
+    "method": "model",
+    "points": [
+      {
+        "date": "2025-04-01",
+        "horizon": 1,
+        "registrations": 5.62,
+        "hospitalizations": 1.88
+      },
+      {
+        "date": "2025-04-02",
+        "horizon": 2,
+        "registrations": 6.43,
+        "hospitalizations": 2.12
+      },
+      {
+        "date": "2025-04-03",
+        "horizon": 3,
+        "registrations": 5.29,
+        "hospitalizations": 2.2
+      },
+      {
+        "date": "2025-04-04",
+        "horizon": 4,
+        "registrations": 4.53,
+        "hospitalizations": 1.66
+      },
+      {
+        "date": "2025-04-05",
+        "horizon": 5,
+        "registrations": 0.08,
+        "hospitalizations": 0.47
+      },
+      {
+        "date": "2025-04-06",
+        "horizon": 6,
+        "registrations": 0.04,
+        "hospitalizations": 0.54
+      },
+      {
+        "date": "2025-04-07",
+        "horizon": 7,
+        "registrations": 5.31,
+        "hospitalizations": 1.89
+      },
+      {
+        "date": "2025-04-08",
+        "horizon": 8,
+        "registrations": 5.3,
+        "hospitalizations": 1.83
+      },
+      {
+        "date": "2025-04-09",
+        "horizon": 9,
+        "registrations": 6.06,
+        "hospitalizations": 2.0
+      },
+      {
+        "date": "2025-04-10",
+        "horizon": 10,
+        "registrations": 5.0,
+        "hospitalizations": 2.15
+      },
+      {
+        "date": "2025-04-11",
+        "horizon": 11,
+        "registrations": 4.33,
+        "hospitalizations": 1.62
+      },
+      {
+        "date": "2025-04-12",
+        "horizon": 12,
+        "registrations": 0.07,
+        "hospitalizations": 0.45
+      },
+      {
+        "date": "2025-04-13",
+        "horizon": 13,
+        "registrations": 0.04,
+        "hospitalizations": 0.52
+      },
+      {
+        "date": "2025-04-14",
+        "horizon": 14,
+        "registrations": 4.98,
+        "hospitalizations": 1.85
+      }
+    ],
+    "note": "Прогноз числа направлений и госпитализаций на 14 дней (модель C). Производный прогноз очереди не показывается: он не учитывает отказы и в бэктесте хуже, чем последнее известное значение очереди."
+  },
+  "explanation_factors": {
+    "n_referrals": 99,
+    "wait_time": [
+      {
+        "feature": "hp_median_wait_prev",
+        "label": "медианное ожидание в стационаре по профилю до даты направления, дней",
+        "mean_abs_effect": 2.99,
+        "mean_effect": 2.99,
+        "unit": "дн.",
+        "direction": "up",
+        "share_in_top5": 1.0,
+        "most_common_value": "13.0",
+        "most_common_value_display": "13,0 дн."
+      },
+      {
+        "feature": "icd3",
+        "label": "диагноз (МКБ-10)",
+        "mean_abs_effect": 1.89,
+        "mean_effect": -1.09,
+        "unit": "дн.",
+        "direction": "down",
+        "share_in_top5": 1.0,
+        "most_common_value": "O99",
+        "most_common_value_display": "O99 (класс XV — Беременность, роды и послеродовой период)"
+      },
+      {
+        "feature": "org_code",
+        "label": "стационар",
+        "mean_abs_effect": 1.71,
+        "mean_effect": -1.71,
+        "unit": "дн.",
+        "direction": "down",
+        "share_in_top5": 1.0,
+        "most_common_value": "ZIQ9",
+        "most_common_value_display": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны (ZIQ9)"
+      },
+      {
+        "feature": "queue_hp_prev_day",
+        "label": "очередь в стационаре по профилю на дату направления",
+        "mean_abs_effect": 0.69,
+        "mean_effect": 0.69,
+        "unit": "дн.",
+        "direction": "up",
+        "share_in_top5": 1.0,
+        "most_common_value": "75.0",
+        "most_common_value_display": "75"
+      },
+      {
+        "feature": "profile_code",
+        "label": "профиль койки",
+        "mean_abs_effect": 0.23,
+        "mean_effect": 0.23,
+        "unit": "дн.",
+        "direction": "up",
+        "share_in_top5": 0.697,
+        "most_common_value": "241",
+        "most_common_value_display": "Патологии беременности (241)"
+      }
+    ],
+    "refusal_risk": [
+      {
+        "feature": "org_code",
+        "label": "стационар",
+        "mean_abs_effect": 18.35,
+        "mean_effect": 18.35,
+        "unit": "п.п.",
+        "direction": "up",
+        "share_in_top5": 1.0,
+        "most_common_value": "ZIQ9",
+        "most_common_value_display": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны (ZIQ9)"
+      },
+      {
+        "feature": "hp_refusal_rate_prev",
+        "label": "доля отказов в стационаре по профилю до даты направления",
+        "mean_abs_effect": 11.83,
+        "mean_effect": 11.83,
+        "unit": "п.п.",
+        "direction": "up",
+        "share_in_top5": 1.0,
+        "most_common_value": "0.46111111111111114",
+        "most_common_value_display": "46,1%"
+      },
+      {
+        "feature": "icd3",
+        "label": "диагноз (МКБ-10)",
+        "mean_abs_effect": 11.63,
+        "mean_effect": 11.63,
+        "unit": "п.п.",
+        "direction": "up",
+        "share_in_top5": 0.9697,
+        "most_common_value": "O99",
+        "most_common_value_display": "O99 (класс XV — Беременность, роды и послеродовой период)"
+      },
+      {
+        "feature": "profile_code",
+        "label": "профиль койки",
+        "mean_abs_effect": 3.22,
+        "mean_effect": 3.22,
+        "unit": "п.п.",
+        "direction": "up",
+        "share_in_top5": 1.0,
+        "most_common_value": "241",
+        "most_common_value_display": "Патологии беременности (241)"
+      },
+      {
+        "feature": "day_of_window",
+        "label": "день от начала периода данных",
+        "mean_abs_effect": 1.26,
+        "mean_effect": 1.26,
+        "unit": "п.п.",
+        "direction": "up",
+        "share_in_top5": 0.9899,
+        "most_common_value": "78.0",
+        "most_common_value_display": "78"
+      }
+    ]
+  }
+}

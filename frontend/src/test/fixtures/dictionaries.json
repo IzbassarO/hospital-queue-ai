@@ -1,0 +1,39 @@
+{
+  "national_code": "KZ",
+  "regions": [
+    {
+      "code": "11",
+      "name": "Акмолинская область"
+    },
+    {
+      "code": "75",
+      "name": "Алматы г.а."
+    },
+    {
+      "code": "71",
+      "name": "г. Астана"
+    }
+  ],
+  "profiles": [
+    {
+      "code": "011",
+      "name": "Общие",
+      "is_day_hospital": false
+    },
+    {
+      "code": "241",
+      "name": "Патологии беременности",
+      "is_day_hospital": false
+    },
+    {
+      "code": "614",
+      "name": "Паллиативной помощи",
+      "is_day_hospital": false
+    },
+    {
+      "code": "DH",
+      "name": "Дневной стационар",
+      "is_day_hospital": true
+    }
+  ]
+}

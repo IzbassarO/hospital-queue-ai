@@ -10,9 +10,14 @@ hospitals and regions are overloaded relative to their capacity.
 With the database already loaded (the `pgdata` volume holds steps 2–3):
 
 ```bash
-make up                   # postgres + backend (FastAPI), waits until both are healthy
-open http://localhost:8000/docs
+make up                   # postgres + backend (FastAPI) + frontend (nginx), waits until all are healthy
+open http://localhost:3000        # the web UI
+open http://localhost:8000/docs   # API (Swagger)
 ```
+
+The UI ([docs/frontend.md](docs/frontend.md)) has five screens: Обзор, Регион, Карточка стационара (chart, «Почему»,
+recommendations with decisions, referrals), Сигналы, О моделях. Demo path: Обзор → г. Астана → профиль «Патологии
+беременности» → ZIQ9 → подтвердить рекомендацию → решение в истории → Сигналы.
 
 The API is described in [docs/api.md](docs/api.md): overview, regions, hospital cards with series, forecast and
 explanations, referrals, rule-based recommendations, alerts, models, dictionaries, and `POST /decisions` for the
@@ -20,7 +25,8 @@ human-in-the-loop record.
 
 ### From scratch
 
-Prerequisites: Python ≥ 3.12, Docker, the raw datasets in `data/raw/` (see below).
+Prerequisites: Python ≥ 3.12, Docker, Node.js ≥ 22.12 (frontend development only), the raw datasets in
+`data/raw/` (see below).
 On macOS LightGBM also needs the OpenMP runtime: `brew install libomp`.
 
 ```bash
@@ -34,13 +40,17 @@ make train                # models A, B, C -> artifacts/models/, reports/02_mode
 make predict              # predictions -> pred_referral, pred_daily_forecast, model_registry (~2 min), then marts
 open http://localhost:8000/docs
 make test                 # API tests against the running postgres
-make audit                # repository audit: layout, secrets, alembic check, ruff, tests, docs/api.md vs routes
+make web-install          # frontend dependencies (npm ci) — needed for make audit and make web-dev
+make audit                # repository audit: layout, secrets, alembic check, ruff, tests, docs/api.md vs routes,
+                          # frontend lint + production build
 ```
 
 Other targets: `make marts` (rebuild the serving marts after editing `ml/configs/serving.yaml`),
 `make api-dev` (local uvicorn with auto-reload on port 8001), `make lint` / `make fmt` (ruff check / fix + format on
 `backend/`, `ml/`, `tools/`; config in the root `pyproject.toml`), `make fixture` (rebuild the 2-region CI test
-fixture from the current database), `make fixture-load` (load it into an empty database), `make train MODEL=load_forecast` (one model:
+fixture from the current database), `make fixture-load` (load it into an empty database), `make web-dev` (Vite on http://localhost:5173 with `/api`
+proxied to localhost:8000), `make web-test` / `make web-lint` / `make web-build` (frontend tests, ESLint + Prettier,
+production build), `make train MODEL=load_forecast` (one model:
 wait_time | refusal_risk | load_forecast), `make psql` (shell in the database), `make migrate`, `make down`.
 The step-1 inventory was a one-off and lives in scratch: `.venv/bin/python scratch/00_inventory.py` →
 `reports/00_inventory.md` (only if `scratch/` is present locally; it is not versioned).
@@ -50,7 +60,8 @@ The step-1 inventory was a one-off and lives in scratch: `.venv/bin/python scrat
 - **Run `make audit` before every commit** (Postgres up, marts built). It fails if a file that would be committed
   sits outside the allowed top level (`backend ml frontend db docs tools .github` + root config files), if any such
   file is a `.env` or contains something that looks like a secret, if `alembic check` sees drift between models and
-  migrations, if ruff or pytest fail, or if `docs/api.md` and the app's endpoints disagree. CI (GitHub Actions)
+  migrations, if ruff or pytest fail, if `docs/api.md` and the app's endpoints disagree, or if the frontend lint or
+  production build fails. CI (GitHub Actions)
   runs `make lint` and `make test` on every push and pull request.
 - **Never modify, move or delete anything under `data/raw/`.** Pipelines only read it.
 - **Scratch work goes to `scratch/` and nowhere else.** Any temporary, exploratory or
@@ -71,11 +82,13 @@ backend/    FastAPI service (/api/v1: routers, schemas, services), SQLAlchemy mo
             tests (pytest + httpx; fixtures/ = 2-region CI dataset), Dockerfile
 ml/         hqai_ml package (ingest, features, models, evaluation, explain, registry, serving implemented;
             causal is a placeholder), pipelines/ (ingest, baseline, train, predict, build_marts), configs/
-frontend/   placeholder
+frontend/   web UI: React 18 + Vite + TypeScript, TanStack Query, Recharts, Tailwind; strings in src/i18n/ru.ts;
+            Dockerfile (node build → nginx, /api proxy)
 tools/      audit.py (make audit), test_fixture.py (make fixture / fixture-load)
 .github/    workflows/ci.yml — lint + API tests on push and pull request
 db/         init.sql (pgvector, pg_trgm)
-docs/       architecture.md (structure + data flow), data.md (tables, columns, cleaning rules),
+docs/       architecture.md (structure + data flow), data.md (tables, columns, cleaning rules), frontend.md (screen
+            map, API calls per screen, API gaps),
             model_card.md (models, evaluation, limitations, intended use), api.md (endpoints, load_index,
             recommendation rule)
 data/       raw/ input (read-only), processed/ Parquet          — gitignored
@@ -116,5 +129,6 @@ Details, cleaning rules and every derived column: [docs/data.md](docs/data.md).
       human-in-the-loop `decision_log`, docker `backend` service, API tests ([docs/api.md](docs/api.md))
 - [x] Step 4b — excess queue trend (Alembic `0004`), display-ready explanation values, ruff, `make audit`, CI with
       a 2-region fixture
-- [ ] Frontend
+- [x] Step 5 — frontend: five screens against the API, decisions from the card, docker `frontend` service on
+      port 3000 ([docs/frontend.md](docs/frontend.md))
 - [ ] Causal effect estimate for recommendations (replaces `historical_median`)

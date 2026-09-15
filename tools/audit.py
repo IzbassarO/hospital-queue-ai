@@ -11,6 +11,8 @@ Checks
   ruff       `ruff check` and `ruff format --check` on backend/, ml/, tools/
   pytest     the API tests (needs the database with marts built)
   api-docs   the endpoints documented in docs/api.md (### `METHOD /path` headings) are exactly the app's /api/v1 routes
+  web-lint   when frontend/package.json exists: `npm run lint` (ESLint + Prettier check)
+  web-build  when frontend/package.json exists: `npm run build` (TypeScript check + Vite production build)
 
 Tracked candidates are found without git: the working tree minus what .gitignore matches (the patterns used in this
 repository: names, globs, trailing-slash directories, root-anchored paths, `!` negation).
@@ -21,6 +23,7 @@ import gzip
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Iterator
@@ -29,6 +32,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
+FRONTEND = ROOT / "frontend"
 
 ALLOWED_DIRS = {"backend", "ml", "frontend", "db", "docs", "tools", ".github"}
 ALLOWED_ROOT_FILES = {
@@ -64,12 +68,14 @@ PLACEHOLDER = re.compile(
     r"bool|required|optional)$"
 )
 CODE_EXPRESSION = re.compile(r"^[\w.]+[(\[]|^\{")  # a call, subscript or f-string field, not a literal
+# dependency version ranges ("js-tokens": "^4.0.0" in package-lock.json)
+VERSION_RANGE = re.compile(r"^[~^<>=v]*\d+(?:\.[\dx*]+){0,3}(?:-[\w.]+)?$")
 
 
 def looks_like_secret(value: str) -> bool:
     """A literal value with some entropy: digits, mixed case, symbols, or long. Plain words and code are not."""
     value = value.strip("\"'`")
-    if PLACEHOLDER.match(value) or CODE_EXPRESSION.match(value):
+    if PLACEHOLDER.match(value) or CODE_EXPRESSION.match(value) or VERSION_RANGE.match(value):
         return False
     has_digit = any(c.isdigit() for c in value)
     mixed_case = any(c.islower() for c in value) and any(c.isupper() for c in value)
@@ -231,6 +237,31 @@ def check_pytest() -> Result:
     return _run("pytest", [sys.executable, "-m", "pytest"], BACKEND, "passed", parse=summary)
 
 
+def check_frontend() -> list[Result]:
+    """Frontend lint and production build; skipped (not listed) while frontend/ has no package.json."""
+    if not (FRONTEND / "package.json").exists():
+        return []
+    npm = shutil.which("npm")
+    if npm is None:
+        return [
+            Result(name, False, "npm not found (install Node.js >= 22.12)", []) for name in ("web-lint", "web-build")
+        ]
+    if not (FRONTEND / "node_modules").is_dir():
+        return [
+            Result(name, False, "frontend/node_modules missing: run `make web-install`", [])
+            for name in ("web-lint", "web-build")
+        ]
+
+    def build_summary(out: str) -> str:
+        m = re.search(r"built in [\d.]+\s*m?s", out)
+        return f"tsc + vite {m.group(0)}" if m else "tsc + vite build ok"
+
+    return [
+        _run("web-lint", [npm, "run", "--silent", "lint"], FRONTEND, "eslint + prettier clean"),
+        _run("web-build", [npm, "run", "--silent", "build"], FRONTEND, "", parse=build_summary),
+    ]
+
+
 # the OpenAPI schema lists every public route (the prefix-less liveness probe is excluded from it)
 _ROUTES_SCRIPT = """
 import json
@@ -276,6 +307,7 @@ def main() -> int:
         check_ruff(),
         check_pytest(),
         check_api_docs(),
+        *check_frontend(),
     ]
     width = max(len(r.name) for r in results)
     print(f"{'check':<{width}}  status  summary")

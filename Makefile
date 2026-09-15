@@ -5,12 +5,13 @@ PY           ?= $(CURDIR)/.venv/bin/python
 ML_PATH      := $(CURDIR)/ml
 API_DEV_PORT ?= 8001
 
-.PHONY: up down migrate ingest baseline psql train predict marts api-dev test lint fmt audit fixture fixture-load
+.PHONY: up down migrate ingest baseline psql train predict marts api-dev test lint fmt audit fixture fixture-load \
+        web-install web-dev web-lint web-test web-build
 
-up:            ## build and start postgres + backend (http://localhost:8000/docs), wait until both are healthy
+up:            ## build and start postgres + backend + frontend (UI http://localhost:3000, API docs http://localhost:8000/docs)
 	docker compose up -d --build --wait
 
-down:          ## stop postgres and backend (data volume is kept)
+down:          ## stop all services (data volume is kept)
 	docker compose down
 
 migrate:       ## apply Alembic migrations
@@ -59,3 +60,20 @@ fixture:       ## rebuild the 2-region CI test fixture from the current database
 
 fixture-load: migrate ## load the CI test fixture into an EMPTY database (CI); then run `make marts`
 	PYTHONPATH=$(ML_PATH) $(PY) tools/test_fixture.py load
+
+WEB := cd frontend &&
+
+web-install:   ## install frontend dependencies from the lockfile (npm ci)
+	$(WEB) npm ci
+
+web-dev:       ## Vite dev server on http://localhost:5173, /api proxied to localhost:8000 (API_PROXY_TARGET to change)
+	$(WEB) npm run dev
+
+web-lint:      ## ESLint + Prettier check
+	$(WEB) npm run lint
+
+web-test:      ## Vitest smoke tests (routes render, API client parses real responses)
+	$(WEB) npm test
+
+web-build:     ## type-check and production build -> frontend/dist
+	$(WEB) npm run build

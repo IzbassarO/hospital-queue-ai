@@ -36,19 +36,24 @@ hospital-queue-ai/
 │   ├── pipelines/          ingest.py, baseline.py, train.py, predict.py, build_marts.py
 │   └── configs/            ingest.yaml, regions.yaml, org_matches.yaml, models.yaml, explain_templates.yaml,
 │                           serving.yaml (load_index weights, thresholds, recommendation rule)
-├── frontend/           placeholder
+├── frontend/           web UI (docs/frontend.md): React 18 + Vite + TypeScript
+│   ├── src/api/            runtime-checked response schemas, fetch client, TanStack Query hooks
+│   ├── src/pages/          Обзор, Регион, Карточка стационара, Сигналы, О моделях
+│   ├── src/i18n/ru.ts      every user-visible string
+│   ├── Dockerfile          node:22-alpine build → nginx:1.29-alpine
+│   └── nginx.conf          static files, SPA fallback, /api → backend:8000
 ├── tools/              audit.py (make audit), test_fixture.py (make fixture / fixture-load)
 ├── .github/workflows/  ci.yml: lint + API tests on push and pull request
 ├── db/init.sql         Postgres extensions (pgvector, pg_trgm)
-├── docs/               this file, data.md, model_card.md, api.md
+├── docs/               this file, data.md, model_card.md, api.md, frontend.md
 ├── data/               raw/ (read-only input), processed/ (Parquet)   — gitignored
 ├── reports/            generated reports                               — gitignored
 ├── notebooks/          exploration                                     — gitignored
 ├── artifacts/          trained models etc.                             — gitignored
 ├── scratch/            temporary / exploratory / verification files   — gitignored
-├── docker-compose.yml  postgres (pgvector/pgvector:pg16) + backend (FastAPI, port 8000)
+├── docker-compose.yml  postgres (pgvector/pgvector:pg16) + backend (FastAPI, port 8000) + frontend (nginx, port 3000)
 ├── Makefile            up, down, migrate, ingest, baseline, psql, train, predict, marts, api-dev, test,
-│                       lint, fmt, audit, fixture, fixture-load
+│                       lint, fmt, audit, fixture, fixture-load, web-install, web-dev, web-lint, web-test, web-build
 ├── pyproject.toml      repository tool config (ruff)
 └── .env.example
 ```
@@ -67,6 +72,9 @@ hospital-queue-ai/
 - **Serving marts** (`mart_*`) are derived inside Postgres by `ml/pipelines/build_marts.py` (`make marts`, also the
   last step of `make predict`) from the aggregates, facts and prediction tables, in one transaction, with the
   parameters of `ml/configs/serving.yaml` recorded in `mart_build_info`. Formulas: `docs/api.md`.
+- **The frontend only talks to the API.** It is a static bundle served by nginx, which also proxies `/api` to the
+  backend, so the browser sees one origin. It keeps no state besides the TanStack Query cache and the last actor
+  name in `localStorage`; every response is validated against a schema mirroring `backend/app/schemas`.
 - **The backend only reads tables** (plus writes `decision_log`, the human-in-the-loop record, which no pipeline
   truncates). It has no ML dependencies; the image contains `backend/` only. Heavy per-row work (ranking, trends,
   medians) happens at mart build time so every endpoint stays well under 500 ms.
@@ -130,7 +138,9 @@ flowchart LR
     MARTS -- "mart_hospital_profile_status<br/>mart_region_profile_status<br/>mart_area_status · mart_build_info" --> PG
     PG -- "marts · series · predictions · registry" --> API
     API -- "POST /decisions → decision_log" --> PG
-    API <--> USER
+    WEB["frontend (nginx :3000)<br/>React UI, /api proxy"]
+    API <--> WEB
+    WEB <--> USER
 ```
 
 ## Serving and API
@@ -164,6 +174,8 @@ Endpoints, formulas and examples: [`docs/api.md`](api.md).
 |---|---|
 | Postgres | `docker compose` service `postgres`, image `pgvector/pgvector:pg16`, volume `pgdata`, healthcheck `pg_isready` |
 | API | `docker compose` service `backend` (`make up`): image built from `backend/Dockerfile` (python:3.12-slim, non-root user), env from `.env` with `POSTGRES_HOST=postgres`, starts after the postgres healthcheck, runs `alembic upgrade head` then uvicorn on port 8000 (`API_PORT`), healthcheck `GET /health`. Docs at http://localhost:8000/docs |
+| frontend | `docker compose` service `frontend` (`make up`): image built from `frontend/Dockerfile` (node:22-alpine builds the bundle, nginx:1.29-alpine serves it), port 3000 (`FRONTEND_PORT`), starts after the backend healthcheck, proxies `/api/` to `backend:8000` (re-resolving the service name, so a recreated backend keeps working), healthcheck `GET /healthz`. http://localhost:3000 |
+| frontend (development) | `make web-dev` — Vite on port 5173 with hot reload, `/api` proxied to `localhost:8000` (`API_PROXY_TARGET` to change) |
 | API (development) | `make api-dev` — uvicorn with auto-reload on port 8001 against the same Postgres |
 | migrations | `make migrate` (also part of `make ingest`, `make predict`, `make marts`, and of the backend container start) |
 | ingest | `make ingest` — ~15 s to Parquet, ~1.5 min including the Postgres load on a laptop |
@@ -187,6 +199,8 @@ Endpoints, formulas and examples: [`docs/api.md`](api.md).
 | alembic | `alembic check` reports drift between the SQLAlchemy models and the migrations |
 | ruff | `ruff check` or `ruff format --check` fails |
 | pytest | the API tests fail |
+| web-lint | when `frontend/package.json` exists: `npm run lint` (ESLint + `prettier --check`) fails; also fails if `frontend/node_modules` is missing (`make web-install`) |
+| web-build | when `frontend/package.json` exists: `npm run build` (`tsc -b` + Vite production build) fails |
 | api-docs | an endpoint heading in `docs/api.md` (a `###` heading holding `` `METHOD /path` ``) has no route in the app's OpenAPI schema under `/api/v1`, or vice versa (path parameter names and query strings are ignored) |
 
 **CI** (`.github/workflows/ci.yml`, on push and pull request): Ubuntu, Python 3.12, a `pgvector/pgvector:pg16`

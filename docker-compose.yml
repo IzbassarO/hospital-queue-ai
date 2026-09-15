@@ -34,5 +34,17 @@ services:
     ports:
       - "${API_PORT:-8000}:8000"
 
+  frontend:
+    build: ./frontend
+    image: hqai-frontend:latest
+    container_name: hqai-frontend
+    restart: unless-stopped
+    # nginx serves the built UI and proxies /api to backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+
 volumes:
   pgdata:

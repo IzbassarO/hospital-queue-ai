@@ -1,0 +1,322 @@
+{
+  "items": [
+    {
+      "hospitalization_code": "71.ZIQ9.241.252",
+      "registration_date": "2025-03-20",
+      "icd10_code": "O80.0",
+      "referral_purpose": "Консервативное лечение",
+      "pred_wait_days": 13.6,
+      "pred_refusal_prob": 0.5725,
+      "is_high_risk": true,
+      "explanation": {
+        "wait_time": [
+          {
+            "shap": 0.2278,
+            "text": "медианное ожидание в стационаре по профилю до даты направления, дней: 13,0 → +3 дня",
+            "value": 13.0,
+            "effect": 2.8659,
+            "feature": "hp_median_wait_prev",
+            "direction": "up",
+            "value_display": "13,0 дн."
+          },
+          {
+            "shap": -0.1579,
+            "text": "стационар: ГКП на ПХВ \"Городской перинатальный центр\" акимата города Астаны (ZIQ9) → −2 дня",
+            "value": "ZIQ9",
+            "effect": -1.9855,
+            "feature": "org_code",
+            "direction": "down",
+            "value_display": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны (ZIQ9)"
+          },
+          {
+            "shap": 0.134,
+            "text": "диагноз (МКБ-10): O80 → +2 дня",
+            "value": "O80",
+            "effect": 1.6857,
+            "feature": "icd3",
+            "direction": "up",
+            "value_display": "O80 (класс XV — Беременность, роды и послеродовой период)"
+          },
+          {
+            "shap": 0.0556,
+            "text": "очередь в стационаре по профилю на дату направления: 75 → +0,7 дня",
+            "value": 75.0,
+            "effect": 0.6993,
+            "feature": "queue_hp_prev_day",
+            "direction": "up",
+            "value_display": "75"
+          },
+          {
+            "shap": 0.0258,
+            "text": "день недели направления: Чт → +0,3 дня",
+            "value": 4.0,
+            "effect": 0.3249,
+            "feature": "registration_weekday",
+            "direction": "up",
+            "value_display": "Чт"
+          }
+        ],
+        "refusal_risk": [
+          {
+            "shap": 1.1506,
+            "text": "стационар: ГКП на ПХВ \"Городской перинатальный центр\" акимата города Астаны (ZIQ9) → +19,7 п.п. к риску отказа",
+            "value": "ZIQ9",
+            "effect": 0.1975,
+            "feature": "org_code",
+            "direction": "up",
+            "value_display": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны (ZIQ9)"
+          },
+          {
+            "shap": 0.739,
+            "text": "доля отказов в стационаре по профилю до даты направления: 46,1% → +12,7 п.п. к риску отказа",
+            "value": 0.46111111111111114,
+            "effect": 0.1268,
+            "feature": "hp_refusal_rate_prev",
+            "direction": "up",
+            "value_display": "46,1%"
+          },
+          {
+            "shap": 0.5519,
+            "text": "диагноз (МКБ-10): O80 → +9,5 п.п. к риску отказа",
+            "value": "O80",
+            "effect": 0.0947,
+            "feature": "icd3",
+            "direction": "up",
+            "value_display": "O80 (класс XV — Беременность, роды и послеродовой период)"
+          },
+          {
+            "shap": 0.2402,
+            "text": "профиль койки: Патологии беременности (241) → +4,1 п.п. к риску отказа",
+            "value": "241",
+            "effect": 0.0412,
+            "feature": "profile_code",
+            "direction": "up",
+            "value_display": "Патологии беременности (241)"
+          },
+          {
+            "shap": 0.0987,
+            "text": "день от начала периода данных: 78 → +1,7 п.п. к риску отказа",
+            "value": 78.0,
+            "effect": 0.0169,
+            "feature": "day_of_window",
+            "direction": "up",
+            "value_display": "78"
+          }
+        ]
+      }
+    },
+    {
+      "hospitalization_code": "71.ZIQ9.241.255",
+      "registration_date": "2025-03-20",
+      "icd10_code": "O80.0",
+      "referral_purpose": "Консервативное лечение",
+      "pred_wait_days": 13.6,
+      "pred_refusal_prob": 0.5725,
+      "is_high_risk": true,
+      "explanation": {
+        "wait_time": [
+          {
+            "shap": 0.2278,
+            "text": "медианное ожидание в стационаре по профилю до даты направления, дней: 13,0 → +3 дня",
+            "value": 13.0,
+            "effect": 2.8659,
+            "feature": "hp_median_wait_prev",
+            "direction": "up",
+            "value_display": "13,0 дн."
+          },
+          {
+            "shap": -0.1579,
+            "text": "стационар: ГКП на ПХВ \"Городской перинатальный центр\" акимата города Астаны (ZIQ9) → −2 дня",
+            "value": "ZIQ9",
+            "effect": -1.9855,
+            "feature": "org_code",
+            "direction": "down",
+            "value_display": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны (ZIQ9)"
+          },
+          {
+            "shap": 0.134,
+            "text": "диагноз (МКБ-10): O80 → +2 дня",
+            "value": "O80",
+            "effect": 1.6857,
+            "feature": "icd3",
+            "direction": "up",
+            "value_display": "O80 (класс XV — Беременность, роды и послеродовой период)"
+          },
+          {
+            "shap": 0.0556,
+            "text": "очередь в стационаре по профилю на дату направления: 75 → +0,7 дня",
+            "value": 75.0,
+            "effect": 0.6993,
+            "feature": "queue_hp_prev_day",
+            "direction": "up",
+            "value_display": "75"
+          },
+          {
+            "shap": 0.0258,
+            "text": "день недели направления: Чт → +0,3 дня",
+            "value": 4.0,
+            "effect": 0.3249,
+            "feature": "registration_weekday",
+            "direction": "up",
+            "value_display": "Чт"
+          }
+        ],
+        "refusal_risk": [
+          {
+            "shap": 1.1506,
+            "text": "стационар: ГКП на ПХВ \"Городской перинатальный центр\" акимата города Астаны (ZIQ9) → +19,7 п.п. к риску отказа",
+            "value": "ZIQ9",
+            "effect": 0.1975,
+            "feature": "org_code",
+            "direction": "up",
+            "value_display": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны (ZIQ9)"
+          },
+          {
+            "shap": 0.739,
+            "text": "доля отказов в стационаре по профилю до даты направления: 46,1% → +12,7 п.п. к риску отказа",
+            "value": 0.46111111111111114,
+            "effect": 0.1268,
+            "feature": "hp_refusal_rate_prev",
+            "direction": "up",
+            "value_display": "46,1%"
+          },
+          {
+            "shap": 0.5519,
+            "text": "диагноз (МКБ-10): O80 → +9,5 п.п. к риску отказа",
+            "value": "O80",
+            "effect": 0.0947,
+            "feature": "icd3",
+            "direction": "up",
+            "value_display": "O80 (класс XV — Беременность, роды и послеродовой период)"
+          },
+          {
+            "shap": 0.2402,
+            "text": "профиль койки: Патологии беременности (241) → +4,1 п.п. к риску отказа",
+            "value": "241",
+            "effect": 0.0412,
+            "feature": "profile_code",
+            "direction": "up",
+            "value_display": "Патологии беременности (241)"
+          },
+          {
+            "shap": 0.0987,
+            "text": "день от начала периода данных: 78 → +1,7 п.п. к риску отказа",
+            "value": 78.0,
+            "effect": 0.0169,
+            "feature": "day_of_window",
+            "direction": "up",
+            "value_display": "78"
+          }
+        ]
+      }
+    },
+    {
+      "hospitalization_code": "71.ZIQ9.241.256",
+      "registration_date": "2025-03-20",
+      "icd10_code": "O80.0",
+      "referral_purpose": "Консервативное лечение",
+      "pred_wait_days": 13.6,
+      "pred_refusal_prob": 0.5725,
+      "is_high_risk": true,
+      "explanation": {
+        "wait_time": [
+          {
+            "shap": 0.2278,
+            "text": "медианное ожидание в стационаре по профилю до даты направления, дней: 13,0 → +3 дня",
+            "value": 13.0,
+            "effect": 2.8659,
+            "feature": "hp_median_wait_prev",
+            "direction": "up",
+            "value_display": "13,0 дн."
+          },
+          {
+            "shap": -0.1579,
+            "text": "стационар: ГКП на ПХВ \"Городской перинатальный центр\" акимата города Астаны (ZIQ9) → −2 дня",
+            "value": "ZIQ9",
+            "effect": -1.9855,
+            "feature": "org_code",
+            "direction": "down",
+            "value_display": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны (ZIQ9)"
+          },
+          {
+            "shap": 0.134,
+            "text": "диагноз (МКБ-10): O80 → +2 дня",
+            "value": "O80",
+            "effect": 1.6857,
+            "feature": "icd3",
+            "direction": "up",
+            "value_display": "O80 (класс XV — Беременность, роды и послеродовой период)"
+          },
+          {
+            "shap": 0.0556,
+            "text": "очередь в стационаре по профилю на дату направления: 75 → +0,7 дня",
+            "value": 75.0,
+            "effect": 0.6993,
+            "feature": "queue_hp_prev_day",
+            "direction": "up",
+            "value_display": "75"
+          },
+          {
+            "shap": 0.0258,
+            "text": "день недели направления: Чт → +0,3 дня",
+            "value": 4.0,
+            "effect": 0.3249,
+            "feature": "registration_weekday",
+            "direction": "up",
+            "value_display": "Чт"
+          }
+        ],
+        "refusal_risk": [
+          {
+            "shap": 1.1506,
+            "text": "стационар: ГКП на ПХВ \"Городской перинатальный центр\" акимата города Астаны (ZIQ9) → +19,7 п.п. к риску отказа",
+            "value": "ZIQ9",
+            "effect": 0.1975,
+            "feature": "org_code",
+            "direction": "up",
+            "value_display": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны (ZIQ9)"
+          },
+          {
+            "shap": 0.739,
+            "text": "доля отказов в стационаре по профилю до даты направления: 46,1% → +12,7 п.п. к риску отказа",
+            "value": 0.46111111111111114,
+            "effect": 0.1268,
+            "feature": "hp_refusal_rate_prev",
+            "direction": "up",
+            "value_display": "46,1%"
+          },
+          {
+            "shap": 0.5519,
+            "text": "диагноз (МКБ-10): O80 → +9,5 п.п. к риску отказа",
+            "value": "O80",
+            "effect": 0.0947,
+            "feature": "icd3",
+            "direction": "up",
+            "value_display": "O80 (класс XV — Беременность, роды и послеродовой период)"
+          },
+          {
+            "shap": 0.2402,
+            "text": "профиль койки: Патологии беременности (241) → +4,1 п.п. к риску отказа",
+            "value": "241",
+            "effect": 0.0412,
+            "feature": "profile_code",
+            "direction": "up",
+            "value_display": "Патологии беременности (241)"
+          },
+          {
+            "shap": 0.0987,
+            "text": "день от начала периода данных: 78 → +1,7 п.п. к риску отказа",
+            "value": 78.0,
+            "effect": 0.0169,
+            "feature": "day_of_window",
+            "direction": "up",
+            "value_display": "78"
+          }
+        ]
+      }
+    }
+  ],
+  "total": 99,
+  "limit": 3,
+  "offset": 0
+}

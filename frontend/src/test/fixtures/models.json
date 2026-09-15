@@ -1,0 +1,341 @@
+[
+  {
+    "model_name": "wait_time",
+    "title": "A · Время ожидания госпитализации (дни)",
+    "version": "20260914-1830",
+    "trained_at": "2026-09-14T18:30:40",
+    "train_window": {
+      "test": ["2025-03-01", "2025-03-31"],
+      "train": ["2025-01-01", "2025-02-28"],
+      "date_column": "registration_date",
+      "early_stopping_holdout_days": 14
+    },
+    "population": {
+      "test_rows": 80436,
+      "definition": "hospitalized, same_day_registration = false",
+      "train_rows": 203431,
+      "test_median_wait": 9.0,
+      "train_median_wait": 7.0
+    },
+    "headline": [
+      {
+        "n": 80436,
+        "mae": 10.513465841246637,
+        "wape": 0.45072504051036255,
+        "model": "LightGBM",
+        "spearman": 0.7330123059962853,
+        "median_ae": 4.035894973005979,
+        "within_7d": 0.6552911631607737
+      }
+    ],
+    "baselines": [
+      {
+        "n": 80436,
+        "mae": 19.02745039534537,
+        "wape": 0.8157298915268113,
+        "model": "B1 global median",
+        "spearman": null,
+        "median_ae": 5.0,
+        "within_7d": 0.6437664727236561
+      },
+      {
+        "n": 80436,
+        "mae": 14.33920756875031,
+        "wape": 0.6147392315629691,
+        "model": "B2 median profile × patient region",
+        "spearman": 0.5559496126608886,
+        "median_ae": 5.0,
+        "within_7d": 0.6103983291063703
+      },
+      {
+        "n": 80436,
+        "mae": 11.118901984186186,
+        "wape": 0.476680822758903,
+        "model": "B3 median hospital × profile (fallback B2)",
+        "spearman": 0.695816762385526,
+        "median_ae": 4.0,
+        "within_7d": 0.6505669103386543
+      }
+    ],
+    "beats_baselines": null
+  },
+  {
+    "model_name": "refusal_risk",
+    "title": "B · Риск отказа в госпитализации (вероятность)",
+    "version": "20260914-1831",
+    "trained_at": "2026-09-14T18:31:15",
+    "train_window": {
+      "test": ["2025-03-01", "2025-03-31"],
+      "train": ["2025-01-01", "2025-02-28"],
+      "date_column": "registration_date",
+      "early_stopping_holdout_days": 14
+    },
+    "population": {
+      "test_rows": 224661,
+      "definition": "outcome in (hospitalized, refused)",
+      "train_rows": 538507,
+      "test_refusal_rate": 0.10932026475445226,
+      "train_refusal_rate": 0.11052781115194417
+    },
+    "headline": [
+      {
+        "n": 224661,
+        "brier": 0.08226125637182881,
+        "model": "LightGBM",
+        "pr_auc": 0.38410321592744867,
+        "roc_auc": 0.7876358514886465,
+        "base_rate": 0.10932026475445226,
+        "recall_top": 0.36490228013029313,
+        "precision_top": 0.39891391435947654
+      }
+    ],
+    "baselines": [
+      {
+        "n": 224661,
+        "brier": 0.0973708026367708,
+        "model": "B1 global rate",
+        "pr_auc": 0.10932026475445226,
+        "roc_auc": 0.5,
+        "base_rate": 0.10932026475445226,
+        "recall_top": 0.08615635179153094,
+        "precision_top": 0.09418677112080477
+      },
+      {
+        "n": 224661,
+        "brier": 0.09044315670979522,
+        "model": "B2 rate profile × patient region",
+        "pr_auc": 0.2545473082547397,
+        "roc_auc": 0.713764495285744,
+        "base_rate": 0.10932026475445226,
+        "recall_top": 0.27931596091205213,
+        "precision_top": 0.3053503071307754
+      },
+      {
+        "n": 224661,
+        "brier": 0.08628067034253484,
+        "model": "B3 rate hospital × profile (fallback B2)",
+        "pr_auc": 0.3217604304523412,
+        "roc_auc": 0.7608314738150068,
+        "base_rate": 0.10932026475445226,
+        "recall_top": 0.3261400651465798,
+        "precision_top": 0.35653876969643017
+      }
+    ],
+    "beats_baselines": null
+  },
+  {
+    "model_name": "load_forecast",
+    "title": "C · Прогноз направлений и госпитализаций на 14 дней",
+    "version": "20260914-1918",
+    "trained_at": "2026-09-14T19:18:03",
+    "train_window": {
+      "backtest_origins": ["2025-03-03", "2025-03-10", "2025-03-17"],
+      "series_selection": ["2025-01-01", "2025-02-28"],
+      "final_model_data_through": "2025-03-31"
+    },
+    "population": {
+      "region_profile": 1426,
+      "min_series_mean": 1.0,
+      "hospital_profile_total": 6537,
+      "hospital_profile_fallback": 4514,
+      "hospital_profile_modelled": 2023
+    },
+    "headline": [
+      {
+        "target": "hospitalizations",
+        "series_level": "hospital × profile (fallback)",
+        "n": 189588,
+        "method": "LightGBM (Poisson)",
+        "wape": 1.2994941068602421,
+        "mae": 0.266968352259107
+      },
+      {
+        "target": "hospitalizations",
+        "series_level": "hospital × profile (modelled)",
+        "n": 84966,
+        "method": "LightGBM (Poisson)",
+        "wape": 0.6846879764323255,
+        "mae": 1.8914459013280909
+      },
+      {
+        "target": "hospitalizations",
+        "series_level": "region × profile",
+        "n": 59892,
+        "method": "LightGBM (Poisson)",
+        "wape": 0.5614166896799788,
+        "mae": 2.5653045684674205
+      },
+      {
+        "target": "registrations",
+        "series_level": "hospital × profile (fallback)",
+        "n": 189588,
+        "method": "LightGBM (Poisson)",
+        "wape": 1.1965816936749638,
+        "mae": 0.2877531941791092
+      },
+      {
+        "target": "registrations",
+        "series_level": "hospital × profile (modelled)",
+        "n": 84966,
+        "method": "LightGBM (Poisson)",
+        "wape": 0.6289267322752801,
+        "mae": 2.0105062793762873
+      },
+      {
+        "target": "registrations",
+        "series_level": "region × profile",
+        "n": 59892,
+        "method": "LightGBM (Poisson)",
+        "wape": 0.4932430977225978,
+        "mae": 2.61235518622014
+      }
+    ],
+    "baselines": [
+      {
+        "target": "hospitalizations",
+        "series_level": "hospital × profile (fallback)",
+        "n": 189588,
+        "method": "seasonal naive (same weekday)",
+        "wape": 1.5139541451641891,
+        "mae": 0.31102706922379053
+      },
+      {
+        "target": "hospitalizations",
+        "series_level": "hospital × profile (fallback)",
+        "n": 189588,
+        "method": "mean 28d",
+        "wape": 1.6141272705841128,
+        "mae": 0.33160665792128513
+      },
+      {
+        "target": "hospitalizations",
+        "series_level": "hospital × profile (fallback)",
+        "n": 189588,
+        "method": "mean 7d",
+        "wape": 1.6043067475259434,
+        "mae": 0.32958912752594033
+      },
+      {
+        "target": "hospitalizations",
+        "series_level": "hospital × profile (modelled)",
+        "n": 84966,
+        "method": "seasonal naive (same weekday)",
+        "wape": 0.9105650184476691,
+        "mae": 2.5154297012922817
+      },
+      {
+        "target": "hospitalizations",
+        "series_level": "hospital × profile (modelled)",
+        "n": 84966,
+        "method": "mean 28d",
+        "wape": 1.0819950501701676,
+        "mae": 2.9890040037878842
+      },
+      {
+        "target": "hospitalizations",
+        "series_level": "hospital × profile (modelled)",
+        "n": 84966,
+        "method": "mean 7d",
+        "wape": 1.0892718681782032,
+        "mae": 3.0091061642898516
+      },
+      {
+        "target": "hospitalizations",
+        "series_level": "region × profile",
+        "n": 59892,
+        "method": "seasonal naive (same weekday)",
+        "wape": 0.6572696013768559,
+        "mae": 3.0032892539905163
+      },
+      {
+        "target": "hospitalizations",
+        "series_level": "region × profile",
+        "n": 59892,
+        "method": "mean 28d",
+        "wape": 0.8990350106513482,
+        "mae": 4.10799796733992
+      },
+      {
+        "target": "hospitalizations",
+        "series_level": "region × profile",
+        "n": 59892,
+        "method": "mean 7d",
+        "wape": 0.8991621195361328,
+        "mae": 4.108578771239812
+      },
+      {
+        "target": "registrations",
+        "series_level": "hospital × profile (fallback)",
+        "n": 189588,
+        "method": "seasonal naive (same weekday)",
+        "wape": 1.4806983681347605,
+        "mae": 0.3560773888642741
+      },
+      {
+        "target": "registrations",
+        "series_level": "hospital × profile (fallback)",
+        "n": 189588,
+        "method": "mean 28d",
+        "wape": 1.5502610149637917,
+        "mae": 0.37280576932205195
+      },
+      {
+        "target": "registrations",
+        "series_level": "hospital × profile (fallback)",
+        "n": 189588,
+        "method": "mean 7d",
+        "wape": 1.5346238834841939,
+        "mae": 0.3690453620261376
+      },
+      {
+        "target": "registrations",
+        "series_level": "hospital × profile (modelled)",
+        "n": 84966,
+        "method": "seasonal naive (same weekday)",
+        "wape": 0.8638798584751098,
+        "mae": 2.761586987736271
+      },
+      {
+        "target": "registrations",
+        "series_level": "hospital × profile (modelled)",
+        "n": 84966,
+        "method": "mean 28d",
+        "wape": 1.0224797256555866,
+        "mae": 3.2685872669596177
+      },
+      {
+        "target": "registrations",
+        "series_level": "hospital × profile (modelled)",
+        "n": 84966,
+        "method": "mean 7d",
+        "wape": 1.0222070162999395,
+        "mae": 3.267715489940393
+      },
+      {
+        "target": "registrations",
+        "series_level": "region × profile",
+        "n": 59892,
+        "method": "seasonal naive (same weekday)",
+        "wape": 0.6172821992087136,
+        "mae": 3.2693014092032326
+      },
+      {
+        "target": "registrations",
+        "series_level": "region × profile",
+        "n": 59892,
+        "method": "mean 28d",
+        "wape": 0.8675277595104249,
+        "mae": 4.594672793620256
+      },
+      {
+        "target": "registrations",
+        "series_level": "region × profile",
+        "n": 59892,
+        "method": "mean 7d",
+        "wape": 0.8719953522212275,
+        "mae": 4.618334430330169
+      }
+    ],
+    "beats_baselines": true
+  }
+]
