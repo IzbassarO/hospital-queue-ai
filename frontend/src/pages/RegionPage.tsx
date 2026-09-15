@@ -9,6 +9,7 @@ import {
 import {
   PAGE_SIZE,
   useDictionaries,
+  useConfig,
   useOverview,
   useRegion,
   useRegionHospitals,
@@ -105,6 +106,7 @@ export function RegionPage() {
   const region = useRegion(code);
   const dictionaries = useDictionaries();
   const overview = useOverview();
+  const config = useConfig();
 
   const profiles = useMemo(
     () => profileOptions(region.data, dictionaries.data?.profiles),
@@ -115,7 +117,7 @@ export function RegionPage() {
   const offset = Number(params.get("offset") ?? 0) || 0;
   const hospitals = useRegionHospitals(code, selected?.code, offset);
 
-  const median = overview.data?.thresholds.queue_trend_national_median_4w;
+  const median = config.data?.queue_trend_national_median_4w;
   const trendHint = t.metrics.excessTrendHint(
     median == null
       ? t.common.noData

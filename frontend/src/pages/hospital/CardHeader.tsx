@@ -1,4 +1,5 @@
-import type { HospitalProfileStatus } from "../../api/types";
+import { useConfig } from "../../api/queries";
+import type { Config, HospitalProfileStatus } from "../../api/types";
 import { InfoTip } from "../../components/InfoTip";
 import { Kpi, KpiGrid } from "../../components/Kpi";
 import { LoadIndexBars } from "../../components/LoadIndexBars";
@@ -10,11 +11,28 @@ import {
   fmtDays,
   fmtIndex,
   fmtInt,
+  fmtNumber,
   fmtPercent,
 } from "../../lib/format";
 import { regionPath } from "../../lib/paths";
+import { ExportButtons } from "./ExportButtons";
+
+function formulaLines(config: Config): string[] {
+  const { load_index: li, status_thresholds: st } = config;
+  return t.loadIndex.formula({
+    backlog: fmtNumber(li.weights.backlog_rank, 2),
+    refusal: fmtNumber(li.weights.refusal_rate, 2),
+    trend: fmtNumber(li.weights.queue_trend, 2),
+    refusalCap: fmtPercent(li.refusal_rate_cap, 0),
+    trendCap: fmtNumber(li.queue_trend_cap_pct, 0),
+    minRegistrations: config.min_registrations_28d,
+    high: fmtNumber(st.high, 0),
+    elevated: fmtNumber(st.elevated, 0),
+  });
+}
 
 export function CardHeader({ status }: { status: HospitalProfileStatus }) {
+  const config = useConfig();
   return (
     <>
       <PageHeader
@@ -41,11 +59,13 @@ export function CardHeader({ status }: { status: HospitalProfileStatus }) {
                   <strong className="mb-1 block">
                     {t.loadIndex.formulaTitle}
                   </strong>
-                  {t.loadIndex.formula.map((line) => (
-                    <span key={line} className="mb-1 block">
-                      {line}
-                    </span>
-                  ))}
+                  {config.data
+                    ? formulaLines(config.data).map((line) => (
+                        <span key={line} className="mb-1 block">
+                          {line}
+                        </span>
+                      ))
+                    : t.common.loading}
                 </InfoTip>
               </p>
               <p className="text-4xl font-semibold tabular-nums leading-none">
@@ -53,7 +73,10 @@ export function CardHeader({ status }: { status: HospitalProfileStatus }) {
               </p>
               <StatusBadge status={status.status} size="lg" />
             </div>
-            <LoadIndexBars components={status.components} />
+            <LoadIndexBars
+              components={status.components}
+              weights={config.data?.load_index.weights}
+            />
           </div>
         }
       >
@@ -67,6 +90,9 @@ export function CardHeader({ status }: { status: HospitalProfileStatus }) {
             : ""}
           {t.common.asOf(fmtDate(status.as_of_date))}
         </p>
+        <div className="pt-2">
+          <ExportButtons org={status.org_code} profile={status.profile_code} />
+        </div>
       </PageHeader>
 
       <section aria-label={t.hospital.kpisTitle}>

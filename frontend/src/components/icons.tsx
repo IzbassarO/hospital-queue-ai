@@ -107,3 +107,9 @@ export const IconUser = (p: IconProps) => (
     <path d="M4 21a8 8 0 0 1 16 0" />
   </Icon>
 );
+
+export const IconDownload = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 4v11M7 10.5l5 5 5-5M5 20h14" />
+  </Icon>
+);

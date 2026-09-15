@@ -2,7 +2,6 @@ import type { ExplanationFactor, HospitalCard } from "../../api/types";
 import { Direction } from "../../components/Direction";
 import { Section } from "../../components/PageHeader";
 import { t } from "../../i18n";
-import { featureLabel } from "../../lib/features";
 import { fmtPercent, fmtSigned } from "../../lib/format";
 
 function FactorList({
@@ -27,7 +26,7 @@ function FactorList({
               <Direction direction={f.direction} />
               <div className="min-w-0 flex-1">
                 <p className="font-medium" title={f.label}>
-                  {featureLabel(f.feature, f.label)}
+                  {f.short_label}
                 </p>
                 <p className="break-words text-sm text-muted">
                   {t.why.typicalValue}:{" "}

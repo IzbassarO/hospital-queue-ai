@@ -1,4 +1,4 @@
-# Lint and API tests on every push and pull request.
+# Backend lint + API tests and frontend lint + tests + build, on every push and pull request.
 # The tests need a database with serving marts: CI loads the 2-region fixture (backend/tests/fixtures, built by
 # `make fixture`) into a fresh Postgres 16 + pgvector service and builds the marts from it — the full open data never
 # leaves the developer machine.
@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint-and-test:
+  backend:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -57,6 +57,9 @@ jobs:
       - name: Install requirements
         run: python -m pip install -r requirements.txt
 
+      - name: Font with Cyrillic glyphs for the PDF export
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-dejavu-core
+
       - name: Lint (ruff)
         run: make lint
 
@@ -74,3 +77,30 @@ jobs:
 
       - name: API tests
         run: make test
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint (ESLint + Prettier)
+        run: npm run lint
+
+      - name: Tests (Vitest; also checks the client against docs/api.md examples)
+        run: npm test
+
+      - name: Production build (tsc + Vite)
+        run: npm run build

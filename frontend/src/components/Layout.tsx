@@ -2,8 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { NavLink, Outlet, ScrollRestoration } from "react-router-dom";
 
 import { api } from "../api/client";
+import { useMe } from "../api/queries";
 import { t } from "../i18n";
 import { fmtDate } from "../lib/format";
+import { IconUser } from "./icons";
 
 const NAV = [
   { to: "/", label: t.nav.overview, end: true },
@@ -19,6 +21,7 @@ export function Layout() {
     staleTime: 60_000,
   });
   const asOf = health.data?.marts_as_of_date;
+  const me = useMe();
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -57,9 +60,24 @@ export function Layout() {
               ))}
             </ul>
           </nav>
-          <p className="text-sm text-muted tabular-nums">
-            {asOf ? t.common.asOf(fmtDate(asOf)) : " "}
-          </p>
+          <div className="flex flex-col items-end gap-0.5 text-sm">
+            <span className="text-muted tabular-nums">
+              {asOf ? t.common.asOf(fmtDate(asOf)) : "\u00a0"}
+            </span>
+            {me.data ? (
+              <span
+                className="inline-flex items-center gap-1 rounded-full border border-line bg-canvas px-2 py-0.5 font-medium text-ink"
+                title={t.app.roleTitle(me.data.label)}
+              >
+                <IconUser size={14} />
+                {t.app.role(me.data.role_label)}
+              </span>
+            ) : me.isError ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-high-fg/40 bg-high-bg px-2 py-0.5 font-medium text-high-fg">
+                {t.app.noKey}
+              </span>
+            ) : null}
+          </div>
         </div>
       </header>
       <main

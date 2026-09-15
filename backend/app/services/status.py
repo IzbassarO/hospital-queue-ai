@@ -154,6 +154,7 @@ def explanation_summary(
             ExplanationFactor(
                 feature=r.feature,
                 label=r.label,
+                short_label=formatter.short_label(r.feature, r.label),
                 mean_abs_effect=round(r.mean_abs_effect * scale, digits),
                 mean_effect=round(r.mean_effect * scale, digits),
                 unit=unit,

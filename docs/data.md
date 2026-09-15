@@ -189,6 +189,29 @@ Seeded entry: `028V` → ERSB 792 — the same Almaty clinic, spelled `"Горо
 Управления общественного здравоохранения` in dataset 1 and `"Городская поликлиника №4" … Управления
 общественного здоровья` in ERSB; the automatic rule rejected it (`token_sort_ratio` 87 < 90).
 
+### `dim_icd` — ICD-10 code → name
+
+There is no official ICD-10 dictionary in the open data. `dim_icd` keeps, for every code that appears in dataset 1
+(`diagnosis_name`) or dataset 3 (`icd_name`), the most frequent spelling across both sources (ties: the first spelling in sort order).
+
+| column | meaning |
+|---|---|
+| `icd10_code` | PK, upper-case as in the facts (`O80.0`, `M42.1`, `O99`) |
+| `icd10_name` | most frequent name spelling |
+| `name_share` | share of named rows of the code that use that spelling (1.0 = all agree) |
+| `n_referrals` | dataset-1 referrals with the code (0 for codes seen only in dataset 3) |
+
+Used by the API for `diagnosis_name` on referrals and for names of 3-character codes in explanations.
+
+### Deterministic majority votes
+
+Every "most frequent value" in the dictionaries (`dim_profile.profile_name`, the region vote, `dim_organization`
+name, key and region) uses `arg_max(value, struct(count, value))`: on equal counts the value later in sort order wins, so every
+`make ingest` produces the same dictionaries. Before step 6 a plain `arg_max(value, count)` picked an arbitrary one of
+the tied values; 5 hospitals have tied region-prefix votes, and two ingests assigned two of them to different
+regions (Акмолинская → г. Астана, Жамбылская → Алматинская область), which moved a few region-level counts (e.g.
+ZIQ9 × 241 is now «место 1 из 245» instead of 244).
+
 ### `ersb_snapshot` — dataset 4
 
 | column | meaning |

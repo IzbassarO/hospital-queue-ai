@@ -3,12 +3,14 @@
 from typing import Literal
 
 from sqlalchemy import func, or_, select, text
-from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, aliased
 
 from app.db.models import DecisionLog, DimOrganization, MartHospitalProfileStatus
 from app.schemas.activity import AlertItem, Decision, DecisionCreate, ReferralItem
-from app.schemas.common import Page
+from app.schemas.common import STATUS_LABELS, Page
 from app.services.common import (
+    ConflictError,
     ValidationError,
     build_info,
     hospital_row,
@@ -44,10 +46,12 @@ def referrals(
     total = session.execute(text(f"SELECT count(*) FROM pred_referral pr WHERE {where}"), params).scalar_one()
     rows = session.execute(
         text(f"""
-        SELECT pr.hospitalization_code, pr.registration_date, fr.icd10_code, fr.referral_purpose,
+        SELECT pr.hospitalization_code, pr.registration_date, fr.icd10_code, icd.icd10_name AS diagnosis_name,
+               fr.referral_purpose,
                pr.pred_wait_days, pr.pred_refusal_prob, pr.explanation
         FROM pred_referral pr
         LEFT JOIN fact_referral fr ON fr.referral_id = pr.referral_id
+        LEFT JOIN dim_icd icd ON icd.icd10_code = fr.icd10_code
         WHERE {where}
         ORDER BY {_REFERRAL_ORDER[sort]}, pr.hospitalization_code
         LIMIT :limit OFFSET :offset
@@ -60,6 +64,7 @@ def referrals(
             hospitalization_code=r.hospitalization_code,
             registration_date=r.registration_date,
             icd10_code=r.icd10_code,
+            diagnosis_name=r.diagnosis_name,
             referral_purpose=r.referral_purpose,
             pred_wait_days=round(r.pred_wait_days, 1),
             pred_refusal_prob=round(r.pred_refusal_prob, 4),
@@ -72,7 +77,12 @@ def referrals(
 
 
 # ------------------------------------------------------------------------------------------ decisions
-def _decision(row: DecisionLog) -> Decision:
+_DECISION_FIELDS = (
+    "region_code", "org_code", "profile_code", "recommendation_id", "alternative_org_code", "action", "comment", "actor"
+)  # fmt: skip
+
+
+def _decision(row: DecisionLog, alternative_name: str | None) -> Decision:
     return Decision(
         id=row.id,
         created_at=row.created_at,
@@ -80,13 +90,35 @@ def _decision(row: DecisionLog) -> Decision:
         org_code=row.org_code,
         profile_code=row.profile_code,
         recommendation_id=row.recommendation_id,
+        alternative_org_code=row.alternative_org_code,
+        alternative_org_name=alternative_name,
         action=row.action,
         comment=row.comment,
         actor=row.actor,
+        idempotency_key=row.idempotency_key,
+        api_key_label=row.api_key_label,
     )
 
 
-def create_decision(session: Session, payload: DecisionCreate) -> Decision:
+def _with_name(session: Session, row: DecisionLog) -> Decision:
+    org = session.get(DimOrganization, row.alternative_org_code) if row.alternative_org_code else None
+    return _decision(row, org.org_name if org else None)
+
+
+def _alternative_from_recommendation(recommendation_id: str | None) -> str | None:
+    """rec-v1:<method>:<as_of_date>:<org>:<profile>:<alternative org> (app.services.recommend)."""
+    parts = (recommendation_id or "").split(":")
+    return parts[5] if len(parts) == 6 and parts[0] == "rec-v1" and parts[5] else None
+
+
+def create_decision(session: Session, payload: DecisionCreate, api_key_label: str) -> tuple[Decision, bool]:
+    """Store a decision; returns (decision, created). With an idempotency_key that is already stored, the stored
+    row is returned (created = False) when the payload matches and a 409 is raised when it does not."""
+    if payload.idempotency_key:
+        existing = session.scalar(select(DecisionLog).where(DecisionLog.idempotency_key == payload.idempotency_key))
+        if existing is not None:
+            return _replay(session, existing, payload), False
+
     require_region(session, payload.region_code)
     require_profile(session, payload.profile_code)
     org = session.get(DimOrganization, payload.org_code)
@@ -98,11 +130,50 @@ def create_decision(session: Session, payload: DecisionCreate) -> Decision:
         )
     if session.get(MartHospitalProfileStatus, (payload.org_code, payload.profile_code)) is None:
         raise ValidationError(f"hospital {payload.org_code!r} has no referrals for profile {payload.profile_code!r}")
-    row = DecisionLog(**payload.model_dump())
+
+    derived = _alternative_from_recommendation(payload.recommendation_id)
+    alternative = payload.alternative_org_code or derived
+    if payload.alternative_org_code and derived and payload.alternative_org_code != derived:
+        raise ValidationError(
+            f"alternative_org_code {payload.alternative_org_code!r} does not match recommendation_id ({derived!r})"
+        )
+    alternative_name = None
+    if alternative is not None:
+        alt = session.get(DimOrganization, alternative)
+        if alt is None:
+            raise ValidationError(f"unknown alternative hospital {alternative!r}")
+        if alternative == payload.org_code:
+            raise ValidationError("the alternative must be a different hospital")
+        if alt.region_code != payload.region_code:
+            raise ValidationError(f"alternative {alternative!r} is not in region {payload.region_code!r}")
+        alternative_name = alt.org_name
+
+    row = DecisionLog(**{**payload.model_dump(), "alternative_org_code": alternative}, api_key_label=api_key_label)
     session.add(row)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        # a concurrent request with the same idempotency_key won the race
+        session.rollback()
+        existing = session.scalar(select(DecisionLog).where(DecisionLog.idempotency_key == payload.idempotency_key))
+        if existing is None:
+            raise
+        return _replay(session, existing, payload), False
     session.refresh(row)
-    return _decision(row)
+    return _decision(row, alternative_name), True
+
+
+def _replay(session: Session, existing: DecisionLog, payload: DecisionCreate) -> Decision:
+    sent = payload.model_dump()
+    if payload.alternative_org_code is None:
+        sent["alternative_org_code"] = existing.alternative_org_code  # derived on the first request
+    differing = [f for f in _DECISION_FIELDS if sent[f] != getattr(existing, f)]
+    if differing:
+        raise ConflictError(
+            f"idempotency_key {payload.idempotency_key!r} was already used for a different decision "
+            f"(fields differ: {', '.join(differing)})"
+        )
+    return _with_name(session, existing)
 
 
 def list_decisions(
@@ -114,14 +185,16 @@ def list_decisions(
     if profile_code is not None:
         where.append(DecisionLog.profile_code == profile_code)
     total = session.scalar(select(func.count()).select_from(DecisionLog).where(*where))
-    rows = session.scalars(
-        select(DecisionLog)
+    alt = aliased(DimOrganization)
+    rows = session.execute(
+        select(DecisionLog, alt.org_name)
+        .outerjoin(alt, alt.org_code == DecisionLog.alternative_org_code)
         .where(*where)
         .order_by(DecisionLog.created_at.desc(), DecisionLog.id.desc())
         .limit(limit)
         .offset(offset)
     ).all()
-    return Page[Decision](items=[_decision(r) for r in rows], total=total, limit=limit, offset=offset)
+    return Page[Decision](items=[_decision(r, name) for r, name in rows], total=total, limit=limit, offset=offset)
 
 
 # ------------------------------------------------------------------------------------------ alerts
@@ -129,7 +202,14 @@ def _fmt(value: float, digits: int = 1) -> str:
     return f"{value:.{digits}f}".replace(".", ",")
 
 
-def alerts(session: Session, region_code: str | None, limit: int, offset: int) -> Page[AlertItem]:
+def alerts(
+    session: Session,
+    region_code: str | None,
+    profile_code: str | None,
+    status: str | None,
+    limit: int,
+    offset: int,
+) -> Page[AlertItem]:
     info = build_info(session)
     cfg = info.config["alerts"]
     m = MartHospitalProfileStatus
@@ -142,6 +222,11 @@ def alerts(session: Session, region_code: str | None, limit: int, offset: int) -
     if region_code is not None:
         require_region(session, region_code)
         where.append(m.region_code == region_code)
+    if profile_code is not None:
+        require_profile(session, profile_code)
+        where.append(m.profile_code == profile_code)
+    if status is not None:
+        where.append(m.status == status)
     total = session.scalar(select(func.count()).select_from(m).where(*where))
     rows = session.scalars(select(m).where(*where).order_by(*load_index_order()).limit(limit).offset(offset)).all()
 
@@ -176,6 +261,9 @@ def alerts(session: Session, region_code: str | None, limit: int, offset: int) -
                 profile_name=r.profile_name,
                 load_index=rnd(r.load_index, 1),
                 status=r.status,
+                status_label=STATUS_LABELS[r.status],
+                region_rank=r.region_rank,
+                region_n_ranked=r.region_n_ranked,
                 queue_now=r.queue_now,
                 backlog_days=rnd(r.backlog_days, 1),
                 queue_trend_raw_4w=rnd(r.queue_trend_raw_4w, 1),

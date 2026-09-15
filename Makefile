@@ -5,8 +5,8 @@ PY           ?= $(CURDIR)/.venv/bin/python
 ML_PATH      := $(CURDIR)/ml
 API_DEV_PORT ?= 8001
 
-.PHONY: up down migrate ingest baseline psql train predict marts api-dev test lint fmt audit fixture fixture-load \
-        web-install web-dev web-lint web-test web-build
+.PHONY: up down migrate ingest baseline psql train predict registry marts create-key backup restore api-dev test \
+        lint fmt audit fixture fixture-load web-install web-dev web-lint web-test web-build
 
 up:            ## build and start postgres + backend + frontend (UI http://localhost:3000, API docs http://localhost:8000/docs)
 	docker compose up -d --build --wait
@@ -33,8 +33,32 @@ predict: migrate ## predictions of the current models -> postgres (pred_referral
 	PYTHONPATH=$(ML_PATH) $(PY) ml/pipelines/predict.py
 	PYTHONPATH=$(ML_PATH) $(PY) ml/pipelines/build_marts.py
 
+registry: migrate ## refresh model_registry (metrics + model cards from ml/configs/model_cards.yaml) without predicting
+	PYTHONPATH=$(ML_PATH) $(PY) ml/pipelines/predict.py --registry-only
+
 marts: migrate ## serving marts for the API (mart_* tables) from facts, aggregates and predictions; config ml/configs/serving.yaml
 	PYTHONPATH=$(ML_PATH) $(PY) ml/pipelines/build_marts.py
+
+create-key:    ## create an API key and print it once: make create-key ROLE=specialist LABEL="Иванова А., УОЗ г. Астана"
+	@test -n "$(ROLE)" -a -n "$(LABEL)" || { echo 'usage: make create-key ROLE=viewer|specialist|admin LABEL="who uses it"'; exit 2; }
+	@cd backend && $(PY) -m app.cli create-key --role "$(ROLE)" --label "$(LABEL)"
+
+BACKUP_DIR := backups
+
+backup:        ## pg_dump of the whole database (custom format) -> backups/hqai_<timestamp>.dump
+	@mkdir -p $(BACKUP_DIR)
+	@f=$(BACKUP_DIR)/hqai_$$(date +%Y%m%d-%H%M%S).dump; \
+	docker compose exec -T postgres pg_dump -U $(POSTGRES_USER) -d $(POSTGRES_DB) --format=custom --no-owner > $$f.partial \
+	  && mv $$f.partial $$f && echo "backup: $$f ($$(du -h $$f | cut -f1))" \
+	  || { rm -f $$f.partial; echo "backup failed"; exit 1; }
+
+restore:       ## restore a backup INTO $(POSTGRES_DB), replacing its tables: make restore FILE=backups/hqai_….dump [CONFIRM=yes]
+	@test -f "$(FILE)" || { echo "usage: make restore FILE=backups/hqai_<timestamp>.dump"; exit 2; }
+	@if [ "$(CONFIRM)" != "yes" ]; then \
+	  printf "Replace all tables of database '$(POSTGRES_DB)' with $(FILE)? Type yes: "; read answer; \
+	  [ "$$answer" = "yes" ] || { echo "aborted"; exit 1; }; fi
+	docker compose exec -T postgres pg_restore -U $(POSTGRES_USER) -d $(POSTGRES_DB) --clean --if-exists --no-owner --single-transaction < "$(FILE)"
+	@echo "restored $(FILE) into $(POSTGRES_DB); restart the backend if it was running: docker compose restart backend"
 
 api-dev:       ## run the API locally with auto-reload on http://localhost:$(API_DEV_PORT) (docker backend keeps 8000)
 	cd backend && $(PY) -m uvicorn app.main:app --reload --host 127.0.0.1 --port $(API_DEV_PORT)
@@ -52,7 +76,7 @@ fmt:           ## ruff: apply safe lint fixes, then format
 	$(PY) -m ruff check --fix $(LINT_PATHS)
 	$(PY) -m ruff format $(LINT_PATHS)
 
-audit:         ## repository audit before every commit: layout, secrets, alembic check, ruff, pytest, docs/api.md vs routes
+audit:         ## repository audit before every commit: layout, secrets, alembic check, ruff, pytest, docs/api.md vs routes, auth on routes, frontend
 	PYTHONPATH=$(ML_PATH) $(PY) tools/audit.py
 
 fixture:       ## rebuild the 2-region CI test fixture from the current database -> backend/tests/fixtures

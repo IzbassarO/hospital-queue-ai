@@ -23,6 +23,14 @@ import { hospitalPath } from "../../lib/paths";
 const ACTIONS: DecisionAction[] = ["confirm", "reject", "defer"];
 const ACTOR_KEY = "hqai.decision.actor";
 
+function newIdempotencyKey(): string {
+  if (typeof crypto.randomUUID === "function")
+    return `ui-${crypto.randomUUID()}`;
+  // crypto.randomUUID needs a secure context (https or localhost); fall back to random bytes
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return `ui-${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}`;
+}
+
 function rememberedActor(): string {
   try {
     return window.localStorage.getItem(ACTOR_KEY) ?? "";
@@ -235,6 +243,7 @@ function AlternativeCard({
           action={action}
           context={context}
           recommendationId={a.recommendation_id}
+          alternativeOrgCode={a.org_code}
           onCancel={() => setAction(null)}
           onSaved={() => {
             setAction(null);
@@ -252,12 +261,14 @@ function DecisionForm({
   action,
   context,
   recommendationId,
+  alternativeOrgCode,
   onCancel,
   onSaved,
 }: {
   action: DecisionAction;
   context: RecommendationsData;
   recommendationId: string;
+  alternativeOrgCode: string;
   onCancel: () => void;
   onSaved: () => void;
 }) {
@@ -271,6 +282,15 @@ function DecisionForm({
   useEffect(() => commentRef.current?.focus(), []);
 
   const actorMissing = actor.trim() === "";
+  // one key per distinct submission: a double click or a retry after a network error sends the same content with
+  // the same key and gets the stored decision back instead of a duplicate; changed content gets a new key
+  const submission = useRef<{ signature: string; key: string } | null>(null);
+  const idempotencyKeyFor = (signature: string) => {
+    if (submission.current?.signature !== signature) {
+      submission.current = { signature, key: newIdempotencyKey() };
+    }
+    return submission.current.key;
+  };
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -287,6 +307,10 @@ function DecisionForm({
         org_code: context.org_code,
         profile_code: context.profile_code,
         recommendation_id: recommendationId,
+        alternative_org_code: alternativeOrgCode,
+        idempotency_key: idempotencyKeyFor(
+          JSON.stringify([action, comment.trim(), actor.trim()]),
+        ),
         action,
         comment: comment.trim() || null,
         actor: actor.trim(),
@@ -401,11 +425,17 @@ const decisionColumns: Column<DecisionRow>[] = [
   {
     key: "alternative",
     header: t.decisions.columns.alternative,
-    // rec-v1:<method>:<as_of_date>:<org>:<profile>:<alternative org>
     render: (d) =>
-      d.recommendation_id
-        ? (d.recommendation_id.split(":").at(-1) ?? d.recommendation_id)
-        : t.decisions.general,
+      d.alternative_org_code ? (
+        <span>
+          {d.alternative_org_name ?? d.alternative_org_code}
+          <span className="block text-sm text-muted">
+            {d.alternative_org_code}
+          </span>
+        </span>
+      ) : (
+        t.decisions.general
+      ),
   },
   { key: "actor", header: t.decisions.columns.actor, render: (d) => d.actor },
   {

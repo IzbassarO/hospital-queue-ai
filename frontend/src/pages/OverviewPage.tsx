@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 
-import { useOverview } from "../api/queries";
+import { useConfig, useOverview } from "../api/queries";
 import type { AreaKpis } from "../api/types";
 import { type Column, DataTable } from "../components/DataTable";
 import { Kpi, KpiGrid } from "../components/Kpi";
@@ -57,10 +57,23 @@ const columns: Column<AreaKpis>[] = [
       `${fmtInt(r.n_hospitals_high_load)} / ${fmtInt(r.n_hospitals)}`,
     sortValue: (r) => r.n_hospitals_high_load,
   },
+  {
+    key: "high_load_share",
+    header: (
+      <abbr title={t.overview.highLoadShareHint} className="no-underline">
+        {t.overview.columns.highLoadShare}
+      </abbr>
+    ),
+    headerText: t.overview.columns.highLoadShare,
+    align: "right",
+    render: (r) => fmtPercent(r.high_load_share),
+    sortValue: (r) => r.high_load_share,
+  },
 ];
 
 export function OverviewPage() {
   const overview = useOverview();
+  const config = useConfig();
   const navigate = useNavigate();
 
   return (
@@ -101,9 +114,16 @@ export function OverviewPage() {
                   hint={t.metrics.hospitalsHighLoadHint}
                 />
               </KpiGrid>
-              <p className="text-sm text-muted">
-                {t.common.source(fmtDate(data.as_of_date))}
-              </p>
+              {config.data ? (
+                <p className="text-sm text-muted">
+                  {t.common.source(
+                    config.data.data_source.publisher,
+                    config.data.data_source.description,
+                    config.data.data_source.period,
+                    fmtDate(config.data.as_of_date),
+                  )}
+                </p>
+              ) : null}
             </section>
 
             <Section
@@ -116,7 +136,7 @@ export function OverviewPage() {
                 rows={data.regions}
                 rowKey={(r) => r.code}
                 caption={t.overview.regionsTitle}
-                initialSort={{ key: "load_index_max", direction: "desc" }}
+                initialSort={{ key: "high_load_share", direction: "desc" }}
                 onRowClick={(r) => navigate(`/regions/${r.code}`)}
               />
             </Section>

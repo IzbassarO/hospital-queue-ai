@@ -29,6 +29,10 @@ class AreaKpis(BaseModel):
     load_index_max: float | None = Field(description="highest hospital × profile load_index")
     n_hospitals_high_load: int = Field(description="hospitals with at least one profile at load_index >= 70")
     n_hospital_profiles_high_load: int
+    high_load_share: float | None = Field(
+        description="n_hospital_profiles_high_load / n_hospital_profiles_ranked: share of ranked hospital × profile "
+        "rows at load_index >= 70; NULL when none is ranked"
+    )
 
 
 class Thresholds(BaseModel):
@@ -103,6 +107,7 @@ class Forecast(BaseModel):
 class ExplanationFactor(BaseModel):
     feature: str
     label: str
+    short_label: str = Field(description="compact name for lists (ml/configs/explain_templates.yaml)")
     mean_abs_effect: float = Field(
         description="mean |effect| over the hospital × profile's test referrals "
         "(referrals where the factor is not in the top 5 count as 0)"

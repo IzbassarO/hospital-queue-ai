@@ -68,6 +68,7 @@ def main() -> int:
     warnings.filterwarnings("ignore", category=UserWarning)
 
     settings = IngestSettings()
+    cards = store.load_cards(settings.configs_dir)
     cfg = load_model_config(settings)
     con = connect(settings.processed_dir)
     split = cfg.split.model_dump(mode="json")
@@ -101,7 +102,7 @@ def main() -> int:
                 categories=model.categories,
                 meta=meta,
                 metrics=res["metrics"],
-                extra={"display.json": display},
+                extra={"display.json": display, "card.json": cards.get(name, {})},
             )
             log(f"  saved {name} {version} -> {path.relative_to(settings.artifacts_dir.parent)}")
 
@@ -132,7 +133,7 @@ def main() -> int:
             categories=res["categories"],
             meta=meta,
             metrics=res["metrics"],
-            extra={"series.json": res["series"]},
+            extra={"series.json": res["series"], "card.json": cards.get("load_forecast", {})},
         )
         log(f"  saved load_forecast {version} -> {path.relative_to(settings.artifacts_dir.parent)}")
 

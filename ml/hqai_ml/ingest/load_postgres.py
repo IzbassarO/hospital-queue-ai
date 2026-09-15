@@ -17,6 +17,7 @@ import pyarrow.parquet as pq
 LOAD_ORDER = [
     "dim_region",
     "dim_profile",
+    "dim_icd",
     "ersb_snapshot",
     "dim_organization",
     "fact_referral",

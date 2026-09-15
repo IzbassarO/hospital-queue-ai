@@ -65,6 +65,7 @@ export const areaKpisSchema = object({
   load_index_max: nullable(num),
   n_hospitals_high_load: num,
   n_hospital_profiles_high_load: num,
+  high_load_share: nullable(num),
 });
 export type AreaKpis = Infer<typeof areaKpisSchema>;
 
@@ -148,6 +149,7 @@ export const hospitalPageSchema = pageSchema(hospitalProfileStatusSchema);
 export const explanationFactorSchema = object({
   feature: str,
   label: str,
+  short_label: str,
   mean_abs_effect: num,
   mean_effect: num,
   unit: str,
@@ -198,7 +200,10 @@ export const referralFactorSchema = object({
   feature: str,
   value: nullable(unknownValue),
   value_display: str,
+  short_label: str,
   effect: num,
+  effect_in_unit: num,
+  unit: str,
   direction: str,
   text: str,
 });
@@ -208,6 +213,7 @@ export const referralSchema = object({
   hospitalization_code: str,
   registration_date: isoDate,
   icd10_code: nullable(str),
+  diagnosis_name: nullable(str),
   referral_purpose: nullable(str),
   pred_wait_days: num,
   pred_refusal_prob: num,
@@ -280,9 +286,13 @@ export const decisionSchema = object({
   org_code: str,
   profile_code: str,
   recommendation_id: nullable(str),
+  alternative_org_code: nullable(str),
+  alternative_org_name: nullable(str),
   action: decisionActionSchema,
   comment: nullable(str),
   actor: str,
+  idempotency_key: nullable(str),
+  api_key_label: nullable(str),
 });
 export type Decision = Infer<typeof decisionSchema>;
 export const decisionPageSchema = pageSchema(decisionSchema);
@@ -292,9 +302,12 @@ export interface DecisionCreate {
   org_code: string;
   profile_code: string;
   recommendation_id: string | null;
+  alternative_org_code: string | null;
   action: DecisionAction;
   comment: string | null;
   actor: string;
+  /** client-generated per submission: a retry returns the stored decision instead of a duplicate */
+  idempotency_key: string;
 }
 
 export const alertSchema = object({
@@ -306,6 +319,9 @@ export const alertSchema = object({
   profile_name: str,
   load_index: nullable(num),
   status: statusSchema,
+  status_label: str,
+  region_rank: nullable(num),
+  region_n_ranked: num,
   queue_now: num,
   backlog_days: nullable(num),
   queue_trend_raw_4w: nullable(num),
@@ -322,6 +338,9 @@ export type MetricRow = Record<string, unknown>;
 export const modelInfoSchema = object({
   model_name: str,
   title: str,
+  intended_use: nullable(str),
+  limitations: array(str),
+  display_names: record(str),
   version: str,
   trained_at: isoDateTime,
   train_window: record(unknownValue),
@@ -339,3 +358,53 @@ export const dictionariesSchema = object({
   profiles: array(object({ code: str, name: str, is_day_hospital: bool })),
 });
 export type Dictionaries = Infer<typeof dictionariesSchema>;
+
+export const configSchema = object({
+  as_of_date: isoDate,
+  built_at: isoDateTime,
+  window_days: num,
+  window_start: isoDate,
+  trend_start: isoDate,
+  trend_end: isoDate,
+  test_start: isoDate,
+  test_end: isoDate,
+  series_start: isoDate,
+  forecast_horizon: num,
+  min_registrations_28d: num,
+  backlog_min_daily_throughput: num,
+  high_risk_threshold: num,
+  queue_trend_national_median_4w: nullable(num),
+  load_index: object({
+    weights: object({ backlog_rank: num, refusal_rate: num, queue_trend: num }),
+    refusal_rate_cap: num,
+    queue_trend_cap_pct: num,
+  }),
+  status_thresholds: object({ high: num, elevated: num }),
+  alerts: object({
+    load_index_min: num,
+    queue_trend_min_pct: num,
+    queue_trend_min_queue_now: num,
+  }),
+  recommendations: object({
+    region_top_fraction: num,
+    min_wait_delta_days: num,
+    max_alternatives: num,
+    min_registrations_28d: num,
+  }),
+  data_source: object({
+    publisher: str,
+    description: str,
+    period: str,
+    datasets: array(str),
+    caveats: array(str),
+  }),
+});
+export type Config = Infer<typeof configSchema>;
+
+export const meSchema = object({
+  label: str,
+  role: literal("viewer", "specialist", "admin"),
+  role_label: str,
+  permissions: array(str),
+});
+export type Me = Infer<typeof meSchema>;

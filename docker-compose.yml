@@ -35,7 +35,11 @@ services:
       - "${API_PORT:-8000}:8000"
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        # baked into the static bundle so the demo UI works out of the box (role specialist, docs/security.md)
+        VITE_API_KEY: ${DEMO_API_KEY:-}
     image: hqai-frontend:latest
     container_name: hqai-frontend
     restart: unless-stopped

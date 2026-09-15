@@ -67,7 +67,7 @@ function ReferralModelTable({ model }: { model: ModelInfo }) {
             {t.models.bestBaseline}
             {best ? (
               <span className="block text-sm font-normal text-muted">
-                {named(text(best, "model"))}
+                {named(model, text(best, "model"))}
               </span>
             ) : null}
           </th>
@@ -77,7 +77,7 @@ function ReferralModelTable({ model }: { model: ModelInfo }) {
         {specs.map((spec) => (
           <tr key={spec.key} className="border-b border-line/70">
             <th scope="row" className="px-3 py-2 text-left font-medium">
-              {t.models.metricNames[spec.key] ?? spec.key}{" "}
+              {model.display_names[spec.key] ?? spec.key}{" "}
               <span className="text-sm font-normal text-muted">
                 (
                 {spec.better === "lower"
@@ -138,10 +138,11 @@ function ForecastModelTable({ model }: { model: ModelInfo }) {
               className="border-b border-line/70"
             >
               <td className="px-3 py-2">
-                {t.models.targets[text(row, "target")] ?? text(row, "target")}
+                {model.display_names[text(row, "target")] ??
+                  text(row, "target")}
               </td>
               <td className="px-3 py-2">
-                {t.models.seriesLevels[text(row, "series_level")] ??
+                {model.display_names[text(row, "series_level")] ??
                   text(row, "series_level")}
               </td>
               <td className="num px-3 py-2 font-semibold">{cell(row, wape)}</td>
@@ -149,7 +150,7 @@ function ForecastModelTable({ model }: { model: ModelInfo }) {
                 {cell(best, wape)}
                 {best ? (
                   <span className="block text-sm text-muted">
-                    {named(text(best, "method"))}
+                    {named(model, text(best, "method"))}
                   </span>
                 ) : null}
               </td>
@@ -161,7 +162,8 @@ function ForecastModelTable({ model }: { model: ModelInfo }) {
   );
 }
 
-const named = (name: string) => t.models.methodNames[name] ?? name;
+const named = (model: ModelInfo, name: string) =>
+  model.display_names[name] ?? name;
 
 function windowText(value: unknown): string {
   return Array.isArray(value) && value.length === 2
@@ -236,12 +238,20 @@ function ModelCard({ model }: { model: ModelInfo }) {
           {model.beats_baselines ? t.models.beatsYes : t.models.beatsNo}
         </p>
       ) : null}
-      {t.models.limitations[model.model_name] ? (
+      {model.intended_use ? (
+        <div>
+          <h3 className="font-semibold">{t.models.intendedUse}</h3>
+          <p className="leading-relaxed">{model.intended_use}</p>
+        </div>
+      ) : null}
+      {model.limitations.length ? (
         <div>
           <h3 className="font-semibold">{t.models.limitationsTitle}</h3>
-          <p className="leading-relaxed">
-            {t.models.limitations[model.model_name]}
-          </p>
+          <ul className="list-disc space-y-1 pl-5 leading-relaxed">
+            {model.limitations.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
         </div>
       ) : null}
     </article>

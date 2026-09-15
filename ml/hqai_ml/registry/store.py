@@ -1,7 +1,8 @@
 """Model artifact registry on disk.
 
 artifacts/models/<model_name>/<YYYYMMDD-HHMM>/   model files, features.json, categories.json,
-                                                   meta.json (training window, params), metrics.json
+                                                   meta.json (training window, params), metrics.json,
+                                                   card.json (model card copied from ml/configs/model_cards.yaml)
 artifacts/models/manifest.json                     {model_name: {"current": version, "path": ...}}
 """
 
@@ -10,8 +11,16 @@ import json
 from pathlib import Path
 
 import lightgbm as lgb
+import yaml
 
 MANIFEST = "manifest.json"
+CARDS_CONFIG = "model_cards.yaml"  # in ml/configs
+
+
+def load_cards(configs_dir: Path) -> dict:
+    """Model cards (title, intended use, limitations, display names) from ml/configs/model_cards.yaml."""
+    path = configs_dir / CARDS_CONFIG
+    return yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else {}
 
 
 def _root(artifacts_dir: Path) -> Path:

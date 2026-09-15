@@ -6,14 +6,22 @@ it reads facts, aggregates, predictions and the serving marts.
 
 - Base URL: `http://localhost:8000/api/v1` (`make up`); interactive docs `http://localhost:8000/docs`,
   OpenAPI schema `/openapi.json`. Local development: `make api-dev` → port 8001 with auto-reload.
-- JSON only. All endpoints are read-only **except `POST /decisions`**.
+- JSON only (except the card export, which returns a file). All endpoints are read-only **except `POST /decisions`**
+  and the admin key endpoints.
+- **Authentication** (docs/security.md): every endpoint except `GET /health` needs an API key in the **`X-API-Key`**
+  header. Roles: `viewer` — every `GET`; `specialist` — plus `POST /decisions`; `admin` — plus `/admin/*` (keys,
+  access log). `401 {"detail": "missing API key"}` / `{"detail": "invalid or revoked API key"}` without a valid key,
+  `403` when the role is too low. Keys: `make create-key ROLE=… LABEL=…`; the docker backend seeds `DEMO_API_KEY`
+  from `.env` as a specialist key. Every `/api` request is written to `access_log`.
 - Every object carries **codes and Russian display names** from the dictionaries (`region_code` + `region_name`,
   `org_code` + `org_name`, `profile_code` + `profile_name`).
 - **Pagination** on list endpoints: `limit` (1–500, default 50), `offset` (default 0); the response is
   `{"items": [...], "total": N, "limit": L, "offset": O}`.
-- **Errors**: `404 {"detail": "unknown region '00'"}` for unknown codes, `422` for invalid input,
+- **Errors**: `401` / `403` (above), `404 {"detail": "unknown region '00'"}` for unknown codes, `422` for invalid input,
+  `409` for an `idempotency_key` reused with a different decision,
   `503 {"detail": "serving marts are not built yet: run `make marts`"}` before the first mart build.
-- **CORS**: origins `http(s)://localhost:<any port>` and `127.0.0.1:<any port>` (setting `CORS_ALLOW_ORIGIN_REGEX`).
+- **CORS**: origins `http(s)://localhost:<any port>` and `127.0.0.1:<any port>` (setting `CORS_ALLOW_ORIGIN_REGEX`);
+  the `X-API-Key` header is allowed, `Content-Disposition` is exposed.
 - **Latency**: every endpoint answers in < 70 ms on the current data (worst of 5 requests over HTTP against the
   docker backend, including 500-row pages); `tests/test_api.py::test_every_endpoint_under_500_ms` guards the 500 ms budget.
 
@@ -36,10 +44,16 @@ inputs do not cover `as_of_date` (aggregates, forecasts with `origin_date = as_o
 | `mart_region_profile_status` | region × profile (1 426) | `make marts` |
 | `mart_area_status` | totals over all profiles: one row per region + one national row (`area_code = 'KZ'`) | `make marts` |
 | `mart_build_info` | one row: `as_of_date`, `built_at`, the full `serving.yaml` used, row counts | `make marts` |
-| `decision_log` | one decision of a person | `POST /decisions` — never truncated by pipelines |
+| `decision_log` | one decision of a person; `alternative_org_code`, `idempotency_key` (unique when set), `api_key_label` (migration `0005`) | `POST /decisions` — never truncated by pipelines |
+| `api_keys` | one API key: SHA-256 of the key, `key_prefix`, `role`, `label`, `created_at`, `revoked_at` | `make create-key`, `POST /admin/keys`, backend start (`DEMO_API_KEY`) |
+| `access_log` | one `/api` request: `ts`, `key_label`, `role`, `method`, `path`, `status`, `latency_ms`, `client_ip`, `forwarded_for` | access-log middleware, after each response |
 
 Parameters live in **`ml/configs/serving.yaml`** and are copied into `mart_build_info.config` at build time; the API
-reads thresholds from there, so it always uses the parameters the marts were built with. Edit the YAML → `make marts`.
+reads thresholds from there, so it always uses the parameters the marts were built with (`GET /config` returns them,
+with the data-source description). Edit the YAML → `make marts`. Also copied at build time: the explanation display
+rules and short labels (`ml/configs/explain_templates.yaml`) and names of 3-character ICD codes from `dim_icd`.
+Model cards (title, intended use, limitations, display names) come from `ml/configs/model_cards.yaml` via the
+artifact's `card.json` into `model_registry.card` (`make predict` or `make registry`).
 
 Windows for `as_of_date = 2025-03-31` (the last known day):
 
@@ -75,6 +89,7 @@ profile rows; their medians and shares are recomputed over the underlying referr
 | `queue_trend_4w` | **excess trend**: `queue_trend_raw_4w − national median` of `queue_trend_raw_4w` over the rows of the same mart with sufficient data (same 4 weeks; percentage points per week). Currently 2.57 %/week for hospital × profile and 3.23 %/week for region × profile rows — `GET /overview` returns the hospital one as `thresholds.queue_trend_national_median_4w`, `mart_build_info.config.derived` keeps both. Used by `load_index` and alerts; see §7 for why |
 | `has_sufficient_data` | `registrations_28d ≥ 10`. Rows below are listed with `status = insufficient_data` and no `load_index` |
 | `status` / `status_label` | `high` (Высокая нагрузка) if `load_index ≥ 70`, `elevated` (Повышенная) if ≥ 40, `normal` (Нормальная), `insufficient_data` (Недостаточно данных) |
+| `high_load_share` | area rows (overview, region KPIs): `n_hospital_profiles_high_load / n_hospital_profiles_ranked` — share of the area's ranked hospital × profile rows at `load_index ≥ 70`; NULL when none is ranked. The overview table is sorted by it by default: unlike `load_index_max` it is not driven by a single row |
 | `region_rank`, `region_n_ranked`, `in_region_top` | hospital rows only: rank of `load_index` among the region's hospital × profile rows (1 = highest), the number of ranked rows, and `region_rank ≤ ceil(0.20 × region_n_ranked)` |
 
 ## 3. load_index
@@ -149,7 +164,7 @@ The historical median is an **association**: hospital B's patients waited less i
 redirecting a patient would shorten their wait by that much (the response carries this `disclaimer`). A person
 decides (`POST /decisions`).
 
-On the current data 653 hospital × profile rows trigger the rule and 252 of them get at least one alternative.
+On the current data 651 hospital × profile rows trigger the rule and 251 of them get at least one alternative.
 
 ## 5. Alerts
 
@@ -161,7 +176,8 @@ On the current data 653 hospital × profile rows trigger the rule and 252 of the
   `alerts.queue_trend_min_queue_now` in `serving.yaml`),
 
 highest `load_index` first, each with Russian `reasons` (the trend reason quotes the raw trend, the excess and the
-median). 660 alerts on the current data: 252 by `load_index` only, 153 by both, 255 by the trend condition only.
+median), `status_label` and the row's `region_rank` of `region_n_ranked`. Filters: `region`, `profile`, `status`
+(`high | elevated | normal | insufficient_data`). 660 alerts on the current data: 252 by `load_index` only, 153 by both, 255 by the trend condition only.
 
 Before the excess trend (raw trend ≥ 5%/week, raw trend in `load_index`) there were 776 alerts (216 / 229 / 331) and
 445 rows at `load_index ≥ 70`. Switching removed 116 alerts and added none; 40 rows left `load_index ≥ 70` and none
@@ -171,53 +187,113 @@ entered (1 289 rows changed `load_index`, 61 changed `status`).
 
 ## 6. Endpoints
 
-Responses below are real responses of the running service, shortened where marked `…` (lists cut to one or two items).
+Responses below are real responses of the service, shortened where marked `…` (lists cut to one or two items). Every
+request except `GET /health` carries `X-API-Key: <key>`; the role each endpoint needs is given as **role: …**.
 
 ### `GET /health`
 
-Database reachability and mart freshness (`503` if the database is unreachable). `GET /health` without the prefix is
-a database-free liveness probe used by the container healthcheck.
+**Open (no key).** Database reachability and mart freshness (`503` if the database is unreachable). `GET /health`
+without the prefix is a database-free liveness probe used by the container healthcheck.
 
 ```json
 {"status": "ok", "database": "ok", "marts_as_of_date": "2025-03-31", "marts_built_at": "2026-09-15T09:11:25"}
 ```
 
-### `GET /overview`
+### `GET /me`
 
-National KPIs and a table of the 20 regions (sorted by name). Area KPIs: queue, 28-day volumes, refusal rate, median
-wait, 14-day forecast, high-risk share, `load_index_max` over hospital × profile rows, `n_hospitals_high_load` —
-hospitals with at least one profile at `load_index ≥ 70`.
+**role: viewer.** The calling key's label, role, Russian role name and permissions (the UI shows «роль: специалист»).
+
+```json
+{"label": "Иванова А. (УОЗ г. Астана)", "role": "specialist", "role_label": "специалист", "permissions": ["read", "decide"]}
+```
+
+### `GET /config`
+
+**role: viewer.** The parameters the marts were built with (`ml/configs/serving.yaml` → `mart_build_info.config`):
+windows, `load_index` weights and caps, status thresholds, the alert and recommendation rules, the national median
+trend and the **data-source description** shown under the KPIs. The UI builds the formula tooltip and captions from
+these values instead of hard-coding them.
 
 ```json
 {
   "as_of_date": "2025-03-31",
-  "built_at": "2026-09-15T09:11:25",
+  "built_at": "2026-09-15T18:06:47",
+  "window_days": 28,
+  "window_start": "2025-03-04",
+  "trend_start": "2025-03-03",
+  "trend_end": "2025-03-30",
+  "test_start": "2025-03-01",
+  "test_end": "2025-03-31",
+  "series_start": "2025-02-02",
+  "forecast_horizon": 14,
+  "min_registrations_28d": 10,
+  "backlog_min_daily_throughput": 0.5,
+  "high_risk_threshold": 0.25,
+  "queue_trend_national_median_4w": 2.57,
+  "load_index": {
+    "weights": {
+      "backlog_rank": 0.6,
+      "refusal_rate": 0.25,
+      "queue_trend": 0.15
+    },
+    "refusal_rate_cap": 0.3,
+    "queue_trend_cap_pct": 20.0
+  },
+  "status_thresholds": {
+    "high": 70.0,
+    "elevated": 40.0
+  },
+  "alerts": {
+    "load_index_min": 70.0,
+    "queue_trend_min_pct": 5.0,
+    "queue_trend_min_queue_now": 10
+  },
+  "recommendations": {
+    "region_top_fraction": 0.2,
+    "min_wait_delta_days": 3.0,
+    "max_alternatives": 3,
+    "min_registrations_28d": 10
+  },
+  "data_source": {
+    "publisher": "Министерство здравоохранения Республики Казахстан",
+    "description": "Открытые данные МЗ РК: направления на плановую госпитализацию и отказы в приёмном покое (ИС «Бюро госпитализации»), пролеченные случаи по медицинским организациям (ЕРСБ).",
+    "period": "направления, зарегистрированные с 01.01.2025 по 31.03.2025",
+    "datasets": [
+      "Направления на плановую госпитализацию (ИС «Бюро госпитализации»)",
+      "Пациенты, ожидающие плановой госпитализации (ИС «Бюро госпитализации»)",
+      "Отказы в госпитализации в приёмном покое (ИС «Бюро госпитализации»)",
+      "Пролеченные случаи по медицинским организациям (ЕРСБ)"
+    ],
+    "caveats": [
+      "Срез на дату as_of_date, не данные в реальном времени.",
+      "Направлений до 01.01.2025 в данных нет, поэтому очереди — нижняя оценка."
+    ]
+  }
+}
+```
+
+### `GET /overview`
+
+**role: viewer.** National KPIs and a table of the 20 regions (sorted by name). Area KPIs: queue, 28-day volumes,
+refusal rate, median wait, 14-day forecast, high-risk share, `load_index_max` over hospital × profile rows,
+`n_hospitals_high_load` — hospitals with at least one profile at `load_index ≥ 70` — and `high_load_share` (§2).
+
+```json
+{
+  "as_of_date": "2025-03-31",
+  "built_at": "2026-09-15T18:06:47",
   "thresholds": {"load_index_high": 70.0, "load_index_elevated": 40.0, "min_registrations_28d": 10,
                  "queue_trend_national_median_4w": 2.57},
-  "national": {
-    "code": "KZ", "name": "Казахстан", "level": "national",
-    "queue_now": 89545, "registrations_28d": 209243, "hospitalizations_28d": 178854, "refusals_28d": 18816,
-    "refusal_rate_28d": 0.0952, "median_wait_28d": 8.0, "n_waits_28d": 70284,
-    "forecast_registrations_14d": 136515.6, "forecast_hospitalizations_14d": 116641.5, "high_risk_share": 0.1088,
-    "n_hospitals": 1406, "n_hospital_profiles": 6537, "n_hospital_profiles_ranked": 3217,
-    "load_index_max": 96.6, "n_hospitals_high_load": 224, "n_hospital_profiles_high_load": 405
-  },
+  "national": {"code": "KZ", "name": "Казахстан", "level": "national", "queue_now": 89545, "registrations_28d": 209243, "hospitalizations_28d": 178854, "refusals_28d": 18816, "refusal_rate_28d": 0.0952, "median_wait_28d": 8.0, "n_waits_28d": 70284, "forecast_registrations_14d": 136515.6, "forecast_hospitalizations_14d": 116641.5, "high_risk_share": 0.1088, "n_hospitals": 1406, "n_hospital_profiles": 6537, "n_hospital_profiles_ranked": 3217, "load_index_max": 96.6, "n_hospitals_high_load": 224, "n_hospital_profiles_high_load": 405, "high_load_share": 0.1259},
   "regions": [
-    {
-      "code": "11", "name": "Акмолинская область", "level": "region",
-      "queue_now": 2186, "registrations_28d": 8690, "hospitalizations_28d": 7718, "refusals_28d": 554,
-      "refusal_rate_28d": 0.067, "median_wait_28d": 7.0, "n_waits_28d": 2424,
-      "forecast_registrations_14d": 5592.8, "forecast_hospitalizations_14d": 5437.7, "high_risk_share": 0.0215,
-      "n_hospitals": 55, "n_hospital_profiles": 297, "n_hospital_profiles_ranked": 157,
-      "load_index_max": 79.1, "n_hospitals_high_load": 6, "n_hospital_profiles_high_load": 6
-    }
+    {"code": "11", "name": "Акмолинская область", "level": "region", "queue_now": 2158, "registrations_28d": 8653, "hospitalizations_28d": 7698, "refusals_28d": 553, "refusal_rate_28d": 0.067, "median_wait_28d": 7.0, "n_waits_28d": 2407, "forecast_registrations_14d": 5592.8, "forecast_hospitalizations_14d": 5437.7, "high_risk_share": 0.0216, "n_hospitals": 53, "n_hospital_profiles": 295, "n_hospital_profiles_ranked": 155, "load_index_max": 78.1, "n_hospitals_high_load": 5, "n_hospital_profiles_high_load": 5, "high_load_share": 0.0323}
   ]
 }
 ```
 
 ### `GET /regions/{code}`
 
-Region KPIs (same shape as an overview row) and **every profile** of the region with its region × profile status,
+**role: viewer.** Region KPIs (same shape as an overview row) and **every profile** of the region with its region × profile status,
 highest `load_index` first (not paginated: at most ~90 profiles).
 
 ```json
@@ -241,7 +317,7 @@ highest `load_index` first (not paginated: at most ~90 profiles).
 
 ### `GET /regions/{code}/hospitals?profile=&limit=&offset=`
 
-Hospital × profile rows of the region (optionally one profile), ranked by `load_index` (rows without an index last,
+**role: viewer.** Hospital × profile rows of the region (optionally one profile), ranked by `load_index` (rows without an index last,
 then by queue). `404` for an unknown region or profile.
 
 `GET /regions/71/hospitals?profile=241&limit=2`
@@ -261,7 +337,7 @@ then by queue). `404` for an unknown region or profile.
       "queue_trend_raw_4w": 19.1, "queue_trend_4w": 16.5,
       "has_sufficient_data": true, "load_index": 96.6, "status": "high", "status_label": "Высокая нагрузка",
       "components": {"backlog_score": 0.9875, "refusal_score": 1.0, "trend_score": 0.8262},
-      "forecast_method": "model", "region_rank": 1, "region_n_ranked": 244, "in_region_top": true
+      "forecast_method": "model", "region_rank": 1, "region_n_ranked": 245, "in_region_top": true
     }
   ],
   "total": 4, "limit": 2, "offset": 0
@@ -270,7 +346,7 @@ then by queue). `404` for an unknown region or profile.
 
 ### `GET /hospitals/{org}/profiles/{profile}`
 
-Status card (same object as a hospitals-list item), dense daily **series** 2025-02-02 … 2025-03-31, the 14-day
+**role: viewer.** Status card (same object as a hospitals-list item), dense daily **series** 2025-02-02 … 2025-03-31, the 14-day
 **forecast** of registrations and hospitalizations, and the **top-5 explanation factors** per model aggregated over
 the hospital × profile's test-period referrals.
 
@@ -278,8 +354,9 @@ the hospital × profile's test-period referrals.
   ignores refusals and lost to "last known queue" in every backtest cell (`docs/model_card.md` §5); `note` says so.
 - Factors: from `pred_referral.explanation` (top-5 SHAP factors per referral). Per feature: `mean_abs_effect` and
   `mean_effect` over all referrals of the hospital × profile (a referral where the feature is not in its top 5 adds
-  0), `share_in_top5`, `most_common_value` (raw) and `most_common_value_display`. Units: days for `wait_time`,
-  percentage points for `refusal_risk`.
+  0), `share_in_top5`, `most_common_value` (raw) and `most_common_value_display`, `label` and a compact
+  `short_label` (both from `ml/configs/explain_templates.yaml`). Units: days for `wait_time`, percentage points for
+  `refusal_risk`.
 - **Display-ready values** (`most_common_value_display` here, `value_display` next to each factor's raw `value` in
   referral explanations): rates as percentages with 1 decimal (`46,1%`), counts as integers (`75`), days with 1
   decimal (`13,0 дн.`), weekdays `Пн…Вс`, region / hospital / profile codes as `name (code)`, ICD chapters as
@@ -311,21 +388,13 @@ the hospital × profile's test-period referrals.
   "explanation_factors": {
     "n_referrals": 99,
     "wait_time": [
-      {"feature": "hp_median_wait_prev", "label": "медианное ожидание в стационаре по профилю до даты направления, дней",
-       "mean_abs_effect": 2.99, "mean_effect": 2.99, "unit": "дн.", "direction": "up", "share_in_top5": 1.0,
-       "most_common_value": "13.0", "most_common_value_display": "13,0 дн."},
-      {"feature": "icd3", "label": "диагноз (МКБ-10)", "mean_abs_effect": 1.89, "mean_effect": -1.09, "unit": "дн.",
-       "direction": "down", "share_in_top5": 1.0, "most_common_value": "O99",
-       "most_common_value_display": "O99 (класс XV — Беременность, роды и послеродовой период)"},
+      {"feature": "hp_median_wait_prev", "label": "медианное ожидание в стационаре по профилю до даты направления, дней", "short_label": "Медиана ожидания ранее", "mean_abs_effect": 2.99, "mean_effect": 2.99, "unit": "дн.", "direction": "up", "share_in_top5": 1.0, "most_common_value": "13.0", "most_common_value_display": "13,0 дн."},
+      {"feature": "icd3", "label": "диагноз (МКБ-10)", "short_label": "Диагноз", "mean_abs_effect": 1.89, "mean_effect": -1.09, "unit": "дн.", "direction": "down", "share_in_top5": 1.0, "most_common_value": "O99", "most_common_value_display": "O99 — Другие болезни матери, классифицированные в других рубриках, но осложняющие беременность, роды и послеродовой период"},
       "… up to 5 …"
     ],
     "refusal_risk": [
-      {"feature": "org_code", "label": "стационар", "mean_abs_effect": 18.35, "mean_effect": 18.35, "unit": "п.п.",
-       "direction": "up", "share_in_top5": 1.0, "most_common_value": "ZIQ9",
-       "most_common_value_display": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны (ZIQ9)"},
-      {"feature": "hp_refusal_rate_prev", "label": "доля отказов в стационаре по профилю до даты направления",
-       "mean_abs_effect": 11.83, "mean_effect": 11.83, "unit": "п.п.", "direction": "up", "share_in_top5": 1.0,
-       "most_common_value": "0.46111111111111114", "most_common_value_display": "46,1%"},
+      {"feature": "org_code", "label": "стационар", "short_label": "Стационар", "mean_abs_effect": 18.35, "mean_effect": 18.35, "unit": "п.п.", "direction": "up", "share_in_top5": 1.0, "most_common_value": "ZIQ9", "most_common_value_display": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны (ZIQ9)"},
+      {"feature": "hp_refusal_rate_prev", "label": "доля отказов в стационаре по профилю до даты направления", "short_label": "Доля отказов ранее", "mean_abs_effect": 11.83, "mean_effect": 11.83, "unit": "п.п.", "direction": "up", "share_in_top5": 1.0, "most_common_value": "0.46111111111111114", "most_common_value_display": "46,1%"},
       "… up to 5 …"
     ]
   }
@@ -334,9 +403,12 @@ the hospital × profile's test-period referrals.
 
 ### `GET /hospitals/{org}/profiles/{profile}/referrals?sort=risk|wait&limit=&offset=`
 
-Test-period referrals (2025-03-01 … 2025-03-31) with model outputs, sorted by refusal probability (`risk`, default)
+**role: viewer.** Test-period referrals (2025-03-01 … 2025-03-31) with model outputs, sorted by refusal probability (`risk`, default)
 or predicted wait (`wait`), descending. **No patient identifiers beyond `hospitalization_code`** (no internal
-referral id, referring organisation or dates other than registration).
+referral id, referring organisation or dates other than registration). `diagnosis_name` is the name of `icd10_code` in
+`dim_icd` (the most frequent spelling in the source systems — there is no official ICD dictionary in the open data).
+Each factor carries `short_label`, the raw `effect` in model units (days for `wait_time`, probability share for
+`refusal_risk`) and `effect_in_unit` with its `unit` (`дн.` / `п.п.`).
 
 `GET /hospitals/ZIQ9/profiles/241/referrals?sort=risk&limit=1`
 
@@ -344,53 +416,103 @@ referral id, referring organisation or dates other than registration).
 {
   "items": [
     {
-      "hospitalization_code": "71.ZIQ9.241.252", "registration_date": "2025-03-20",
-      "icd10_code": "O80.0", "referral_purpose": "Консервативное лечение",
-      "pred_wait_days": 13.6, "pred_refusal_prob": 0.5725, "is_high_risk": true,
+      "hospitalization_code": "71.ZIQ9.241.252",
+      "registration_date": "2025-03-20",
+      "icd10_code": "O80.0",
+      "diagnosis_name": "Самопроизвольные роды в затылочном предлежании",
+      "referral_purpose": "Консервативное лечение",
+      "pred_wait_days": 13.6,
+      "pred_refusal_prob": 0.5725,
+      "is_high_risk": true,
       "explanation": {
         "wait_time": [
-          {"shap": 0.2278, "text": "медианное ожидание в стационаре по профилю до даты направления, дней: 13,0 → +3 дня",
-           "value": 13.0, "value_display": "13,0 дн.", "effect": 2.8659, "feature": "hp_median_wait_prev",
-           "direction": "up"},
+          {
+            "shap": 0.2278,
+            "text": "медианное ожидание в стационаре по профилю до даты направления, дней: 13,0 → +3 дня",
+            "value": 13.0,
+            "effect": 2.8659,
+            "feature": "hp_median_wait_prev",
+            "direction": "up",
+            "value_display": "13,0 дн.",
+            "short_label": "Медиана ожидания ранее",
+            "unit": "дн.",
+            "effect_in_unit": 2.87
+          },
           "… top 5 …"
         ],
         "refusal_risk": [
-          {"shap": 1.1506, "text": "стационар: ГКП на ПХВ \"Городской перинатальный центр\" акимата города Астаны (ZIQ9) → +19,7 п.п. к риску отказа",
-           "value": "ZIQ9",
-           "value_display": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны (ZIQ9)",
-           "effect": 0.1975, "feature": "org_code", "direction": "up"},
+          {
+            "shap": 1.1506,
+            "text": "стационар: ГКП на ПХВ \"Городской перинатальный центр\" акимата города Астаны (ZIQ9) → +19,7 п.п. к риску отказа",
+            "value": "ZIQ9",
+            "effect": 0.1975,
+            "feature": "org_code",
+            "direction": "up",
+            "value_display": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны (ZIQ9)",
+            "short_label": "Стационар",
+            "unit": "п.п.",
+            "effect_in_unit": 19.75
+          },
           "… top 5 …"
         ]
       }
     }
   ],
-  "total": 99, "limit": 1, "offset": 0
+  "total": 99,
+  "limit": 1,
+  "offset": 0
 }
 ```
 
 ### `GET /hospitals/{org}/profiles/{profile}/recommendations`
 
-Rule in [section 4](#4-recommendation-rule-v1).
+**role: viewer.** Rule in [section 4](#4-recommendation-rule-v1).
 
 ```json
 {
   "as_of_date": "2025-03-31",
-  "region_code": "71", "region_name": "г. Астана",
-  "org_code": "ZIQ9", "org_name": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны",
-  "profile_code": "241", "profile_name": "Патологии беременности",
-  "method": "historical_median", "eligible": true, "reason": null,
-  "current": {"load_index": 98.6, "status": "high", "region_rank": 1, "region_n_ranked": 244, "in_region_top": true,
-              "backlog_days": 108.2, "median_wait_28d": 19.0, "refusal_rate_28d": 0.6857, "registrations_28d": 98},
-  "rule": {"region_top_fraction": 0.2, "min_wait_delta_days": 3.0, "max_alternatives": 3, "min_registrations_28d": 10},
+  "region_code": "71",
+  "region_name": "г. Астана",
+  "org_code": "ZIQ9",
+  "org_name": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны",
+  "profile_code": "241",
+  "profile_name": "Патологии беременности",
+  "method": "historical_median",
+  "eligible": true,
+  "reason": null,
+  "current": {
+    "load_index": 96.6,
+    "status": "high",
+    "region_rank": 1,
+    "region_n_ranked": 245,
+    "in_region_top": true,
+    "backlog_days": 108.2,
+    "median_wait_28d": 19.0,
+    "refusal_rate_28d": 0.6857,
+    "registrations_28d": 98
+  },
+  "rule": {
+    "region_top_fraction": 0.2,
+    "min_wait_delta_days": 3.0,
+    "max_alternatives": 3,
+    "min_registrations_28d": 10
+  },
   "alternatives": [
     {
       "recommendation_id": "rec-v1:historical_median:2025-03-31:ZIQ9:241:ZH7B",
-      "org_code": "ZH7B", "org_name": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Многопрофильная городская больница № 3\" акимата города Астана",
-      "region_code": "71", "profile_code": "241",
-      "expected_wait_current": 19.0, "expected_wait_alternative": 8.5, "delta_days": 10.5,
-      "refusal_rate_current": 0.6857, "refusal_rate_alternative": 0.1079,
-      "backlog_days_current": 108.2, "backlog_days_alternative": 12.4,
-      "load_index_alternative": 57.5, "registrations_28d_alternative": 133,
+      "org_code": "ZH7B",
+      "org_name": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Многопрофильная городская больница № 3\" акимата города Астана",
+      "region_code": "71",
+      "profile_code": "241",
+      "expected_wait_current": 19.0,
+      "expected_wait_alternative": 8.5,
+      "delta_days": 10.5,
+      "refusal_rate_current": 0.6857,
+      "refusal_rate_alternative": 0.1079,
+      "backlog_days_current": 108.2,
+      "backlog_days_alternative": 12.4,
+      "load_index_alternative": 55.6,
+      "registrations_28d_alternative": 133,
       "method": "historical_median",
       "explanation": "В стационаре «Государственное коммунальное предприятие на праве хозяйственного ведения \"Многопрофильная городская больница № 3\" акимата города Астана» ожидаемое время ожидания госпитализации по профилю «Патологии беременности» — 8,5 дня против 19 дней в «Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны», то есть на 10,5 дня меньше (медиана за последние 28 дней). Очередь рассасывается за 12,4 дн. против 108,2 дн., доля отказов — 10,8% против 68,6%."
     },
@@ -406,84 +528,193 @@ Not triggered or no alternatives — `alternatives: []` with a reason, e.g.:
 {"eligible": true, "reason": "Срок рассасывания очереди не определён (меньше 0,5 госпитализации в день), поэтому сравнить стационары по очереди нельзя.", "alternatives": []}
 ```
 
+### `GET /hospitals/{org}/profiles/{profile}/export?format=xlsx|pdf`
+
+**role: viewer.** The whole card as a file (`Content-Disposition: attachment; filename="hqai_card_<org>_<profile>_<as_of_date>.<ext>"`):
+status and `load_index` components, KPIs, the daily series, the 14-day forecast (no queue forecast), explanation
+factors, recommendations with the disclaimer, and the decision history — built from the same services as the JSON
+endpoints.
+
+| format | media type | content |
+|---|---|---|
+| `xlsx` (default) | `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` | sheets «Карточка», «Ряд по дням», «Прогноз 14 дней», «Почему», «Рекомендации», «Решения»; dates as Excel dates |
+| `pdf` | `application/pdf` | A4: header, KPI table, queue chart, registrations fact + dashed forecast, forecast table, factors, recommendations, decisions; footer «Решение принимает специалист…» |
+
+PDF needs a TrueType font with Cyrillic glyphs (`PDF_FONT_PATHS`; the backend image installs DejaVu Sans); without
+one the endpoint answers `503`. `404` for an unknown hospital × profile, `422` for another format.
+
 ### `POST /decisions`
 
-The human-in-the-loop record. `action` ∈ `confirm | reject | defer`; `recommendation_id` and `comment` optional;
-`actor` is free text for now (no authentication yet). Validation: region, hospital and profile must exist, the
-hospital must belong to `region_code` and have referrals for the profile (`404` unknown region/profile, `422`
-otherwise). Returns `201` with the stored row.
+**role: specialist.** The human-in-the-loop record. `action` ∈ `confirm | reject | defer`; `recommendation_id`,
+`alternative_org_code`, `comment` and `idempotency_key` optional; `actor` is the name the person types (free text —
+the authenticated key is stored separately in `api_key_label`). Validation: region, hospital and profile must exist,
+the hospital must belong to `region_code` and have referrals for the profile; the alternative must be another
+hospital of the same region and match the last part of `recommendation_id` (it is derived from it when omitted)
+(`404` unknown region/profile, `422` otherwise). Returns `201` with the stored row, including
+`alternative_org_name` and `api_key_label`.
+
+**Idempotency.** `idempotency_key` (8–128 characters `A–Z a–z 0–9 . _ : -`, unique index): a client generates one
+per submission (the UI: `ui-<uuid>`) and resends it on retry. If the key is already stored with the same content,
+the stored row is returned with **`200`** and nothing is written; with different content — **`409`**. Without a key
+every request creates a row.
 
 ```json
 {
-  "region_code": "71", "org_code": "ZIQ9", "profile_code": "241",
+  "region_code": "71",
+  "org_code": "ZIQ9",
+  "profile_code": "241",
   "recommendation_id": "rec-v1:historical_median:2025-03-31:ZIQ9:241:ZH7B",
-  "action": "confirm",
-  "comment": "Согласовано с заведующим отделением; направлять планово в ГБ № 3",
-  "actor": "Иванова А. (УОЗ г. Астана)"
-}
-```
-
-→ `201`
-
-```json
-{
-  "region_code": "71", "org_code": "ZIQ9", "profile_code": "241",
-  "recommendation_id": "rec-v1:historical_median:2025-03-31:ZIQ9:241:ZH7B",
+  "alternative_org_code": "ZH7B",
   "action": "confirm",
   "comment": "Согласовано с заведующим отделением; направлять планово в ГБ № 3",
   "actor": "Иванова А. (УОЗ г. Астана)",
-  "id": 5, "created_at": "2026-09-15T13:11:55.887730Z"
+  "idempotency_key": "ui-5b1d9c0e-8f7a-4f5e-9d38-2a6f1b7c4e21"
 }
+```
+
+→ `201` (the same request again → `200` with the same `id`)
+
+```json
+{
+  "region_code": "71",
+  "org_code": "ZIQ9",
+  "profile_code": "241",
+  "recommendation_id": "rec-v1:historical_median:2025-03-31:ZIQ9:241:ZH7B",
+  "alternative_org_code": "ZH7B",
+  "action": "confirm",
+  "comment": "Согласовано с заведующим отделением; направлять планово в ГБ № 3",
+  "actor": "Иванова А. (УОЗ г. Астана)",
+  "idempotency_key": "ui-5b1d9c0e-8f7a-4f5e-9d38-2a6f1b7c4e21",
+  "id": 54,
+  "created_at": "2026-09-15T22:14:16.214850Z",
+  "alternative_org_name": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Многопрофильная городская больница № 3\" акимата города Астана",
+  "api_key_label": "Иванова А. (УОЗ г. Астана)"
+}
+```
+
+Same key, different `action` → `409`
+
+```json
+{"detail": "idempotency_key 'ui-5b1d9c0e-8f7a-4f5e-9d38-2a6f1b7c4e21' was already used for a different decision (fields differ: action)"}
 ```
 
 ### `GET /decisions?org=&profile=&limit=&offset=`
 
-Decisions, newest first, optionally filtered by hospital and/or profile.
+**role: viewer.** Decisions, newest first, optionally filtered by hospital and/or profile.
 
 ```json
-{"items": [{"region_code": "71", "org_code": "ZIQ9", "profile_code": "241", "recommendation_id": "rec-v1:historical_median:2025-03-31:ZIQ9:241:ZH7B", "action": "confirm", "comment": "Согласовано с заведующим отделением; направлять планово в ГБ № 3", "actor": "Иванова А. (УОЗ г. Астана)", "id": 5, "created_at": "2026-09-15T13:11:55.887730Z"}], "total": 1, "limit": 20, "offset": 0}
+{"items": [{"region_code": "71", "org_code": "ZIQ9", "profile_code": "241", "recommendation_id": "rec-v1:historical_median:2025-03-31:ZIQ9:241:ZH7B", "alternative_org_code": "ZH7B", "action": "confirm", "comment": "Согласовано с заведующим отделением; направлять планово в ГБ № 3", "actor": "Иванова А. (УОЗ г. Астана)", "idempotency_key": "ui-5b1d9c0e-8f7a-4f5e-9d38-2a6f1b7c4e21", "id": 54, "created_at": "2026-09-15T22:14:16.214850Z", "alternative_org_name": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Многопрофильная городская больница № 3\" акимата города Астана", "api_key_label": "Иванова А. (УОЗ г. Астана)"}], "total": 1, "limit": 20, "offset": 0}
 ```
 
-### `GET /alerts?region=&limit=&offset=`
+### `GET /alerts?region=&profile=&status=&limit=&offset=`
 
-Rule in [section 5](#5-alerts).
+**role: viewer.** Rule in [section 5](#5-alerts). `GET /alerts?region=71&profile=241&status=high&limit=1`:
 
 ```json
 {
   "items": [
     {
-      "region_code": "71", "region_name": "г. Астана", "org_code": "ZIQ9",
+      "region_code": "71",
+      "region_name": "г. Астана",
+      "org_code": "ZIQ9",
       "org_name": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны",
-      "profile_code": "241", "profile_name": "Патологии беременности",
-      "load_index": 96.6, "status": "high", "queue_now": 85, "backlog_days": 108.2,
-      "queue_trend_raw_4w": 19.1, "queue_trend_4w": 16.5, "refusal_rate_28d": 0.6857,
+      "profile_code": "241",
+      "profile_name": "Патологии беременности",
+      "load_index": 96.6,
+      "status": "high",
+      "status_label": "Высокая нагрузка",
+      "region_rank": 1,
+      "region_n_ranked": 245,
+      "queue_now": 85,
+      "backlog_days": 108.2,
+      "queue_trend_raw_4w": 19.1,
+      "queue_trend_4w": 16.5,
+      "refusal_rate_28d": 0.6857,
       "reasons": [
-        "Индекс нагрузки 96,6 ≥ 70: место 1 из 244 в регионе, очередь рассасывается за 108,2 дн.",
+        "Индекс нагрузки 96,6 ≥ 70: место 1 из 245 в регионе, очередь рассасывается за 108,2 дн.",
         "Очередь растёт на 19,1% в неделю за последние 4 недели — на 16,5 п.п. быстрее медианы по стране (2,6%); сейчас 85 чел."
       ]
     }
   ],
-  "total": 660, "limit": 2, "offset": 0
+  "total": 2,
+  "limit": 1,
+  "offset": 0
 }
 ```
 
 ### `GET /models`
 
-Current versions from `model_registry` (`is_current`), with the model's own metrics (`headline`) and the naive
-baselines evaluated on the same rows. For `load_forecast` the pooled backtest per target × series level, the
+**role: viewer.** Current versions from `model_registry` (`is_current`) with the **model card** — `title`,
+`intended_use`, `limitations` (list of paragraphs) and `display_names` (Russian labels for the metric keys, baseline /
+method names, series levels and targets that appear in `headline` / `baselines`) from `ml/configs/model_cards.yaml`
+via the artifact's `card.json` — the model's own metrics (`headline`) and the naive baselines evaluated on the same
+rows. For `load_forecast` the pooled backtest per target × series level, the
 three baselines (seasonal naive, 28- and 7-day means) and `beats_baselines` (beats seasonal naive in every cell).
 
 ```json
 [
   {
-    "model_name": "wait_time", "title": "A · Время ожидания госпитализации (дни)", "version": "20260914-1830",
+    "model_name": "wait_time",
+    "title": "A · Время ожидания госпитализации (дни)",
+    "intended_use": "Прогноз числа дней от направления до госпитализации для каждого направления тестового периода. Используется для объяснения нагрузки стационара и сравнения стационаров, а не для решений по отдельному пациенту.",
+    "limitations": [
+      "Два месяца обучения и один месяц проверки: сезонность и изменения год к году не учтены, метрики могут измениться при появлении новых данных.",
+      "Ошибка выше всего в офтальмологии, кардиологии и неврологии, где ожидание долгое; в 4 из 20 регионов (Актюбинская, Карагандинская, Кызылординская, Северо-Казахстанская области) модель по MAE не лучше медианы по стационару и профилю.",
+      "Прогноз отражает связи в исторических данных: «стационар X → +30 дней» не означает, что перенаправление пациента сократит ожидание на столько же."
+    ],
+    "display_names": {
+      "mae": "MAE, дней",
+      "wape": "WAPE",
+      "spearman": "Корреляция Спирмена",
+      "median_ae": "Медианная абсолютная ошибка, дней",
+      "within_7d": "Ошибка не более 7 дней",
+      "LightGBM": "Модель (LightGBM)",
+      "B1 global median": "Медиана по стране",
+      "B2 median profile × patient region": "Медиана по профилю и региону пациента",
+      "B3 median hospital × profile (fallback B2)": "Медиана по стационару и профилю"
+    },
+    "version": "20260914-1830",
     "trained_at": "2026-09-14T18:30:40",
-    "train_window": {"test": ["2025-03-01", "2025-03-31"], "train": ["2025-01-01", "2025-02-28"], "date_column": "registration_date", "early_stopping_holdout_days": 14},
-    "population": {"test_rows": 80436, "definition": "hospitalized, same_day_registration = false", "train_rows": 203431, "test_median_wait": 9.0, "train_median_wait": 7.0},
-    "headline": [{"n": 80436, "mae": 10.513465841246637, "wape": 0.45072504051036255, "model": "LightGBM", "spearman": 0.7330123059962853, "median_ae": 4.035894973005979, "within_7d": 0.6552911631607737}],
+    "train_window": {
+      "test": [
+        "2025-03-01",
+        "2025-03-31"
+      ],
+      "train": [
+        "2025-01-01",
+        "2025-02-28"
+      ],
+      "date_column": "registration_date",
+      "early_stopping_holdout_days": 14
+    },
+    "population": {
+      "test_rows": 80436,
+      "definition": "hospitalized, same_day_registration = false",
+      "train_rows": 203431,
+      "test_median_wait": 9.0,
+      "train_median_wait": 7.0
+    },
+    "headline": [
+      {
+        "n": 80436,
+        "mae": 10.513465841246637,
+        "wape": 0.45072504051036255,
+        "model": "LightGBM",
+        "spearman": 0.7330123059962853,
+        "median_ae": 4.035894973005979,
+        "within_7d": 0.6552911631607737
+      }
+    ],
     "baselines": [
-      {"n": 80436, "mae": 19.02745039534537, "wape": 0.8157298915268113, "model": "B1 global median", "spearman": null, "median_ae": 5.0, "within_7d": 0.6437664727236561},
-      {"n": 80436, "mae": 11.118901984186186, "wape": 0.476680822758903, "model": "B3 median hospital × profile (fallback B2)", "spearman": 0.695816762385526, "median_ae": 4.0, "within_7d": 0.6505669103386543},
+      {
+        "n": 80436,
+        "mae": 19.02745039534537,
+        "wape": 0.8157298915268113,
+        "model": "B1 global median",
+        "spearman": null,
+        "median_ae": 5.0,
+        "within_7d": 0.6437664727236561
+      },
       "…"
     ],
     "beats_baselines": null
@@ -501,13 +732,80 @@ three baselines (seasonal naive, 28- and 7-day means) and `beats_baselines` (bea
 
 ### `GET /dictionaries`
 
-Regions (sorted by name) and all bed profiles, for dropdowns.
+**role: viewer.** Regions (sorted by name) and all bed profiles, for dropdowns.
 
 ```json
 {
   "national_code": "KZ",
   "regions": [{"code": "11", "name": "Акмолинская область"}, {"code": "15", "name": "Актюбинская область"}, "…"],
   "profiles": [{"code": "011", "name": "Общие", "is_day_hospital": false}, {"code": "021", "name": "Терапевтические", "is_day_hospital": false}, "…"]
+}
+```
+
+### `GET /admin/keys`
+
+**role: admin.** Every key with `id`, `key_prefix` (first characters, to recognise it), `role`, `label`, `created_at`,
+`revoked_at`. Neither the key nor its hash is ever returned.
+
+```json
+[{"id": 6, "key_prefix": "hqai_UK8JdF", "role": "specialist", "label": "Иванова А. (УОЗ г. Астана)", "created_at": "2026-09-15T22:14:16.114853Z", "revoked_at": null}]
+```
+
+### `POST /admin/keys`
+
+**role: admin.** Body `{"role": "viewer" | "specialist" | "admin", "label": "who uses it"}` → `201` with the new key in
+`key` — **the only time it is shown** (only its SHA-256 is stored). Same as `make create-key ROLE=… LABEL=…`.
+
+```json
+{"id": 6, "key_prefix": "hqai_UK8JdF", "role": "specialist", "label": "Иванова А. (УОЗ г. Астана)", "created_at": "2026-09-15T22:14:16.114853Z", "revoked_at": null, "key": "hqai_UK8JdF…(the whole key, 48 characters, shown only here)"}
+```
+
+### `POST /admin/keys/{key_id}/revoke`
+
+**role: admin.** Sets `revoked_at` (idempotent; `404` for an unknown id). The key gets `401` from the next request on.
+
+```json
+{"id": 6, "key_prefix": "hqai_UK8JdF", "role": "specialist", "label": "Иванова А. (УОЗ г. Астана)", "created_at": "2026-09-15T22:14:16.114853Z", "revoked_at": "2026-09-15T22:14:16.345671Z"}
+```
+
+### `GET /admin/access-log?key_label=&status=&limit=&offset=`
+
+**role: admin.** `/api` requests, newest first (the middleware writes one row after each response, including `401`s
+without a key). `client_ip` is the TCP peer — behind the docker nginx that is the frontend container;
+`forwarded_for` is the `X-Forwarded-For` header as received and is not verified. Example from the docker stack
+(`172.18.0.4` = nginx, `192.168.65.1` = the Docker Desktop host network):
+
+```json
+{
+  "items": [
+    {
+      "id": 251,
+      "ts": "2026-09-15T22:18:01.559600Z",
+      "key_label": "demo (DEMO_API_KEY)",
+      "role": "specialist",
+      "method": "GET",
+      "path": "/api/v1/decisions",
+      "status": 200,
+      "latency_ms": 11.82,
+      "client_ip": "172.18.0.4",
+      "forwarded_for": "192.168.65.1"
+    },
+    {
+      "id": 250,
+      "ts": "2026-09-15T22:18:01.413389Z",
+      "key_label": "demo (DEMO_API_KEY)",
+      "role": "specialist",
+      "method": "GET",
+      "path": "/api/v1/alerts",
+      "status": 200,
+      "latency_ms": 17.32,
+      "client_ip": "172.18.0.4",
+      "forwarded_for": "192.168.65.1"
+    }
+  ],
+  "total": 19,
+  "limit": 2,
+  "offset": 0
 }
 ```
 
@@ -536,5 +834,6 @@ Regions (sorted by name) and all bed profiles, for dropdowns.
 - **Small numbers.** Rows need only 10 registrations in 28 days; refusal rates and medians behind them can rest on a
   handful of referrals (`n_waits_28d` is returned for that reason).
 - **Associations, not causes** — recommendations and explanation factors (see §4 and `docs/model_card.md` §7).
-- **No authentication**: `actor` is free text; `decision_log` is an audit trail of what people entered, not an identity
-  record.
+- **API keys, not user identity**: a key identifies a client, not a person; `actor` is still free text, and the
+  demo key is compiled into the UI bundle, so everyone who opens the demo UI acts as that specialist key. What this
+  protects and what a production deployment must add: [docs/security.md](security.md).

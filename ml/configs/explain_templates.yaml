@@ -1,5 +1,6 @@
 # Russian sentence templates for per-referral explanations (hqai_ml.explain).
 # One sentence per top factor: "{label}: {value} → {effect}".
+# `short_label` is the compact name for lists and tables (returned by the API next to `label`).
 # `format` controls how the feature value is shown:
 #   region / org / profile   name from the dictionaries stored with the model
 #   icd_chapter              roman numeral + chapter name below
@@ -44,27 +45,27 @@ icd_chapters:
   XXII: Коды для особых целей
 
 features:
-  region_code: {label: "регион проживания пациента", format: region}
-  org_code: {label: "стационар", format: org}
-  hospital_region_code: {label: "регион стационара", format: region}
-  profile_code: {label: "профиль койки", format: profile}
-  icd_chapter: {label: "класс диагноза МКБ-10", format: icd_chapter}
-  icd3: {label: "диагноз (МКБ-10)", format: icd_code}
-  referral_purpose: {label: "цель госпитализации", format: text}
-  finance_source: {label: "источник финансирования", format: text}
-  territorial_type: {label: "тип местности", format: text}
-  registration_weekday: {label: "день недели направления", format: weekday}
-  day_of_window: {label: "день от начала периода данных", format: int}
-  queue_hp_prev_day: {label: "очередь в стационаре по профилю на дату направления", format: int}
-  hosp_reg_7d: {label: "направлений в стационар за 7 дней", format: int}
-  hosp_reg_28d: {label: "направлений в стационар за 28 дней", format: int}
-  hosp_hosp_7d: {label: "госпитализаций в стационаре за 7 дней", format: int}
-  hosp_hosp_28d: {label: "госпитализаций в стационаре за 28 дней", format: int}
-  hp_median_wait_prev: {label: "медианное ожидание в стационаре по профилю до даты направления, дней", format: float1, unit: "дн."}
-  hp_n_hosp_prev: {label: "госпитализаций по профилю в стационаре до даты направления", format: int}
-  hp_refusal_rate_prev: {label: "доля отказов в стационаре по профилю до даты направления", format: percent}
-  hp_n_resolved_prev: {label: "завершённых направлений по профилю в стационаре до даты направления", format: int}
-  ersb_throughput_per_day: {label: "выписок в день по данным ЕРСБ", format: float1, unit: "в день"}
-  ersb_avg_los: {label: "средняя длительность пребывания по ЕРСБ, дней", format: float1, unit: "дн."}
-  adm_refusals_28d: {label: "отказов в приёмном покое стационара за 28 дней", format: int}
-  planned_lag_days: {label: "дней до плановой даты госпитализации", format: int}
+  region_code: {label: "регион проживания пациента", short_label: "Регион пациента", format: region}
+  org_code: {label: "стационар", short_label: "Стационар", format: org}
+  hospital_region_code: {label: "регион стационара", short_label: "Регион стационара", format: region}
+  profile_code: {label: "профиль койки", short_label: "Профиль койки", format: profile}
+  icd_chapter: {label: "класс диагноза МКБ-10", short_label: "Класс диагноза", format: icd_chapter}
+  icd3: {label: "диагноз (МКБ-10)", short_label: "Диагноз", format: icd_code}
+  referral_purpose: {label: "цель госпитализации", short_label: "Цель госпитализации", format: text}
+  finance_source: {label: "источник финансирования", short_label: "Финансирование", format: text}
+  territorial_type: {label: "тип местности", short_label: "Тип местности", format: text}
+  registration_weekday: {label: "день недели направления", short_label: "День недели направления", format: weekday}
+  day_of_window: {label: "день от начала периода данных", short_label: "День периода данных", format: int}
+  queue_hp_prev_day: {label: "очередь в стационаре по профилю на дату направления", short_label: "Очередь на дату направления", format: int}
+  hosp_reg_7d: {label: "направлений в стационар за 7 дней", short_label: "Направления в стационар за 7 дней", format: int}
+  hosp_reg_28d: {label: "направлений в стационар за 28 дней", short_label: "Направления в стационар за 28 дней", format: int}
+  hosp_hosp_7d: {label: "госпитализаций в стационаре за 7 дней", short_label: "Госпитализации за 7 дней", format: int}
+  hosp_hosp_28d: {label: "госпитализаций в стационаре за 28 дней", short_label: "Госпитализации за 28 дней", format: int}
+  hp_median_wait_prev: {label: "медианное ожидание в стационаре по профилю до даты направления, дней", short_label: "Медиана ожидания ранее", format: float1, unit: "дн."}
+  hp_n_hosp_prev: {label: "госпитализаций по профилю в стационаре до даты направления", short_label: "Госпитализации по профилю ранее", format: int}
+  hp_refusal_rate_prev: {label: "доля отказов в стационаре по профилю до даты направления", short_label: "Доля отказов ранее", format: percent}
+  hp_n_resolved_prev: {label: "завершённых направлений по профилю в стационаре до даты направления", short_label: "Завершённые направления ранее", format: int}
+  ersb_throughput_per_day: {label: "выписок в день по данным ЕРСБ", short_label: "Выписки в день (ЕРСБ)", format: float1, unit: "в день"}
+  ersb_avg_los: {label: "средняя длительность пребывания по ЕРСБ, дней", short_label: "Средняя длительность пребывания (ЕРСБ)", format: float1, unit: "дн."}
+  adm_refusals_28d: {label: "отказов в приёмном покое стационара за 28 дней", short_label: "Отказы в приёмном покое за 28 дней", format: int}
+  planned_lag_days: {label: "дней до плановой даты госпитализации", short_label: "Дней до плановой даты", format: int}

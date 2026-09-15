@@ -5,12 +5,15 @@ Checks
   layout     every tracked-candidate file (not ignored by .gitignore) is under an allowed top-level directory or is
              an allowed root config file
   secrets    no tracked-candidate file is a .env or contains a common secret pattern (private keys, cloud / GitHub /
-             Slack / API tokens, hard-coded passwords, tokens or keys in assignments or connection URLs);
+             Slack / API tokens, hqai_ API keys, hard-coded passwords, tokens or keys in assignments or connection
+             URLs);
              placeholders such as change-me and ${VAR} are allowed. scratch/ is ignored by .gitignore, so never scanned
   alembic    `alembic check`: the SQLAlchemy models and the migrations agree (needs the database)
   ruff       `ruff check` and `ruff format --check` on backend/, ml/, tools/
   pytest     the API tests (needs the database with marts built)
   api-docs   the endpoints documented in docs/api.md (### `METHOD /path` headings) are exactly the app's /api/v1 routes
+  api-auth   every FastAPI route except the health checks (/health, /api/v1/health) depends on an auth dependency
+             (app.core.security.require_role, marked `__hqai_auth__`), directly or through a router include
   web-lint   when frontend/package.json exists: `npm run lint` (ESLint + Prettier check)
   web-build  when frontend/package.json exists: `npm run build` (TypeScript check + Vite production build)
 
@@ -54,9 +57,10 @@ SECRET_PATTERNS: dict[str, re.Pattern] = {
     "GitHub token": re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{40,})\b"),
     "Slack token": re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}"),
     "API key (sk-…)": re.compile(r"\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{20,}"),
+    "hospital-queue-ai API key": re.compile(r"\bhqai_[A-Za-z0-9_-]{40,}"),
     "Google API key": re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b"),
     "credential assignment": re.compile(
-        r"(?i)\b[\w.-]*(?:password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key)[\w.-]*\b"
+        r"(?i)\b(?P<name>[\w.-]*(?:password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key)[\w.-]*)\b"
         r"[\"']?\s*[:=]\s*[\"']?(?P<value>[^\s\"',;)}]{6,})"
     ),
     "password in URL": re.compile(r"\b[a-z][a-z0-9+.-]*://[^\s:/@]+:(?P<value>[^\s@/]{3,})@"),
@@ -64,9 +68,11 @@ SECRET_PATTERNS: dict[str, re.Pattern] = {
 # values that are clearly not secrets: placeholders, variable references, code expressions
 PLACEHOLDER = re.compile(
     r"(?i)^(?:change-?me|changeme|postgres|example|placeholder|dummy|test|secret|password|x+|\*+|<[^>]*>|"
-    r"\$\{?\w+\}?|\$\(\w+\)|\{\{.*\}\}|%\(\w+\)s|settings\.\w+|self\.\w+|os\.environ.*|none|null|true|false|str|int|"
+    r"\$\{?\w+(?::?-[^}]*)?\}?|\$\(\w+\)|\{\{.*\}\}|%\(\w+\)s|settings\.\w+|self\.\w+|os\.environ.*|none|null|true|false|str|int|"
     r"bool|required|optional)$"
 )
+# names that describe a credential rather than hold one: API_KEY_HEADER = "X-API-Key", api_key_label=..., key_prefix
+METADATA_NAME = re.compile(r"(?i)(?:_|-)(?:header|label|prefix|name|field|column|id|url|path|file|env|var)$")
 CODE_EXPRESSION = re.compile(r"^[\w.]+[(\[]|^\{")  # a call, subscript or f-string field, not a literal
 # dependency version ranges ("js-tokens": "^4.0.0" in package-lock.json)
 VERSION_RANGE = re.compile(r"^[~^<>=v]*\d+(?:\.[\dx*]+){0,3}(?:-[\w.]+)?$")
@@ -175,6 +181,8 @@ def scan_secrets(rel: str, text: str) -> list[str]:
                 value = m.groupdict().get("value")
                 if value is not None and not looks_like_secret(value):
                     continue
+                if METADATA_NAME.search(m.groupdict().get("name") or ""):
+                    continue
                 found.append(f"{rel}:{lineno}: {label}")
     return found
 
@@ -235,6 +243,52 @@ def check_pytest() -> Result:
         return m.group(0) if m else "passed"
 
     return _run("pytest", [sys.executable, "-m", "pytest"], BACKEND, "passed", parse=summary)
+
+
+# every APIRoute of the app, with the auth role its dependency tree requires (None = no auth dependency)
+_AUTH_SCRIPT = """
+import json
+from fastapi.routing import APIRoute
+from app.main import app
+
+def auth_roles(dependencies):
+    for dep in dependencies:
+        role = getattr(dep.call, "__hqai_auth__", None)
+        if role:
+            yield role
+        yield from auth_roles(dep.dependencies)
+
+def walk(routes, prefix="", inherited=()):
+    for route in routes:
+        if isinstance(route, APIRoute):
+            roles = list(inherited) + list(auth_roles(route.dependant.dependencies))
+            yield {"path": prefix + route.path, "methods": sorted(route.methods), "roles": roles}
+        elif hasattr(route, "original_router"):  # router included with app.include_router
+            ctx = route.include_context
+            extra = [getattr(d.dependency, "__hqai_auth__", None) for d in (ctx.dependencies or [])]
+            roles = [*inherited, *filter(None, extra)]
+            yield from walk(route.original_router.routes, prefix + (ctx.prefix or ""), roles)
+        elif hasattr(route, "routes"):
+            yield from walk(route.routes, prefix + getattr(route, "path", ""), inherited)
+
+print(json.dumps(list(walk(app.routes))))
+"""
+AUTH_EXEMPT = {"/health", "/api/v1/health"}
+
+
+def check_api_auth() -> Result:
+    proc = subprocess.run([sys.executable, "-c", _AUTH_SCRIPT], cwd=BACKEND, capture_output=True, text=True)
+    if proc.returncode != 0:
+        return Result("api-auth", False, "could not import the app", proc.stderr.strip().splitlines()[-5:])
+    routes = json.loads(proc.stdout)
+    missing = [
+        f"{','.join(r['methods'])} {r['path']}: no auth dependency"
+        for r in routes
+        if r["path"] not in AUTH_EXEMPT and not r["roles"]
+    ]
+    protected = sum(1 for r in routes if r["roles"])
+    summary = f"{len(routes)} routes: {protected} with auth, {len(routes) - protected - len(missing)} exempt (health)"
+    return Result("api-auth", not missing, summary if not missing else f"{len(missing)} routes without auth", missing)
 
 
 def check_frontend() -> list[Result]:
@@ -307,6 +361,7 @@ def main() -> int:
         check_ruff(),
         check_pytest(),
         check_api_docs(),
+        check_api_auth(),
         *check_frontend(),
     ]
     width = max(len(r.name) for r in results)

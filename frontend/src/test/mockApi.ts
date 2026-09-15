@@ -3,10 +3,12 @@ import { vi } from "vitest";
 
 import alerts from "./fixtures/alerts.json";
 import card from "./fixtures/card_ZIQ9_241.json";
+import config from "./fixtures/config.json";
 import decisions from "./fixtures/decisions_ZIQ9_241.json";
 import dictionaries from "./fixtures/dictionaries.json";
 import health from "./fixtures/health.json";
 import hospitals from "./fixtures/hospitals_71_241.json";
+import me from "./fixtures/me.json";
 import models from "./fixtures/models.json";
 import overview from "./fixtures/overview.json";
 import recommendations from "./fixtures/recommendations_ZIQ9_241.json";
@@ -16,10 +18,12 @@ import region from "./fixtures/region_71.json";
 export const fixtures = {
   alerts,
   card,
+  config,
   decisions,
   dictionaries,
   health,
   hospitals,
+  me,
   models,
   overview,
   recommendations,
@@ -29,6 +33,8 @@ export const fixtures = {
 
 const ROUTES: [RegExp, unknown][] = [
   [/\/api\/v1\/health$/, health],
+  [/\/api\/v1\/me$/, me],
+  [/\/api\/v1\/config$/, config],
   [/\/api\/v1\/overview$/, overview],
   [/\/api\/v1\/dictionaries$/, dictionaries],
   [/\/api\/v1\/regions\/71$/, region],
@@ -61,6 +67,17 @@ export function mockApi() {
             ? input.href
             : input.url,
       );
+      if (/\/export$/.test(url.pathname)) {
+        const format = url.searchParams.get("format") ?? "xlsx";
+        return new Response(new Blob(["%PDF-1.4 test"]), {
+          status: 200,
+          headers: {
+            "Content-Type":
+              format === "pdf" ? "application/pdf" : "application/octet-stream",
+            "Content-Disposition": `attachment; filename="hqai_card_ZIQ9_241_2025-03-31.${format}"`,
+          },
+        });
+      }
       const match = ROUTES.find(([pattern]) => pattern.test(url.pathname));
       return match
         ? jsonResponse(match[1])

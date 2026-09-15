@@ -5,11 +5,15 @@
       "org_code": "ZIQ9",
       "profile_code": "241",
       "recommendation_id": "rec-v1:historical_median:2025-03-31:ZIQ9:241:ZH7B",
+      "alternative_org_code": "ZH7B",
+      "alternative_org_name": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Многопрофильная городская больница № 3\" акимата города Астана",
       "action": "confirm",
       "comment": "Согласовано с заведующим отделением; направлять планово в ГБ № 3",
       "actor": "Иванова А. (УОЗ г. Астана)",
+      "idempotency_key": "ui-0f8fad5b-d9cb-469f-a165-70867728950e",
+      "api_key_label": "demo (DEMO_API_KEY)",
       "id": 5,
-      "created_at": "2026-09-15T13:11:55.887730Z"
+      "created_at": "2026-09-16T10:11:55.887730Z"
     }
   ],
   "total": 1,

@@ -34,7 +34,7 @@
       "profile_name": "Патологии беременности",
       "forecast_method": "model",
       "region_rank": 1,
-      "region_n_ranked": 244,
+      "region_n_ranked": 245,
       "in_region_top": true
     },
     {
@@ -71,7 +71,7 @@
       "profile_name": "Патологии беременности",
       "forecast_method": "model",
       "region_rank": 14,
-      "region_n_ranked": 244,
+      "region_n_ranked": 245,
       "in_region_top": true
     },
     {
@@ -107,8 +107,8 @@
       "profile_code": "241",
       "profile_name": "Патологии беременности",
       "forecast_method": "model",
-      "region_rank": 109,
-      "region_n_ranked": 244,
+      "region_rank": 110,
+      "region_n_ranked": 245,
       "in_region_top": false
     },
     {
@@ -144,8 +144,8 @@
       "profile_code": "241",
       "profile_name": "Патологии беременности",
       "forecast_method": "model",
-      "region_rank": 135,
-      "region_n_ranked": 244,
+      "region_rank": 136,
+      "region_n_ranked": 245,
       "in_region_top": false
     }
   ],

@@ -52,6 +52,11 @@ REGIONS_YAML_HEADER = """\
 
 
 # ------------------------------------------------------------------ dim_profile
+# Majority votes below use arg_max(value, struct_pack(n, value)): on equal counts the larger value wins, so every
+# ingest assigns the same names and regions (a plain arg_max(value, n) picks an arbitrary one of the tied values —
+# 5 hospitals have tied region-prefix votes).
+
+
 def build_dim_profile(con: duckdb.DuckDBPyConnection, p: IngestParams) -> None:
     con.execute(
         """CREATE OR REPLACE TABLE dim_profile AS
@@ -59,7 +64,8 @@ def build_dim_profile(con: duckdb.DuckDBPyConnection, p: IngestParams) -> None:
         t AS (
             SELECT profile_code,
                    sum(n) AS n_referrals,
-                   arg_max(bed_profile, n) FILTER (WHERE bed_profile IS NOT NULL) AS top_name,
+                   arg_max(bed_profile, struct_pack(n := n, tie := bed_profile))
+                       FILTER (WHERE bed_profile IS NOT NULL) AS top_name,
                    max(n) FILTER (WHERE bed_profile IS NOT NULL) AS top_n,
                    sum(n) FILTER (WHERE bed_profile IS NOT NULL) AS named_n
             FROM x GROUP BY profile_code)
@@ -86,7 +92,7 @@ def build_dim_region(
 ) -> dict:
     votes = con.execute(
         """WITH hosp_region AS (      -- each dataset-3 hospital key -> its (majority) region name
-               SELECT org_in_key, arg_max(region_in, n) AS region_in
+               SELECT org_in_key, arg_max(region_in, struct_pack(n := n, tie := region_in)) AS region_in
                FROM (SELECT org_in_key, region_in, count(*) n FROM stg_refusal
                      WHERE org_in_key IS NOT NULL AND region_in IS NOT NULL GROUP BY ALL)
                GROUP BY org_in_key)
@@ -186,7 +192,7 @@ def build_dim_organization(
         WITH names AS (SELECT org_code, hospital_mo, hospital_key, count(*) n FROM stg_referral GROUP BY ALL),
         prefixes AS (SELECT org_code, region_code, count(*) n FROM stg_referral GROUP BY ALL),
         hosp_region AS (
-            SELECT org_in_key, arg_max(region_code, n) AS region_code
+            SELECT org_in_key, arg_max(region_code, struct_pack(n := n, tie := region_code)) AS region_code
             FROM (SELECT org_in_key, l.region_code, count(*) n FROM stg_refusal s
                   JOIN region_lookup l ON l.key = s.region_in_key GROUP BY ALL)
             GROUP BY org_in_key)
@@ -195,10 +201,12 @@ def build_dim_organization(
                CASE WHEN hr.region_code IS NOT NULL THEN 'admission_refusals_region'
                     ELSE 'majority_origin_prefix' END AS region_method
         FROM (SELECT org_code, top.name AS org_name, top.key AS org_key, n_referrals
-              FROM (SELECT org_code, arg_max(struct_pack(name := hospital_mo, key := hospital_key), n) AS top,
+              FROM (SELECT org_code, arg_max(struct_pack(name := hospital_mo, key := hospital_key),
+                                   struct_pack(n := n, tie := hospital_mo, tie_key := hospital_key)) AS top,
                            CAST(sum(n) AS INTEGER) AS n_referrals
                     FROM names GROUP BY org_code)) o
-        JOIN (SELECT org_code, CAST(count(*) AS INTEGER) n_origin_regions, arg_max(region_code, n) top_prefix
+        JOIN (SELECT org_code, CAST(count(*) AS INTEGER) n_origin_regions,
+                     arg_max(region_code, struct_pack(n := n, tie := region_code)) top_prefix
               FROM prefixes GROUP BY org_code) pr USING (org_code)
         LEFT JOIN hosp_region hr ON hr.org_in_key = o.org_key"""
     )
@@ -382,3 +390,42 @@ def build_ersb_snapshot(con: duckdb.DuckDBPyConnection) -> None:
         FROM stg_ersb e LEFT JOIN m ON m.ersb_id = e.ersb_id AND m.rk = 1
         ORDER BY e.ersb_id"""
     )
+
+
+# ---------------------------------------------------------------------- dim_icd
+def build_dim_icd(con: duckdb.DuckDBPyConnection) -> dict:
+    """ICD-10 code -> Russian name, from the names the source systems attach to each code.
+
+    There is no official ICD dictionary in the open data. For every code the most frequent spelling across
+    dataset 1 (referral diagnosis) and dataset 3 (admission-refusal diagnosis) is kept; name_share says how
+    dominant it is (1.0 = every row agrees). Codes are upper-case as in the facts (e.g. "O80.0", "M42").
+    """
+    con.execute(
+        """CREATE OR REPLACE TABLE dim_icd AS
+        WITH names AS (
+            SELECT icd10_code, diagnosis_name AS name, 'referral' AS source FROM stg_referral
+            UNION ALL
+            SELECT icd10_code, icd_name, 'refusal' FROM stg_refusal
+        ),
+        counted AS (
+            SELECT icd10_code, name, count(*) AS n FROM names
+            WHERE icd10_code IS NOT NULL AND name IS NOT NULL GROUP BY ALL
+        ),
+        ranked AS (  -- most frequent spelling first; ties broken by the name itself, so reruns agree
+            SELECT *, row_number() OVER (PARTITION BY icd10_code ORDER BY n DESC, name) AS rk,
+                   sum(n) OVER (PARTITION BY icd10_code) AS named_n
+            FROM counted
+        ),
+        per_code AS (SELECT icd10_code, name AS icd10_name, n AS top_n, named_n FROM ranked WHERE rk = 1),
+        referrals AS (SELECT icd10_code, count(*) AS n FROM stg_referral WHERE icd10_code IS NOT NULL GROUP BY ALL)
+        SELECT c.icd10_code::VARCHAR AS icd10_code,
+               c.icd10_name::VARCHAR AS icd10_name,
+               c.top_n / c.named_n AS name_share,
+               CAST(coalesce(r.n, 0) AS INTEGER) AS n_referrals
+        FROM per_code c LEFT JOIN referrals r USING (icd10_code)
+        ORDER BY c.icd10_code"""
+    )
+    rows, exact3 = con.execute(
+        "SELECT count(*), count(*) FILTER (WHERE length(icd10_code) = 3) FROM dim_icd"
+    ).fetchone()
+    return {"codes": rows, "three_character_codes": exact3}

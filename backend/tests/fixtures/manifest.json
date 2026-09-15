@@ -24,6 +24,13 @@
       "sha256": "1f42e4b20e277a2698726976851f6537106c06f4a7b888a30a631ebeef3fcf2b"
     },
     {
+      "table": "dim_icd",
+      "file": "dim_icd.csv.gz",
+      "rows": 1783,
+      "bytes": 32429,
+      "sha256": "623e1b26a4f395fbb729ecd469923060ca3d331a8a2077125fe23f4f07ff7288"
+    },
+    {
       "table": "ersb_snapshot",
       "file": "ersb_snapshot.csv.gz",
       "rows": 65,
@@ -48,8 +55,8 @@
       "table": "agg_daily_hospital_profile",
       "file": "agg_daily_hospital_profile.csv.gz",
       "rows": 16646,
-      "bytes": 70132,
-      "sha256": "f1128b5a8e203b885c075de692c02babaa15e4faff037db4042b1ef3e3e30c02"
+      "bytes": 70212,
+      "sha256": "0aa14d56eef223fc2e9259b3326bfad570345fc97f2fa30583bda6dbf1aad608"
     },
     {
       "table": "agg_daily_region_profile",
@@ -76,8 +83,8 @@
       "table": "model_registry",
       "file": "model_registry.csv.gz",
       "rows": 3,
-      "bytes": 2108,
-      "sha256": "f623a3048cd7ba124f5e5adec8f1de368659270beef5f62cfdd6045081b37796"
+      "bytes": 4280,
+      "sha256": "c7c1ac1f73b27affff2fe164c40fef797228e928c6a5840ca70f2a2e1bbe63c1"
     }
   ]
 }

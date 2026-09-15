@@ -27,6 +27,10 @@ class ValidationError(Exception):
     """Semantically invalid request; mapped to HTTP 422."""
 
 
+class ConflictError(Exception):
+    """The request conflicts with stored state (e.g. a reused idempotency key); mapped to HTTP 409."""
+
+
 class MartsNotBuiltError(Exception):
     """mart_build_info is empty; mapped to HTTP 503."""
 
@@ -147,6 +151,11 @@ def area_kpis(row: MartAreaStatus) -> AreaKpis:
         load_index_max=rnd(row.load_index_max, 1),
         n_hospitals_high_load=row.n_hospitals_high_load,
         n_hospital_profiles_high_load=row.n_hospital_profiles_high_load,
+        high_load_share=(
+            rnd(row.n_hospital_profiles_high_load / row.n_hospital_profiles_ranked, 4)
+            if row.n_hospital_profiles_ranked
+            else None
+        ),
     )
 
 

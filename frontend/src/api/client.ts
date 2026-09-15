@@ -5,6 +5,7 @@
 import type { Schema } from "./schema";
 import {
   alertPageSchema,
+  configSchema,
   type DecisionCreate,
   decisionPageSchema,
   decisionSchema,
@@ -12,6 +13,7 @@ import {
   healthSchema,
   hospitalCardSchema,
   hospitalPageSchema,
+  meSchema,
   modelsSchema,
   overviewSchema,
   recommendationsSchema,
@@ -20,8 +22,11 @@ import {
 } from "./types";
 
 export const API_BASE: string = import.meta.env.VITE_API_BASE ?? "/api/v1";
+/** API key compiled in at build time (VITE_API_KEY; docker: DEMO_API_KEY from .env). Empty = no key sent. */
+export const API_KEY: string = import.meta.env.VITE_API_KEY ?? "";
+export const API_KEY_HEADER = "X-API-Key";
 
-export type ApiErrorKind = "network" | "http" | "shape";
+export type ApiErrorKind = "network" | "http" | "shape" | "auth" | "forbidden";
 
 /** Everything the error state needs: what failed, where, and the API's own message. */
 export class ApiError extends Error {
@@ -65,7 +70,11 @@ async function request<T>(
   try {
     response = await fetch(url, {
       ...init,
-      headers: { Accept: "application/json", ...init?.headers },
+      headers: {
+        Accept: "application/json",
+        ...authHeaders(),
+        ...init?.headers,
+      },
     });
   } catch (cause) {
     throw new ApiError(
@@ -93,8 +102,7 @@ async function request<T>(
   }
   if (!response.ok) {
     const detail = extractDetail(body);
-    const kind =
-      response.status === 502 || response.status === 504 ? "network" : "http";
+    const kind = errorKind(response.status);
     throw new ApiError(
       kind,
       url,
@@ -113,6 +121,60 @@ async function request<T>(
       response.status,
     );
   }
+}
+
+function authHeaders(): Record<string, string> {
+  return API_KEY ? { [API_KEY_HEADER]: API_KEY } : {};
+}
+
+function errorKind(status: number): ApiErrorKind {
+  if (status === 502 || status === 504) return "network"; // nginx: backend down
+  if (status === 401) return "auth";
+  if (status === 403) return "forbidden";
+  return "http";
+}
+
+export interface DownloadedFile {
+  blob: Blob;
+  filename: string;
+}
+
+/** Binary download with the API key (a plain link cannot send the header). */
+async function download(path: string): Promise<DownloadedFile> {
+  const url = absoluteUrl(path);
+  let response: Response;
+  try {
+    response = await fetch(url, { headers: authHeaders() });
+  } catch (cause) {
+    throw new ApiError(
+      "network",
+      url,
+      cause instanceof Error ? cause.message : String(cause),
+    );
+  }
+  if (!response.ok) {
+    let detail: string | undefined;
+    try {
+      detail = extractDetail(await response.json());
+    } catch {
+      detail = undefined;
+    }
+    throw new ApiError(
+      errorKind(response.status),
+      url,
+      detail ?? `HTTP ${response.status}`,
+      response.status,
+      detail,
+    );
+  }
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const match = /filename\*=UTF-8''([^;]+)|filename="([^"]+)"/.exec(
+    disposition,
+  );
+  const filename = match
+    ? decodeURIComponent(match[1] ?? match[2] ?? "")
+    : "download";
+  return { blob: await response.blob(), filename };
 }
 
 function extractDetail(body: unknown): string | undefined {
@@ -138,6 +200,8 @@ const enc = encodeURIComponent;
 
 export const api = {
   health: () => request(healthSchema, "/health"),
+  me: () => request(meSchema, "/me"),
+  config: () => request(configSchema, "/config"),
   overview: () => request(overviewSchema, "/overview"),
   dictionaries: () => request(dictionariesSchema, "/dictionaries"),
   region: (code: string) =>
@@ -184,7 +248,18 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
-  alerts: (query: { region?: string; limit: number; offset: number }) =>
-    request(alertPageSchema, buildPath("/alerts", query)),
+  exportCard: (org: string, profile: string, format: "xlsx" | "pdf") =>
+    download(
+      buildPath(`/hospitals/${enc(org)}/profiles/${enc(profile)}/export`, {
+        format,
+      }),
+    ),
+  alerts: (query: {
+    region?: string;
+    profile?: string;
+    status?: string;
+    limit: number;
+    offset: number;
+  }) => request(alertPageSchema, buildPath("/alerts", query)),
   models: () => request(modelsSchema, "/models"),
 };

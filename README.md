@@ -32,20 +32,23 @@ On macOS LightGBM also needs the OpenMP runtime: `brew install libomp`.
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
-cp .env.example .env      # set POSTGRES_PASSWORD
+cp .env.example .env      # set POSTGRES_PASSWORD and DEMO_API_KEY (the specialist key the demo UI uses)
 make up                   # postgres (pgvector/pgvector:pg16) + backend; data endpoints answer 503 until marts exist
 make ingest               # migrations + raw CSV -> data/processed/*.parquet -> postgres (~2 min)
 make baseline             # reports/01_baseline.md
 make train                # models A, B, C -> artifacts/models/, reports/02_models.md (~5 min)
 make predict              # predictions -> pred_referral, pred_daily_forecast, model_registry (~2 min), then marts
 open http://localhost:8000/docs
+make create-key ROLE=admin LABEL="администратор"   # API key, printed once (docs/security.md)
 make test                 # API tests against the running postgres
 make web-install          # frontend dependencies (npm ci) — needed for make audit and make web-dev
 make audit                # repository audit: layout, secrets, alembic check, ruff, tests, docs/api.md vs routes,
                           # frontend lint + production build
 ```
 
-Other targets: `make marts` (rebuild the serving marts after editing `ml/configs/serving.yaml`),
+Other targets: `make marts` (rebuild the serving marts after editing `ml/configs/serving.yaml`), `make registry`
+(refresh model cards / metrics in `model_registry` after editing `ml/configs/model_cards.yaml`), `make backup` /
+`make restore FILE=…` (pg_dump to `backups/`, restore asks for confirmation),
 `make api-dev` (local uvicorn with auto-reload on port 8001), `make lint` / `make fmt` (ruff check / fix + format on
 `backend/`, `ml/`, `tools/`; config in the root `pyproject.toml`), `make fixture` (rebuild the 2-region CI test
 fixture from the current database), `make fixture-load` (load it into an empty database), `make web-dev` (Vite on http://localhost:5173 with `/api`
@@ -60,9 +63,11 @@ The step-1 inventory was a one-off and lives in scratch: `.venv/bin/python scrat
 - **Run `make audit` before every commit** (Postgres up, marts built). It fails if a file that would be committed
   sits outside the allowed top level (`backend ml frontend db docs tools .github` + root config files), if any such
   file is a `.env` or contains something that looks like a secret, if `alembic check` sees drift between models and
-  migrations, if ruff or pytest fail, if `docs/api.md` and the app's endpoints disagree, or if the frontend lint or
-  production build fails. CI (GitHub Actions)
-  runs `make lint` and `make test` on every push and pull request.
+  migrations, if ruff or pytest fail, if `docs/api.md` and the app's endpoints disagree, if any API route other
+  than the health checks lacks an auth dependency, or if the frontend lint or production build fails. CI (GitHub
+  Actions) runs the backend lint + tests and the frontend lint + tests + build on every push and pull request.
+- **Every new endpoint declares a role** (`ViewerDep`, `SpecialistDep` or `AdminDep` from `app.core.security`) and is
+  documented in docs/api.md; never commit API keys — `.env` and `backups/` are gitignored.
 - **Never modify, move or delete anything under `data/raw/`.** Pipelines only read it.
 - **Scratch work goes to `scratch/` and nowhere else.** Any temporary, exploratory or
   self-verification file — scratch scripts, ad-hoc checks, test dumps, comparison outputs, logs of
@@ -88,14 +93,15 @@ tools/      audit.py (make audit), test_fixture.py (make fixture / fixture-load)
 .github/    workflows/ci.yml — lint + API tests on push and pull request
 db/         init.sql (pgvector, pg_trgm)
 docs/       architecture.md (structure + data flow), data.md (tables, columns, cleaning rules), frontend.md (screen
-            map, API calls per screen, API gaps),
-            model_card.md (models, evaluation, limitations, intended use), api.md (endpoints, load_index,
+            map, API calls per screen), security.md (access control, audit trail, what production must add),
+            model_card.md (models, evaluation, limitations, intended use), api.md (endpoints, auth, load_index,
             recommendation rule)
 data/       raw/ input (read-only), processed/ Parquet          — gitignored
 reports/    generated reports                                   — gitignored
 artifacts/  models/<name>/<version>/ + manifest.json            — gitignored
 notebooks/                                                      — gitignored
 scratch/    temporary / exploratory / verification files        — gitignored (see Development rules)
+backups/    make backup (pg_dump)                               — gitignored
 ```
 
 ## Data
@@ -131,4 +137,7 @@ Details, cleaning rules and every derived column: [docs/data.md](docs/data.md).
       a 2-region fixture
 - [x] Step 5 — frontend: five screens against the API, decisions from the card, docker `frontend` service on
       port 3000 ([docs/frontend.md](docs/frontend.md))
+- [x] Step 6 — API gaps closed (model cards, `/config`, decision alternative + idempotency, ICD names, short labels,
+      units, alert filters, `high_load_share`), API-key auth with roles and access log, XLSX/PDF export, backup /
+      restore, frontend CI job ([docs/security.md](docs/security.md))
 - [ ] Causal effect estimate for recommendations (replaces `historical_median`)

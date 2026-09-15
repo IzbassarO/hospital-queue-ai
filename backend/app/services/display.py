@@ -35,6 +35,10 @@ class ValueFormatter:
             icd3_names=info.config["derived"].get("icd3_names") or {},
         )
 
+    def short_label(self, feature: str, fallback: str | None = None) -> str:
+        spec = self.rules["features"].get(feature, {})
+        return spec.get("short_label") or spec.get("label") or fallback or feature
+
     def fmt_of(self, feature: str) -> dict:
         return self.rules["features"].get(feature, {"format": "text"})
 
@@ -97,12 +101,27 @@ class ValueFormatter:
         return f"{text} {unit}" if unit else text
 
 
+# effect of a factor on the model output: days for the wait-time model, probability share for the refusal model
+EFFECT_UNITS = {"wait_time": ("дн.", 1.0), "refusal_risk": ("п.п.", 100.0)}
+
+
 def with_display(explanation: dict | None, formatter: ValueFormatter) -> dict:
-    """Copy of a referral explanation with `value_display` added next to each factor's raw `value`."""
-    return {
-        model: [{**f, "value_display": formatter.format(f["feature"], f.get("value"))} for f in factors]
-        for model, factors in (explanation or {}).items()
-    }
+    """Copy of a referral explanation with display fields next to each factor's raw `value` and `effect`:
+    `value_display`, `short_label`, `unit` and `effect_in_unit` (days, or percentage points for refusal risk)."""
+    out = {}
+    for model, factors in (explanation or {}).items():
+        unit, scale = EFFECT_UNITS.get(model, ("", 1.0))
+        out[model] = [
+            {
+                **f,
+                "value_display": formatter.format(f["feature"], f.get("value")),
+                "short_label": formatter.short_label(f["feature"]),
+                "unit": unit,
+                "effect_in_unit": round(float(f.get("effect", 0.0)) * scale, 2),
+            }
+            for f in factors
+        ]
+    return out
 
 
 def explanation_pairs(explanations: Iterable[dict | None]) -> Iterable[tuple[str, str | None]]:

@@ -14,7 +14,6 @@ import { Section } from "../../components/PageHeader";
 import { Pagination } from "../../components/Pagination";
 import { TableSkeleton } from "../../components/Skeleton";
 import { t } from "../../i18n";
-import { featureLabel } from "../../lib/features";
 import { fmtDate, fmtDays, fmtPercent, fmtSigned } from "../../lib/format";
 
 type Sort = "risk" | "wait";
@@ -22,11 +21,9 @@ type Sort = "risk" | "wait";
 function FactorRows({
   title,
   factors,
-  unit,
 }: {
   title: string;
   factors: ReferralFactor[];
-  unit: "days" | "pp";
 }) {
   return (
     <div>
@@ -36,15 +33,11 @@ function FactorRows({
           <li key={f.feature} className="flex items-start gap-2 text-[15px]">
             <Direction direction={f.direction} />
             <span className="min-w-0 flex-1">
-              <span className="font-medium">
-                {featureLabel(f.feature, f.feature)}
-              </span>
-              : <span className="break-words">{f.value_display}</span>
+              <span className="font-medium">{f.short_label}</span>:{" "}
+              <span className="break-words">{f.value_display}</span>
             </span>
             <span className="num font-semibold">
-              {unit === "days"
-                ? fmtSigned(f.effect, 1, ` ${t.units.days}`)
-                : fmtSigned(f.effect * 100, 1, ` ${t.units.pp}`)}
+              {fmtSigned(f.effect_in_unit, 1, ` ${f.unit}`)}
             </span>
           </li>
         ))}
@@ -100,7 +93,16 @@ export function ReferralsTable({
     {
       key: "icd",
       header: t.referrals.columns.diagnosis,
-      render: (r) => r.icd10_code ?? t.common.noData,
+      render: (r) => (
+        <span>
+          <span className="font-medium tabular-nums">
+            {r.icd10_code ?? t.common.noData}
+          </span>
+          {r.diagnosis_name ? (
+            <span className="block text-sm text-muted">{r.diagnosis_name}</span>
+          ) : null}
+        </span>
+      ),
     },
     {
       key: "purpose",
@@ -182,12 +184,10 @@ export function ReferralsTable({
                   <FactorRows
                     title={t.referrals.explanationWait}
                     factors={r.explanation.wait_time ?? []}
-                    unit="days"
                   />
                   <FactorRows
                     title={t.referrals.explanationRisk}
                     factors={r.explanation.refusal_risk ?? []}
-                    unit="pp"
                   />
                 </div>
               ) : null

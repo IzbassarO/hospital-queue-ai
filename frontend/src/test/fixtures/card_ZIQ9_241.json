@@ -33,7 +33,7 @@
     "profile_name": "Патологии беременности",
     "forecast_method": "model",
     "region_rank": 1,
-    "region_n_ranked": 244,
+    "region_n_ranked": 245,
     "in_region_top": true
   },
   "series": [
@@ -542,6 +542,7 @@
       {
         "feature": "hp_median_wait_prev",
         "label": "медианное ожидание в стационаре по профилю до даты направления, дней",
+        "short_label": "Медиана ожидания ранее",
         "mean_abs_effect": 2.99,
         "mean_effect": 2.99,
         "unit": "дн.",
@@ -553,17 +554,19 @@
       {
         "feature": "icd3",
         "label": "диагноз (МКБ-10)",
+        "short_label": "Диагноз",
         "mean_abs_effect": 1.89,
         "mean_effect": -1.09,
         "unit": "дн.",
         "direction": "down",
         "share_in_top5": 1.0,
         "most_common_value": "O99",
-        "most_common_value_display": "O99 (класс XV — Беременность, роды и послеродовой период)"
+        "most_common_value_display": "O99 — Другие болезни матери, классифицированные в других рубриках, но осложняющие беременность, роды и послеродовой период"
       },
       {
         "feature": "org_code",
         "label": "стационар",
+        "short_label": "Стационар",
         "mean_abs_effect": 1.71,
         "mean_effect": -1.71,
         "unit": "дн.",
@@ -575,6 +578,7 @@
       {
         "feature": "queue_hp_prev_day",
         "label": "очередь в стационаре по профилю на дату направления",
+        "short_label": "Очередь на дату направления",
         "mean_abs_effect": 0.69,
         "mean_effect": 0.69,
         "unit": "дн.",
@@ -586,6 +590,7 @@
       {
         "feature": "profile_code",
         "label": "профиль койки",
+        "short_label": "Профиль койки",
         "mean_abs_effect": 0.23,
         "mean_effect": 0.23,
         "unit": "дн.",
@@ -599,6 +604,7 @@
       {
         "feature": "org_code",
         "label": "стационар",
+        "short_label": "Стационар",
         "mean_abs_effect": 18.35,
         "mean_effect": 18.35,
         "unit": "п.п.",
@@ -610,6 +616,7 @@
       {
         "feature": "hp_refusal_rate_prev",
         "label": "доля отказов в стационаре по профилю до даты направления",
+        "short_label": "Доля отказов ранее",
         "mean_abs_effect": 11.83,
         "mean_effect": 11.83,
         "unit": "п.п.",
@@ -621,17 +628,19 @@
       {
         "feature": "icd3",
         "label": "диагноз (МКБ-10)",
+        "short_label": "Диагноз",
         "mean_abs_effect": 11.63,
         "mean_effect": 11.63,
         "unit": "п.п.",
         "direction": "up",
         "share_in_top5": 0.9697,
         "most_common_value": "O99",
-        "most_common_value_display": "O99 (класс XV — Беременность, роды и послеродовой период)"
+        "most_common_value_display": "O99 — Другие болезни матери, классифицированные в других рубриках, но осложняющие беременность, роды и послеродовой период"
       },
       {
         "feature": "profile_code",
         "label": "профиль койки",
+        "short_label": "Профиль койки",
         "mean_abs_effect": 3.22,
         "mean_effect": 3.22,
         "unit": "п.п.",
@@ -643,6 +652,7 @@
       {
         "feature": "day_of_window",
         "label": "день от начала периода данных",
+        "short_label": "День периода данных",
         "mean_abs_effect": 1.26,
         "mean_effect": 1.26,
         "unit": "п.п.",

@@ -10,7 +10,9 @@ import {
   decisionPageSchema,
   decisionSchema,
   dictionariesSchema,
+  configSchema,
   healthSchema,
+  meSchema,
   hospitalCardSchema,
   hospitalPageSchema,
   modelsSchema,
@@ -78,6 +80,20 @@ describe("API client parses real responses (captured from the running API)", () 
     ]);
     expect((await api.dictionaries()).national_code).toBe("KZ");
     expect((await api.health()).status).toBe("ok");
+
+    const config = await api.config();
+    const weights = config.load_index.weights;
+    expect(
+      weights.backlog_rank + weights.refusal_rate + weights.queue_trend,
+    ).toBeCloseTo(1);
+    expect(config.data_source.publisher).toBeTruthy();
+    expect((await api.me()).role).toBe("specialist");
+    expect(overview.regions[0]).toHaveProperty("high_load_share");
+    expect(referrals.items[0]?.diagnosis_name).toBeTruthy();
+    const factor = referrals.items[0]?.explanation.refusal_risk?.[0];
+    expect(factor?.unit).toBe("п.п.");
+    expect(factor?.effect_in_unit).toBeCloseTo((factor?.effect ?? 0) * 100, 1);
+    expect((await api.models())[0]?.limitations.length).toBeGreaterThan(0);
   });
 
   it("sends query parameters and the decision body", async () => {
@@ -95,9 +111,11 @@ describe("API client parses real responses (captured from the running API)", () 
       org_code: "ZIQ9",
       profile_code: "241",
       recommendation_id: "rec-v1:historical_median:2025-03-31:ZIQ9:241:ZH7B",
+      alternative_org_code: "ZH7B",
       action: "confirm" as const,
       comment: null,
       actor: "Иванова А.",
+      idempotency_key: "ui-test-0001",
     };
     const created = await api.createDecision(payload);
     expect(created.id).toBe(5);
@@ -121,6 +139,43 @@ describe("API client parses real responses (captured from the running API)", () 
     expect((error as ApiError).message).toContain(
       "national.queue_now: expected number",
     );
+  });
+
+  it("sends the API key and maps 401 / 403", async () => {
+    const fetchMock = mockApi();
+    await api.overview();
+    const headers = fetchMock.mock.calls.at(-1)?.[1]?.headers as Record<
+      string,
+      string
+    >;
+    // VITE_API_KEY is empty in tests: no header is sent rather than an empty one
+    expect(headers).not.toHaveProperty("X-API-Key", "");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ detail: "missing API key" }, 401)),
+    );
+    const unauthorized = (await api
+      .overview()
+      .catch((e: unknown) => e)) as ApiError;
+    expect(unauthorized.kind).toBe("auth");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse({ detail: "role 'viewer' may not do this" }, 403),
+      ),
+    );
+    const forbidden = (await api
+      .overview()
+      .catch((e: unknown) => e)) as ApiError;
+    expect(forbidden.kind).toBe("forbidden");
+  });
+
+  it("downloads the card export with its file name", async () => {
+    mockApi();
+    const file = await api.exportCard("ZIQ9", "241", "pdf");
+    expect(file.filename).toBe("hqai_card_ZIQ9_241_2025-03-31.pdf");
+    expect(file.blob.size).toBeGreaterThan(0);
   });
 
   it("reports the URL it tried when the API is down, and the API detail on 404", async () => {
@@ -180,6 +235,8 @@ describe("API client schemas match the examples in docs/api.md §6", () => {
 
   it.each([
     ["GET /health", healthSchema, 0],
+    ["GET /me", meSchema, 0],
+    ["GET /config", configSchema, 0],
     ["GET /overview", overviewSchema, 0],
     ["GET /regions/{code}/hospitals", hospitalPageSchema, 0],
     [

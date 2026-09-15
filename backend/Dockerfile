@@ -9,6 +9,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app/backend
 
+# DejaVu Sans: Cyrillic glyphs for the PDF export (app/services/export.py)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+
 # Dependencies first (cached until pyproject.toml changes). A stub package lets pip resolve the project.
 COPY pyproject.toml ./
 RUN mkdir app && touch app/__init__.py \
@@ -29,5 +34,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=5 \
     CMD python -c "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status == 200 else 1)"
 
-# Schema first (idempotent), then the API.
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers"]
+# Schema first (idempotent), then the demo API key from DEMO_API_KEY (if set), then the API.
+CMD ["sh", "-c", "alembic upgrade head && python -m app.cli seed-demo-key && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers"]

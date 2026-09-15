@@ -14,6 +14,10 @@ function messageFor(error: unknown): {
           text: t.errors.network(error.url),
           hint: t.errors.networkHint,
         };
+      case "auth":
+        return { text: t.errors.auth, detail: error.detail };
+      case "forbidden":
+        return { text: t.errors.forbidden, detail: error.detail };
       case "shape":
         return { text: t.errors.shape(error.url), detail: error.message };
       case "http":

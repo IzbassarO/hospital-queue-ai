@@ -33,14 +33,34 @@ describe("routes render with real API responses", () => {
       await screen.findByRole("heading", { level: 1, name: "Обзор по стране" }),
     ).toBeInTheDocument();
     expect(
-      await screen.findByText(/Источник: открытые данные МЗ РК.*31\.03\.2025/),
+      await screen.findByText(
+        /Источник: Министерство здравоохранения Республики Казахстан\..*Срез на 31\.03\.2025/,
+      ),
     ).toBeInTheDocument();
+    expect(await screen.findByText("роль: специалист")).toBeInTheDocument();
     const table = screen.getByRole("table", { name: "Регионы" });
     const link = within(table).getByRole("link", { name: "г. Астана" });
     expect(link).toHaveAttribute("href", "/regions/71");
-    // sorted by load_index_max, highest first
-    const firstRow = within(table).getAllByRole("row")[1];
-    expect(firstRow).toHaveTextContent("г. Астана");
+    // default sort: share of hospital profiles with high load, highest first
+    const shareHeader = within(table).getByRole("columnheader", {
+      name: /Доля профилей с высокой нагрузкой/,
+    });
+    expect(shareHeader).toHaveAttribute("aria-sort", "descending");
+    const shares = within(table)
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) =>
+        Number(
+          (row.lastElementChild?.textContent ?? "")
+            .replace("%", "")
+            .replace(",", "."),
+        ),
+      );
+    expect(shares).toEqual([...shares].sort((a, b) => b - a));
+    // max load index stays a column
+    expect(
+      within(table).getByRole("columnheader", { name: /Макс. индекс/ }),
+    ).toBeInTheDocument();
   });
 
   it("/regions/:code — profile selector and hospitals of the selected profile", async () => {
@@ -110,9 +130,13 @@ describe("routes render with real API responses", () => {
           profile_code: "241",
           recommendation_id:
             "rec-v1:historical_median:2025-03-31:ZIQ9:241:ZH7B",
+          alternative_org_code: "ZH7B",
+          alternative_org_name: "Многопрофильная городская больница № 3",
           action: "confirm",
           comment: "Согласовано",
           actor: "Иванова А.",
+          idempotency_key: "ui-test",
+          api_key_label: "demo (DEMO_API_KEY)",
         },
         201,
       ),
@@ -130,6 +154,8 @@ describe("routes render with real API responses", () => {
       comment: "Согласовано",
       org_code: "ZIQ9",
       region_code: "71",
+      alternative_org_code: "ZH7B",
+      idempotency_key: expect.stringMatching(/^ui-[0-9a-f-]{16,}$/),
     });
   });
 
@@ -147,6 +173,46 @@ describe("routes render with real API responses", () => {
     expect(
       screen.getAllByText(/Индекс нагрузки 96,6 ≥ 70/).length,
     ).toBeGreaterThan(0);
+    // caption built from the alert rule in GET /config
+    expect(
+      screen.getByText(/индексом нагрузки ≥ 70 .* 5 п\.п\. .* от 10 человек/),
+    ).toBeInTheDocument();
+  });
+
+  it("/alerts — profile and status filters are sent to the API and kept in the URL", async () => {
+    const user = userEvent.setup();
+    const router = renderAt("/alerts");
+    await screen.findAllByRole("link", {
+      name: /Городской перинатальный центр/,
+    });
+    await user.selectOptions(await screen.findByLabelText("Статус"), "high");
+    await user.selectOptions(screen.getByLabelText("Профиль"), "241");
+    const last = String(
+      fetchMock.mock.calls
+        .filter(([u]) => String(u).includes("/alerts"))
+        .at(-1)?.[0],
+    );
+    expect(last).toContain("status=high");
+    expect(last).toContain("profile=241");
+    expect(router.state.location.search).toBe("?profile=241&status=high");
+  });
+
+  it("card — «Скачать отчёт» fetches the export with the API client", async () => {
+    const user = userEvent.setup();
+    const createObjectURL = vi.fn(() => "blob:report");
+    vi.stubGlobal(
+      "URL",
+      Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }),
+    );
+    renderAt("/hospitals/ZIQ9/profiles/241");
+    await user.click(await screen.findByRole("button", { name: "PDF" }));
+    const call = fetchMock.mock.calls.find(([u]) =>
+      String(u).includes("/export"),
+    );
+    expect(String(call?.[0])).toMatch(
+      /\/api\/v1\/hospitals\/ZIQ9\/profiles\/241\/export\?format=pdf$/,
+    );
+    expect(createObjectURL).toHaveBeenCalled();
   });
 
   it("/models — every model with its limitations", async () => {
@@ -163,6 +229,13 @@ describe("routes render with real API responses", () => {
     expect(
       screen.getAllByRole("heading", { name: "Ограничения" }),
     ).toHaveLength(3);
+    expect(screen.getAllByRole("heading", { name: "Назначение" })).toHaveLength(
+      3,
+    );
+    // baseline names come from the model card, not from English registry names
+    expect(
+      screen.getByText("Медиана по стационару и профилю"),
+    ).toBeInTheDocument();
   });
 
   it("shows the URL it tried when the API is down", async () => {

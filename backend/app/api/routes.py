@@ -1,33 +1,58 @@
-"""All /api/v1 endpoints. Read-only except POST /decisions. Contract: docs/api.md."""
+"""All /api/v1 endpoints. Contract: docs/api.md; access control: docs/security.md.
+
+Every endpoint except GET /health declares ViewerDep, SpecialistDep or AdminDep (checked by tools/audit.py).
+"""
 
 from typing import Annotated, Literal
+from urllib.parse import quote
 
 from fastapi import APIRouter, Query, Response, status
 
 from app.api.deps import PaginationDep, SessionDep
+from app.core.security import AdminDep, SpecialistDep, ViewerDep
 from app.schemas.activity import AlertItem, Decision, DecisionCreate, RecommendationResponse, ReferralItem
-from app.schemas.catalog import DictionariesResponse, HealthResponse, ModelInfo
-from app.schemas.common import Message, Page
+from app.schemas.admin import AccessLogItem, ApiKeyCreate, ApiKeyCreated, ApiKeyInfo
+from app.schemas.catalog import ConfigResponse, DictionariesResponse, HealthResponse, MeResponse, ModelInfo
+from app.schemas.common import Message, Page, Status
 from app.schemas.status import HospitalProfileCard, HospitalProfileStatus, OverviewResponse, RegionDetailResponse
-from app.services import activity, catalog, recommend
+from app.services import activity, admin, catalog, export, recommend
 from app.services import status as status_service
 
 router = APIRouter()
 
 NOT_FOUND = {404: {"model": Message, "description": "unknown code"}}
 NOT_BUILT = {503: {"model": Message, "description": "serving marts are not built (run `make marts`)"}}
+AUTH = {
+    401: {"model": Message, "description": "missing, invalid or revoked X-API-Key"},
+    403: {"model": Message, "description": "the key's role is not allowed to do this"},
+}
 
 
+# ------------------------------------------------------------------------------------------ service
 @router.get("/health", response_model=HealthResponse, tags=["service"])
 def get_health(session: SessionDep, response: Response) -> HealthResponse:
+    """Open (no API key): database reachability and mart freshness."""
     result = catalog.health(session)
     if result.database != "ok":
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return result
 
 
-@router.get("/overview", response_model=OverviewResponse, responses=NOT_BUILT, tags=["monitoring"])
-def get_overview(session: SessionDep) -> OverviewResponse:
+@router.get("/me", response_model=MeResponse, responses=AUTH, tags=["service"])
+def get_me(principal: ViewerDep) -> MeResponse:
+    """Label, role and permissions of the calling API key."""
+    return catalog.me(principal)
+
+
+@router.get("/config", response_model=ConfigResponse, responses={**AUTH, **NOT_BUILT}, tags=["service"])
+def get_config(session: SessionDep, _: ViewerDep) -> ConfigResponse:
+    """load_index weights and caps, thresholds, rules, windows and the data-source description the marts use."""
+    return catalog.config(session)
+
+
+# ------------------------------------------------------------------------------------------ monitoring
+@router.get("/overview", response_model=OverviewResponse, responses={**AUTH, **NOT_BUILT}, tags=["monitoring"])
+def get_overview(session: SessionDep, _: ViewerDep) -> OverviewResponse:
     """National KPIs and a table of regions."""
     return status_service.overview(session)
 
@@ -35,10 +60,10 @@ def get_overview(session: SessionDep) -> OverviewResponse:
 @router.get(
     "/regions/{region_code}",
     response_model=RegionDetailResponse,
-    responses={**NOT_FOUND, **NOT_BUILT},
+    responses={**AUTH, **NOT_FOUND, **NOT_BUILT},
     tags=["monitoring"],
 )
-def get_region(region_code: str, session: SessionDep) -> RegionDetailResponse:
+def get_region(region_code: str, session: SessionDep, _: ViewerDep) -> RegionDetailResponse:
     """Region KPIs and every profile of the region with its status."""
     return status_service.region_detail(session, region_code)
 
@@ -46,13 +71,14 @@ def get_region(region_code: str, session: SessionDep) -> RegionDetailResponse:
 @router.get(
     "/regions/{region_code}/hospitals",
     response_model=Page[HospitalProfileStatus],
-    responses={**NOT_FOUND, **NOT_BUILT},
+    responses={**AUTH, **NOT_FOUND, **NOT_BUILT},
     tags=["monitoring"],
 )
 def get_region_hospitals(
     region_code: str,
     session: SessionDep,
     page: PaginationDep,
+    _: ViewerDep,
     profile: Annotated[str | None, Query(description="profile code, e.g. 031; all profiles if omitted")] = None,
 ) -> Page[HospitalProfileStatus]:
     """Hospital × profile rows of the region, highest load_index first."""
@@ -60,12 +86,28 @@ def get_region_hospitals(
 
 
 @router.get(
+    "/alerts", response_model=Page[AlertItem], responses={**AUTH, **NOT_FOUND, **NOT_BUILT}, tags=["monitoring"]
+)
+def get_alerts(
+    session: SessionDep,
+    page: PaginationDep,
+    _: ViewerDep,
+    region: Annotated[str | None, Query(description="region code; all regions if omitted")] = None,
+    profile: Annotated[str | None, Query(description="profile code; all profiles if omitted")] = None,
+    status_filter: Annotated[Status | None, Query(alias="status", description="load status of the row")] = None,
+) -> Page[AlertItem]:
+    """Hospital × profile rows with load_index ≥ 70 or an excess queue trend ≥ 5 p.p. per week."""
+    return activity.alerts(session, region, profile, status_filter, page.limit, page.offset)
+
+
+# ------------------------------------------------------------------------------------------ hospital
+@router.get(
     "/hospitals/{org_code}/profiles/{profile_code}",
     response_model=HospitalProfileCard,
-    responses={**NOT_FOUND, **NOT_BUILT},
+    responses={**AUTH, **NOT_FOUND, **NOT_BUILT},
     tags=["hospital"],
 )
-def get_hospital_profile(org_code: str, profile_code: str, session: SessionDep) -> HospitalProfileCard:
+def get_hospital_profile(org_code: str, profile_code: str, session: SessionDep, _: ViewerDep) -> HospitalProfileCard:
     """Status card, daily series, 14-day forecast and aggregated explanation factors."""
     return status_service.hospital_card(session, org_code, profile_code)
 
@@ -73,7 +115,7 @@ def get_hospital_profile(org_code: str, profile_code: str, session: SessionDep) 
 @router.get(
     "/hospitals/{org_code}/profiles/{profile_code}/referrals",
     response_model=Page[ReferralItem],
-    responses={**NOT_FOUND, **NOT_BUILT},
+    responses={**AUTH, **NOT_FOUND, **NOT_BUILT},
     tags=["hospital"],
 )
 def get_hospital_referrals(
@@ -81,6 +123,7 @@ def get_hospital_referrals(
     profile_code: str,
     session: SessionDep,
     page: PaginationDep,
+    _: ViewerDep,
     sort: Annotated[
         Literal["risk", "wait"], Query(description="risk: refusal probability; wait: predicted wait")
     ] = "risk",
@@ -92,30 +135,75 @@ def get_hospital_referrals(
 @router.get(
     "/hospitals/{org_code}/profiles/{profile_code}/recommendations",
     response_model=RecommendationResponse,
-    responses={**NOT_FOUND, **NOT_BUILT},
+    responses={**AUTH, **NOT_FOUND, **NOT_BUILT},
     tags=["hospital"],
 )
-def get_recommendations(org_code: str, profile_code: str, session: SessionDep) -> RecommendationResponse:
+def get_recommendations(org_code: str, profile_code: str, session: SessionDep, _: ViewerDep) -> RecommendationResponse:
     """Rule-based v1: up to 3 alternative hospitals in the same region and profile."""
     return recommend.recommend(session, org_code, profile_code)
 
 
+@router.get(
+    "/hospitals/{org_code}/profiles/{profile_code}/export",
+    response_class=Response,
+    responses={
+        **AUTH,
+        **NOT_FOUND,
+        **NOT_BUILT,
+        200: {
+            "content": {export.XLSX_MEDIA_TYPE: {}, export.PDF_MEDIA_TYPE: {}},
+            "description": "the card as a file (Content-Disposition: attachment)",
+        },
+    },
+    tags=["hospital"],
+)
+def get_hospital_export(
+    org_code: str,
+    profile_code: str,
+    session: SessionDep,
+    _: ViewerDep,
+    format: Annotated[Literal["xlsx", "pdf"], Query(description="file format")] = "xlsx",  # noqa: A002
+) -> Response:
+    """The hospital × profile card (status, KPIs, series, forecast, factors, recommendations, decisions) as a file."""
+    file = export.export_card(session, org_code, profile_code, format)
+    return Response(
+        content=file.content,
+        media_type=file.media_type,
+        headers={
+            "Content-Disposition": f"attachment; filename=\"{file.filename}\"; filename*=UTF-8''{quote(file.filename)}"
+        },
+    )
+
+
+# ------------------------------------------------------------------------------------------ decisions
 @router.post(
     "/decisions",
     response_model=Decision,
     status_code=status.HTTP_201_CREATED,
-    responses={**NOT_FOUND, 422: {"description": "invalid decision"}},
+    responses={
+        **AUTH,
+        **NOT_FOUND,
+        200: {"model": Decision, "description": "idempotent replay: this idempotency_key was already stored"},
+        409: {"model": Message, "description": "idempotency_key reused with a different decision"},
+        422: {"description": "invalid decision"},
+    },
     tags=["decisions"],
 )
-def post_decision(payload: DecisionCreate, session: SessionDep) -> Decision:
+def post_decision(
+    payload: DecisionCreate, session: SessionDep, principal: SpecialistDep, response: Response
+) -> Decision:
     """Record a person's decision (confirm / reject / defer) on a hospital × profile or a recommendation."""
-    return activity.create_decision(session, payload)
+    decision, created = activity.create_decision(session, payload, api_key_label=principal.label)
+    if not created:
+        response.status_code = status.HTTP_200_OK
+    return decision
 
 
-@router.get("/decisions", response_model=Page[Decision], tags=["decisions"])
+@router.get("/decisions", response_model=Page[Decision], responses=AUTH, tags=["decisions"])
 def get_decisions(
     session: SessionDep,
     page: PaginationDep,
+    _: ViewerDep,
     org: Annotated[str | None, Query(description="hospital code")] = None,
     profile: Annotated[str | None, Query(description="profile code")] = None,
 ) -> Page[Decision]:
@@ -123,23 +211,51 @@ def get_decisions(
     return activity.list_decisions(session, org, profile, page.limit, page.offset)
 
 
-@router.get("/alerts", response_model=Page[AlertItem], responses={**NOT_FOUND, **NOT_BUILT}, tags=["monitoring"])
-def get_alerts(
-    session: SessionDep,
-    page: PaginationDep,
-    region: Annotated[str | None, Query(description="region code; all regions if omitted")] = None,
-) -> Page[AlertItem]:
-    """Hospital × profile rows with load_index ≥ 70 or a queue growing ≥ 5% per week."""
-    return activity.alerts(session, region, page.limit, page.offset)
-
-
-@router.get("/models", response_model=list[ModelInfo], tags=["catalog"])
-def get_models(session: SessionDep) -> list[ModelInfo]:
-    """Current model versions with headline metrics and baselines."""
+# ------------------------------------------------------------------------------------------ catalog
+@router.get("/models", response_model=list[ModelInfo], responses=AUTH, tags=["catalog"])
+def get_models(session: SessionDep, _: ViewerDep) -> list[ModelInfo]:
+    """Current model versions with model cards, headline metrics and baselines."""
     return catalog.models(session)
 
 
-@router.get("/dictionaries", response_model=DictionariesResponse, responses=NOT_BUILT, tags=["catalog"])
-def get_dictionaries(session: SessionDep) -> DictionariesResponse:
+@router.get("/dictionaries", response_model=DictionariesResponse, responses={**AUTH, **NOT_BUILT}, tags=["catalog"])
+def get_dictionaries(session: SessionDep, _: ViewerDep) -> DictionariesResponse:
     """Regions and profiles for UI dropdowns."""
     return catalog.dictionaries(session)
+
+
+# ------------------------------------------------------------------------------------------ admin
+@router.get("/admin/keys", response_model=list[ApiKeyInfo], responses=AUTH, tags=["admin"])
+def get_keys(session: SessionDep, _: AdminDep) -> list[ApiKeyInfo]:
+    """All API keys (prefix, role, label, created, revoked) — never the keys themselves."""
+    return admin.list_keys(session)
+
+
+@router.post(
+    "/admin/keys",
+    response_model=ApiKeyCreated,
+    status_code=status.HTTP_201_CREATED,
+    responses=AUTH,
+    tags=["admin"],
+)
+def post_key(payload: ApiKeyCreate, session: SessionDep, _: AdminDep) -> ApiKeyCreated:
+    """Create a key; the response is the only place the key is ever shown."""
+    return admin.create_key(session, payload.role, payload.label)
+
+
+@router.post("/admin/keys/{key_id}/revoke", response_model=ApiKeyInfo, responses={**AUTH, **NOT_FOUND}, tags=["admin"])
+def post_revoke_key(key_id: int, session: SessionDep, _: AdminDep) -> ApiKeyInfo:
+    """Revoke a key (idempotent). Revoked keys get 401 from then on."""
+    return admin.revoke_key(session, key_id)
+
+
+@router.get("/admin/access-log", response_model=Page[AccessLogItem], responses=AUTH, tags=["admin"])
+def get_access_log(
+    session: SessionDep,
+    page: PaginationDep,
+    _: AdminDep,
+    key_label: Annotated[str | None, Query(description="only requests made with this key label")] = None,
+    status_code: Annotated[int | None, Query(alias="status", ge=100, le=599, description="HTTP status")] = None,
+) -> Page[AccessLogItem]:
+    """Requests under /api, newest first."""
+    return admin.access_log(session, key_label, status_code, page.limit, page.offset)

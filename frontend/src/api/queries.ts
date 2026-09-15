@@ -26,8 +26,21 @@ export const queryKeys = {
     ["hospital", org, profile, "recommendations"] as const,
   decisions: (org: string, profile: string) =>
     ["decisions", org, profile] as const,
-  alerts: (region: string | undefined, offset: number) =>
-    ["alerts", region ?? null, offset] as const,
+  alerts: (
+    region: string | undefined,
+    profile: string | undefined,
+    status: string | undefined,
+    offset: number,
+  ) =>
+    [
+      "alerts",
+      region ?? null,
+      profile ?? null,
+      status ?? null,
+      offset,
+    ] as const,
+  config: ["config"] as const,
+  me: ["me"] as const,
   models: ["models"] as const,
 };
 
@@ -136,11 +149,37 @@ export function useCreateDecision(org: string, profile: string) {
   });
 }
 
-export function useAlerts(region: string | undefined, offset: number) {
+export function useAlerts(
+  filters: { region?: string; profile?: string; status?: string },
+  offset: number,
+) {
+  const { region, profile, status } = filters;
   return useQuery({
-    queryKey: queryKeys.alerts(region, offset),
-    queryFn: () => api.alerts({ region, limit: PAGE_SIZE, offset }),
-    placeholderData: keepWhileSameFilter(queryKeys.alerts(region, 0)),
+    queryKey: queryKeys.alerts(region, profile, status, offset),
+    queryFn: () =>
+      api.alerts({ region, profile, status, limit: PAGE_SIZE, offset }),
+    placeholderData: keepWhileSameFilter(
+      queryKeys.alerts(region, profile, status, 0),
+    ),
+  });
+}
+
+/** Serving parameters and data source; they change only with `make marts`. */
+export function useConfig() {
+  return useQuery({
+    queryKey: queryKeys.config,
+    queryFn: api.config,
+    staleTime: Infinity,
+  });
+}
+
+/** The caller's key label and role (GET /me). */
+export function useMe() {
+  return useQuery({
+    queryKey: queryKeys.me,
+    queryFn: api.me,
+    staleTime: Infinity,
+    retry: false,
   });
 }
 

@@ -1,7 +1,8 @@
 /**
  * Every user-visible string of the UI. Russian only for now; another language is a file with the same shape
- * (`Messages`) selected in ./index.ts. Texts about formulas and limitations follow docs/api.md and
- * docs/model_card.md — change them together.
+ * (`Messages`) selected in ./index.ts. Domain texts are NOT duplicated here: model cards, factor short labels,
+ * the data-source description and every number of the load_index formula come from the API (GET /models,
+ * explanations, GET /config); the templates below only put those values into sentences.
  */
 import type { DecisionAction, Status } from "../api/types";
 
@@ -18,6 +19,9 @@ export const ru = {
     title: "Очереди на плановую госпитализацию",
     subtitle: "Мониторинг нагрузки стационаров",
     skipToContent: "Перейти к содержимому",
+    role: (role: string) => `роль: ${role}`,
+    roleTitle: (label: string) => `API-ключ: ${label}`,
+    noKey: "нет доступа к API",
     footer:
       "Прототип на открытых данных Министерства здравоохранения РК. Показатели рассчитаны на дату среза, это не данные в реальном времени.",
   },
@@ -44,8 +48,13 @@ export const ru = {
     sortDesc: "по убыванию",
     sortBy: (column: string) => `Сортировать по столбцу «${column}»`,
     asOf: (date: string) => `Данные на ${date}`,
-    source: (date: string) =>
-      `Источник: открытые данные МЗ РК (ИС «Бюро госпитализации», ЕРСБ). Срез на ${date}; окно показателей — последние 28 дней.`,
+    source: (
+      publisher: string,
+      description: string,
+      period: string,
+      date: string,
+    ) =>
+      `Источник: ${publisher}. ${description} Период: ${period}. Срез на ${date}; окно показателей — последние 28 дней.`,
     hospitals: (n: number) =>
       `${n.toLocaleString("ru-RU")} ${plural(n, "стационар", "стационара", "стационаров")}`,
     referrals: (n: number) =>
@@ -79,6 +88,8 @@ export const ru = {
       `Ответ API ${status} на запрос ${url}`,
     notBuilt: "Витрины данных ещё не построены: выполните make marts.",
     notFound: "Объект не найден",
+    auth: "API требует ключ доступа: ключ не задан, неверен или отозван (VITE_API_KEY / DEMO_API_KEY).",
+    forbidden: "Недостаточно прав для этого действия.",
     shape: (url: string) =>
       `Ответ API не соответствует ожидаемому формату: ${url}`,
     pageNotFound: "Страница не найдена",
@@ -123,13 +134,23 @@ export const ru = {
     weight: (w: number) => `вес ${w}%`,
     undefinedComponent: "не определена",
     formulaTitle: "Как считается индекс нагрузки",
-    formula: [
+    /** tooltip text; every number comes from GET /config (ml/configs/serving.yaml) */
+    formula: (c: {
+      backlog: string;
+      refusal: string;
+      trend: string;
+      refusalCap: string;
+      trendCap: string;
+      minRegistrations: number;
+      high: string;
+      elevated: string;
+    }) => [
       "Индекс от 0 до 100 показывает, насколько загружен стационар по профилю относительно других стационаров того же профиля по стране.",
-      "Индекс = 100 × (0,60 · очередь + 0,25 · отказы + 0,15 · рост очереди), каждая составляющая от 0 до 1.",
+      `Индекс = 100 × (${c.backlog} · очередь + ${c.refusal} · отказы + ${c.trend} · рост очереди), каждая составляющая от 0 до 1.`,
       "Очередь — место по сроку рассасывания очереди среди стационаров того же профиля (1 — самый долгий срок).",
-      "Отказы — доля отказов за 28 дней, делённая на 30% (30% и выше = 1).",
-      "Рост очереди — превышение тренда очереди над медианой по стране, делённое на 20 п.п. в неделю; рост не быстрее медианы = 0.",
-      "Если составляющая не определена, веса остальных пересчитываются. Индекс рассчитывается при не менее 10 направлениях за 28 дней. Высокая нагрузка — от 70, повышенная — от 40.",
+      `Отказы — доля отказов за 28 дней, делённая на ${c.refusalCap} (${c.refusalCap} и выше = 1).`,
+      `Рост очереди — превышение тренда очереди над медианой по стране, делённое на ${c.trendCap} п.п. в неделю; рост не быстрее медианы = 0.`,
+      `Если составляющая не определена, веса остальных пересчитываются. Индекс рассчитывается при не менее ${c.minRegistrations} направлениях за 28 дней. Высокая нагрузка — от ${c.high}, повышенная — от ${c.elevated}.`,
     ],
   },
   overview: {
@@ -143,7 +164,10 @@ export const ru = {
       refusalRate: "Отказы",
       medianWait: "Медиана ожидания",
       highLoad: "Стационары с высокой нагрузкой",
+      highLoadShare: "Доля профилей с высокой нагрузкой",
     },
+    highLoadShareHint:
+      "Доля профилей стационаров региона с индексом нагрузки не ниже порога высокой нагрузки среди профилей, для которых индекс рассчитан",
   },
   region: {
     kpisTitle: "Показатели региона",
@@ -182,6 +206,13 @@ export const ru = {
     forecastMeta: (method: string, version: string) =>
       `Метод: ${method}; версия модели ${version}.`,
   },
+  export: {
+    title: "Скачать отчёт",
+    xlsx: "Excel (XLSX)",
+    pdf: "PDF",
+    downloading: "Подготовка файла…",
+    failed: "Не удалось скачать отчёт",
+  },
   why: {
     title: "Почему",
     caption: (n: number) =>
@@ -196,32 +227,6 @@ export const ru = {
     down: "уменьшает",
     empty: "Нет направлений с прогнозами в тестовом периоде",
   },
-  features: {
-    region_code: "Регион пациента",
-    hospital_region_code: "Регион стационара",
-    org_code: "Стационар",
-    profile_code: "Профиль койки",
-    icd_chapter: "Класс диагноза",
-    icd3: "Диагноз",
-    referral_purpose: "Цель госпитализации",
-    finance_source: "Финансирование",
-    territorial_type: "Тип местности",
-    registration_weekday: "День недели направления",
-    day_of_window: "День периода данных",
-    queue_hp_prev_day: "Очередь на дату направления",
-    hosp_reg_7d: "Направления в стационар за 7 дней",
-    hosp_reg_28d: "Направления в стационар за 28 дней",
-    hosp_hosp_7d: "Госпитализации за 7 дней",
-    hosp_hosp_28d: "Госпитализации за 28 дней",
-    hp_median_wait_prev: "Медиана ожидания ранее",
-    hp_n_hosp_prev: "Госпитализации по профилю ранее",
-    hp_refusal_rate_prev: "Доля отказов ранее",
-    hp_n_resolved_prev: "Завершённые направления ранее",
-    ersb_throughput_per_day: "Выписки в день (ЕРСБ)",
-    ersb_avg_los: "Средняя длительность пребывания (ЕРСБ)",
-    adm_refusals_28d: "Отказы в приёмном покое за 28 дней",
-    planned_lag_days: "Дней до плановой даты",
-  } as Record<string, string>,
   recommendations: {
     title: "Рекомендации",
     humanDecides: "Решение принимает специалист. Система только предлагает.",
@@ -288,6 +293,7 @@ export const ru = {
     columns: {
       date: "Дата направления",
       diagnosis: "Диагноз (МКБ-10)",
+      diagnosisName: "Название диагноза",
       purpose: "Цель",
       predWait: "Прогноз ожидания",
       refusalProb: "Вероятность отказа",
@@ -302,8 +308,12 @@ export const ru = {
   },
   alerts: {
     title: "Сигналы",
-    caption:
-      "Стационары с индексом нагрузки ≥ 70 или очередью, растущей на 5 п.п. в неделю быстрее медианы по стране (при очереди от 10 человек)",
+    caption: (loadMin: string, trendMin: string, queueMin: number) =>
+      `Стационары с индексом нагрузки ≥ ${loadMin} или очередью, растущей на ${trendMin} п.п. в неделю быстрее медианы по стране (при очереди от ${queueMin} человек)`,
+    profileFilter: "Профиль",
+    allProfiles: "Все профили",
+    statusFilter: "Статус",
+    allStatuses: "Все статусы",
     regionFilter: "Регион",
     allRegions: "Все регионы",
     empty: "Сигналов нет",
@@ -330,53 +340,10 @@ export const ru = {
     beatsNo: "Модель не везде лучше сезонной наивной базовой линии",
     limitationsTitle: "Ограничения",
     testRows: (n: number) => `${n.toLocaleString("ru-RU")} строк`,
-    metricNames: {
-      mae: "MAE, дней",
-      wape: "WAPE",
-      within_7d: "Ошибка не более 7 дней",
-      spearman: "Корреляция Спирмена",
-      roc_auc: "ROC-AUC",
-      pr_auc: "PR-AUC",
-      brier: "Brier",
-      precision_top: "Точность в топ-10%",
-    } as Record<string, string>,
     seriesSelection: "Отбор рядов по данным",
     backtestOrigins: "Точки прогноза в бэктесте",
     dataThrough: "Финальная модель обучена на данных до",
-    // names that come from the model registry in English
-    methodNames: {
-      "B1 global median": "Медиана по стране",
-      "B1 global rate": "Доля отказов по стране",
-      "B2 median profile × patient region":
-        "Медиана по профилю и региону пациента",
-      "B2 rate profile × patient region":
-        "Доля отказов по профилю и региону пациента",
-      "B3 median hospital × profile (fallback B2)":
-        "Медиана по стационару и профилю",
-      "B3 rate hospital × profile (fallback B2)":
-        "Доля отказов по стационару и профилю",
-      "seasonal naive (same weekday)": "Сезонная наивная (тот же день недели)",
-      "mean 28d": "Среднее за 28 дней",
-      "mean 7d": "Среднее за 7 дней",
-    } as Record<string, string>,
-    seriesLevels: {
-      "hospital × profile (fallback)":
-        "стационар × профиль (малые ряды, доля региона)",
-      "hospital × profile (modelled)": "стационар × профиль (модель)",
-      "region × profile": "регион × профиль",
-    } as Record<string, string>,
-    targets: {
-      registrations: "направления",
-      hospitalizations: "госпитализации",
-    } as Record<string, string>,
-    limitations: {
-      wait_time:
-        "Два месяца обучения и один месяц проверки: сезонность не учтена. Ошибка выше всего в офтальмологии, кардиологии и неврологии, где ожидание долгое; в 4 из 20 регионов модель не лучше медианы по стационару и профилю. Прогноз отражает связи в исторических данных: «стационар X → +30 дней» не означает, что перенаправление пациента сократит ожидание.",
-      refusal_risk:
-        "Калибровка хорошая (расхождение по децилям не более 1 п.п.), но ранжирование слабее в Мангистауской, Акмолинской и Актюбинской областях. Модель использует регион и тип местности пациента: различия прогнозов между регионами отражают исторический доступ и не должны использоваться для понижения приоритета пациентов.",
-      load_forecast:
-        "Ошибки на уровне отдельного стационара высоки у любого метода, потому что дневные числа малы. Главный источник ошибок — праздники (неделя Наурыза): в обучении лишь несколько праздничных дней. Прогнозы стационаров не согласованы с прогнозами регионов. Прогноз очереди не показывается: в бэктесте он хуже, чем последнее известное значение.",
-    } as Record<string, string>,
+    intendedUse: "Назначение",
   },
 };
 

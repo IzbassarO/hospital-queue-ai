@@ -1,14 +1,26 @@
 import { Link, useSearchParams } from "react-router-dom";
 
-import { PAGE_SIZE, useAlerts, useDictionaries } from "../api/queries";
-import type { Alert } from "../api/types";
+import {
+  PAGE_SIZE,
+  useAlerts,
+  useConfig,
+  useDictionaries,
+} from "../api/queries";
+import type { Alert, Status } from "../api/types";
 import { ErrorState } from "../components/ErrorState";
 import { PageHeader } from "../components/PageHeader";
 import { Pagination } from "../components/Pagination";
 import { TableSkeleton } from "../components/Skeleton";
 import { StatusBadge } from "../components/StatusBadge";
 import { t } from "../i18n";
-import { fmtDays, fmtIndex, fmtInt, fmtPercent, fmtTrend } from "../lib/format";
+import {
+  fmtDays,
+  fmtIndex,
+  fmtInt,
+  fmtNumber,
+  fmtPercent,
+  fmtTrend,
+} from "../lib/format";
 import { hospitalPath, regionPath } from "../lib/paths";
 
 function AlertCard({ alert }: { alert: Alert }) {
@@ -28,6 +40,9 @@ function AlertCard({ alert }: { alert: Alert }) {
             {alert.region_name}
           </Link>{" "}
           · {alert.profile_name} ({alert.profile_code})
+          {alert.region_rank !== null
+            ? ` · ${t.metrics.rank(alert.region_rank, alert.region_n_ranked)}`
+            : ""}
         </p>
       </div>
       <div className="flex items-start gap-3">
@@ -76,46 +91,123 @@ function AlertCard({ alert }: { alert: Alert }) {
   );
 }
 
+const STATUSES: Status[] = ["high", "elevated", "normal", "insufficient_data"];
+const FILTERS = ["region", "profile", "status"] as const;
+
 export function AlertsPage() {
   const [params, setParams] = useSearchParams();
-  const region = params.get("region") || undefined;
+  const filters = {
+    region: params.get("region") || undefined,
+    profile: params.get("profile") || undefined,
+    status: params.get("status") || undefined,
+  };
   const offset = Number(params.get("offset") ?? 0) || 0;
   const dictionaries = useDictionaries();
-  const alerts = useAlerts(region, offset);
+  const config = useConfig();
+  const alerts = useAlerts(filters, offset);
+
+  /** new filter values reset paging */
+  const setFilter = (name: (typeof FILTERS)[number], value: string) => {
+    const next = new URLSearchParams();
+    for (const key of FILTERS) {
+      const current = key === name ? value : (filters[key] ?? "");
+      if (current) next.set(key, current);
+    }
+    setParams(next);
+  };
+  const pageParams = (next: number) => {
+    const out = new URLSearchParams();
+    for (const key of FILTERS) if (filters[key]) out.set(key, filters[key]);
+    out.set("offset", String(next));
+    return out;
+  };
+  const rule = config.data?.alerts;
 
   return (
     <>
-      <PageHeader
-        title={t.alerts.title}
-        aside={
-          <div className="w-80">
-            <label
-              htmlFor="alert-region"
-              className="mb-1 block text-sm font-medium"
-            >
-              {t.alerts.regionFilter}
-            </label>
-            <select
-              id="alert-region"
-              className="field"
-              value={region ?? ""}
-              disabled={!dictionaries.data}
-              onChange={(e) =>
-                setParams(e.target.value ? { region: e.target.value } : {})
-              }
-            >
-              <option value="">{t.alerts.allRegions}</option>
-              {dictionaries.data?.regions.map((r) => (
-                <option key={r.code} value={r.code}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        }
-      >
-        <p className="max-w-4xl text-muted">{t.alerts.caption}</p>
+      <PageHeader title={t.alerts.title}>
+        {rule ? (
+          <p className="max-w-4xl text-muted">
+            {t.alerts.caption(
+              fmtNumber(rule.load_index_min, 0),
+              fmtNumber(rule.queue_trend_min_pct, 0),
+              rule.queue_trend_min_queue_now,
+            )}
+          </p>
+        ) : null}
       </PageHeader>
+
+      <div
+        className="flex flex-wrap items-end gap-4"
+        role="group"
+        aria-label={t.alerts.title}
+      >
+        <div className="w-72">
+          <label
+            htmlFor="alert-region"
+            className="mb-1 block text-sm font-medium"
+          >
+            {t.alerts.regionFilter}
+          </label>
+          <select
+            id="alert-region"
+            className="field"
+            value={filters.region ?? ""}
+            disabled={!dictionaries.data}
+            onChange={(e) => setFilter("region", e.target.value)}
+          >
+            <option value="">{t.alerts.allRegions}</option>
+            {dictionaries.data?.regions.map((r) => (
+              <option key={r.code} value={r.code}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="w-96">
+          <label
+            htmlFor="alert-profile"
+            className="mb-1 block text-sm font-medium"
+          >
+            {t.alerts.profileFilter}
+          </label>
+          <select
+            id="alert-profile"
+            className="field"
+            value={filters.profile ?? ""}
+            disabled={!dictionaries.data}
+            onChange={(e) => setFilter("profile", e.target.value)}
+          >
+            <option value="">{t.alerts.allProfiles}</option>
+            {dictionaries.data?.profiles.map((p) => (
+              <option key={p.code} value={p.code}>
+                {p.name} ({p.code})
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="w-60">
+          <label
+            htmlFor="alert-status"
+            className="mb-1 block text-sm font-medium"
+          >
+            {t.alerts.statusFilter}
+          </label>
+          <select
+            id="alert-status"
+            className="field"
+            value={filters.status ?? ""}
+            onChange={(e) => setFilter("status", e.target.value)}
+          >
+            <option value="">{t.alerts.allStatuses}</option>
+            {STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {t.statusLong[status]}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {alerts.isPending ? (
         <TableSkeleton rows={6} columns={4} />
@@ -133,9 +225,7 @@ export function AlertsPage() {
             limit={PAGE_SIZE}
             offset={offset}
             busy={alerts.isFetching}
-            onChange={(next) =>
-              setParams({ ...(region ? { region } : {}), offset: String(next) })
-            }
+            onChange={(next) => setParams(pageParams(next))}
           />
           {alerts.data.items.length === 0 ? (
             <p className="card p-6 text-center text-muted">{t.alerts.empty}</p>
@@ -154,10 +244,7 @@ export function AlertsPage() {
             offset={offset}
             busy={alerts.isFetching}
             onChange={(next) => {
-              setParams({
-                ...(region ? { region } : {}),
-                offset: String(next),
-              });
+              setParams(pageParams(next));
               window.scrollTo({ top: 0 });
             }}
           />

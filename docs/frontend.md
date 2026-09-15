@@ -6,8 +6,10 @@ why, what are the alternatives, what did a person decide*. Built strictly agains
 
 - Stack: React 18, Vite, TypeScript, react-router 7, TanStack Query 5, Recharts 3, Tailwind CSS 4 (npm, no CDN),
   ESLint + Prettier (defaults), Vitest + Testing Library. No component library.
-- Language: Russian only; every user-visible string lives in `frontend/src/i18n/ru.ts` (the UI imports `t` from
-  `src/i18n`, so another language is one more file with the same `Messages` shape).
+- Language: Russian only; every UI string lives in `frontend/src/i18n/ru.ts` (the UI imports `t` from `src/i18n`, so
+  another language is one more file with the same `Messages` shape). Domain texts (model cards, factor labels, data
+  source, formula parameters) come from the API.
+- Access: the client sends `X-API-Key` from `VITE_API_KEY` (docker: `DEMO_API_KEY` from `.env`, role specialist).
 - Runs: `make up` → http://localhost:3000 (nginx serves the build and proxies `/api` to the backend);
   `make web-dev` → http://localhost:5173 (Vite, `/api` proxied to `localhost:8000`; `API_PROXY_TARGET` to change).
 
@@ -17,24 +19,25 @@ All requests go to the same origin under `/api/v1` (`VITE_API_BASE` overrides it
 
 | route | screen | API calls |
 |---|---|---|
-| `/` | **Обзор** — national KPIs (queue, median wait, refusal rate, hospitals with high load), data source and `as_of_date`, regions table sortable by max load index, queue, refusal rate, median wait, high-load hospitals; row → region | `GET /overview` |
-| `/regions/:code?profile=&offset=` | **Регион** — region KPIs; profile selector (profiles of the region, highest regional load first, names from the dictionary); status of the region × profile; hospitals of the selected profile ranked by `load_index` with status badge, queue, backlog, median wait, refusal rate, 14-day forecast, excess trend; row → card. Profile and page live in the URL | `GET /regions/{code}`, `GET /dictionaries`, `GET /regions/{code}/hospitals?profile=&limit=50&offset=`, `GET /overview` (national median trend for the column hint) |
-| `/hospitals/:org/profiles/:profile` | **Карточка стационара** (top to bottom): header with name, region, profile, rank, status badge, `load_index` with its three component bars and a formula tooltip; KPI strip (queue, backlog, median wait, refusal rate, registrations 28 d, forecast 14 d); chart; «Почему»; «Рекомендации» with decision form and history; «Направления» | see below |
-| `/alerts?region=&offset=` | **Сигналы** — alerts with reasons, status, index, queue, backlog, refusal rate, excess trend; region filter; link to the card | `GET /alerts?region=&limit=50&offset=`, `GET /dictionaries` |
-| `/models` | **О моделях** — per model: title, version, training date, train / test (or backtest) windows, headline metrics vs the best baseline on the same rows, limitations paragraph | `GET /models` |
-| every screen | header shows «Данные на dd.mm.yyyy» | `GET /health` |
+| `/` | **Обзор** — national KPIs (queue, median wait, refusal rate, hospitals with high load), data source and `as_of_date` (from `/config`), regions table sorted by default by the share of hospital profiles with high load (descending), also sortable by max load index, queue, refusal rate, median wait, high-load hospitals; row → region | `GET /overview`, `GET /config` |
+| `/regions/:code?profile=&offset=` | **Регион** — region KPIs; profile selector (profiles of the region, highest regional load first, names from the dictionary); status of the region × profile; hospitals of the selected profile ranked by `load_index` with status badge, queue, backlog, median wait, refusal rate, 14-day forecast, excess trend; row → card. Profile and page live in the URL | `GET /regions/{code}`, `GET /dictionaries`, `GET /regions/{code}/hospitals?profile=&limit=50&offset=`, `GET /config` (national median trend for the column hint) |
+| `/hospitals/:org/profiles/:profile` | **Карточка стационара** (top to bottom): header with name, region, profile, rank, status badge, `load_index` with its three component bars and a formula tooltip; «Скачать отчёт» XLSX / PDF; KPI strip (queue, backlog, median wait, refusal rate, registrations 28 d, forecast 14 d); chart; «Почему»; «Рекомендации» with decision form and history; «Направления» | see below |
+| `/alerts?region=&profile=&status=&offset=` | **Сигналы** — alerts with reasons, status, index, rank in region, queue, backlog, refusal rate, excess trend; region, profile and status filters (in the URL); caption from the alert rule; link to the card | `GET /alerts?region=&profile=&status=&limit=50&offset=`, `GET /dictionaries`, `GET /config` |
+| `/models` | **О моделях** — per model: title, version, training date, train / test (or backtest) windows, headline metrics vs the best baseline on the same rows (names from `display_names`), intended use and limitations from the model card | `GET /models` |
+| every screen | header shows «Данные на dd.mm.yyyy» and «роль: специалист» (or «нет доступа к API») | `GET /health`, `GET /me` |
 
 Hospital card, section by section:
 
 | section | API call | notes |
 |---|---|---|
-| header, KPI strip | `GET /hospitals/{org}/profiles/{profile}` → `status` | component bars show `components.*_score`; weights 60 / 25 / 15 % are fixed in the UI (docs/api.md §3) |
+| header, KPI strip | `GET /hospitals/{org}/profiles/{profile}` → `status` | component bars show `components.*_score` with weights from `/config`; the formula tooltip is filled with the `/config` weights, caps and thresholds |
 | chart | same response → `series`, `forecast` | bars: registrations, hospitalizations, refusals; line: queue (right axis); after the dashed «сегодня» marker (`as_of_date`) the 14-day forecast of registrations and hospitalizations as dashed lines on a shaded band; `forecast.note` under the chart. **No queue forecast is drawn** (the API does not return one) |
-| Почему | same response → `explanation_factors` | two lists (wait time, refusal risk): arrow icon + title for direction, short feature label (`t.features`, API label as tooltip), `most_common_value_display`, mean effect in дн. / п.п., share of referrals with the factor in their top 5 |
+| Почему | same response → `explanation_factors` | two lists (wait time, refusal risk): arrow icon + title for direction, `short_label` from the API (full `label` as tooltip), `most_common_value_display`, mean effect in дн. / п.п., share of referrals with the factor in their top 5 |
 | Рекомендации | `GET …/recommendations` | alternatives with current vs alternative wait, delta, refusal rates, backlogs, the API's Russian explanation, badge «оценка по историческим медианам», rule text, `reason` when there are none, `disclaimer`. Persistent line «Решение принимает специалист. Система только предлагает.» |
-| decision form | `POST /decisions` | Подтвердить / Отклонить / Отложить open a small form (comment, actor; actor required and remembered in `localStorage`); body carries `region_code`, `org_code`, `profile_code`, `recommendation_id`, `action`; on 201 the history query is invalidated |
-| История решений | `GET /decisions?org=&profile=&limit=100` | newest first; the alternative is shown by the org code at the end of `recommendation_id` |
-| Направления | `GET …/referrals?sort=risk\|wait&limit=20&offset=` | server-side sort and paging; expandable row with the top-5 factors of both models (`value_display`, effect in дн. / п.п.) |
+| decision form | `POST /decisions` | Подтвердить / Отклонить / Отложить open a small form (comment, actor; actor required and remembered in `localStorage`); body carries `region_code`, `org_code`, `profile_code`, `recommendation_id`, `alternative_org_code`, `action` and an `idempotency_key` generated per submission content (a double submit or retry gets the stored row back); on 201/200 the history query is invalidated. Needs a specialist key (`403` otherwise, shown in the form) |
+| История решений | `GET /decisions?org=&profile=&limit=100` | newest first; the alternative by `alternative_org_name` and code |
+| «Скачать отчёт» | `GET …/export?format=xlsx\|pdf` | fetched with the API key (a plain link cannot send the header) and saved through an object URL; errors shown next to the buttons |
+| Направления | `GET …/referrals?sort=risk\|wait&limit=20&offset=` | server-side sort and paging; diagnosis code with `diagnosis_name`; expandable row with the top-5 factors of both models (`short_label`, `value_display`, `effect_in_unit` + `unit`) |
 
 ## Demo path
 
@@ -62,14 +65,15 @@ against the docker stack; screens render in ≈ 0.1–0.25 s.
 ```
 frontend/
 ├── src/
-│   ├── api/          schema.ts (runtime response checks), types.ts (schemas → TS types), client.ts (fetch,
-│   │                 ApiError with URL), queries.ts (TanStack Query hooks and keys)
+│   ├── api/          schema.ts (runtime response checks), types.ts (schemas → TS types), client.ts (fetch with
+│   │                 X-API-Key, file download, ApiError with URL), queries.ts (TanStack Query hooks and keys)
 │   ├── i18n/         ru.ts (all strings), index.ts (`t`)
-│   ├── lib/          format.ts (numbers, days, %, dates), paths.ts (links), features.ts (short factor labels)
+│   ├── lib/          format.ts (numbers, days, %, dates), paths.ts (links)
 │   ├── components/   Layout, DataTable, StatusBadge, LoadIndexBars, InfoTip, Kpi, Pagination, Skeleton,
 │   │                 ErrorState, QueryState, PageHeader, Direction, icons
 │   ├── pages/        OverviewPage, RegionPage, AlertsPage, ModelsPage, NotFoundPage,
-│   │                 hospital/ (HospitalPage, CardHeader, SeriesChart, WhyPanel, Recommendations, ReferralsTable)
+│   │                 hospital/ (HospitalPage, CardHeader, ExportButtons, SeriesChart, WhyPanel, Recommendations,
+│   │                 ReferralsTable)
 │   ├── test/         setup.ts, mockApi.ts, fixtures/*.json (responses captured from the running API), routes.test.tsx
 │   ├── routes.tsx    route table
 │   └── main.tsx      QueryClient + router
@@ -85,7 +89,7 @@ Every API response is validated at runtime against the schema in `src/api/types.
 
 | command | what |
 |---|---|
-| `make web-test` | Vitest (24 tests): every route renders with real captured responses; the decision form POSTs the expected body; the API-down message shows the URL; the client parses every endpoint's captured response **and the JSON examples of docs/api.md §6** (placeholders `…` stripped), and reports shape errors with the field path; formatting |
+| `make web-test` | Vitest (30 tests): the header role label; the default sort by `high_load_share`; alert filters in the request and URL; the export button; every route renders with real captured responses; the decision form POSTs the expected body; the API-down message shows the URL; the client parses every endpoint's captured response **and the JSON examples of docs/api.md §6** (placeholders `…` stripped), and reports shape errors with the field path; formatting |
 | `make web-lint` | ESLint (typescript-eslint, react-hooks) + `prettier --check` |
 | `make web-build` | `tsc -b` + Vite production build |
 | `make audit` | runs web-lint and web-build too (when `frontend/package.json` exists) |
@@ -93,26 +97,23 @@ Every API response is validated at runtime against the schema in `src/api/types.
 Fixtures in `src/test/fixtures/` were captured from `make up` and trimmed (fewer regions / profiles); refresh them
 when the API contract changes.
 
-## API gaps found while building the UI
+## API gaps (step 5) — closed in step 6
 
-The backend was not changed in this step. Things the UI works around:
+All gaps found while building the UI were closed in the API; the UI no longer duplicates domain texts:
 
-1. **No model limitations in `GET /models`.** The limitations paragraphs are copied from `docs/model_card.md` §5/§7
-   into `ru.ts` and can drift. Suggest a `limitations` (and `intended_use`) field per model.
-2. **`load_index` weights and caps are not in the API** (only the component scores and, in `/overview`, the status
-   thresholds). The UI hard-codes 60 / 25 / 15 % and the formula text. Suggest `thresholds.load_index_weights` and
-   caps in `/overview` (they are already in `mart_build_info.config`).
-3. **Decisions do not carry the alternative.** `GET /decisions` returns only `recommendation_id`; the history shows
-   the alternative's org code parsed from the id format `rec-v1:…:<alternative org>`. Suggest
-   `alternative_org_code` / `alternative_org_name` in `Decision`.
-4. **No diagnosis name on referrals** — only `icd10_code` (the explanations have names for 3-character codes only).
-5. **Short feature labels.** Explanation factors have long labels ("медианное ожидание в стационаре по профилю до даты
-   направления, дней"); the UI keeps its own short labels per feature. Suggest a `short_label`.
-6. **Per-referral factor units are implicit.** `effect` is days for `wait_time` and a probability share for
-   `refusal_risk`; the unit is inferred from the list key (the card-level factors carry `unit`, referral factors do not).
-7. **No data-source description** in `/health` or `/overview`; the source line under the KPIs is static text.
-8. **Alerts cannot be filtered by profile or status**, and alert items lack `status_label` / `region_rank`.
-9. **`POST /decisions` is not idempotent**: a double submit creates two rows (the UI disables the button while the
-   request is pending).
-10. Doc inconsistency: the `GET …/recommendations` example in docs/api.md still shows `current.load_index` 98.6
-    (the value before the excess-trend fix; the live API returns 96.6).
+| gap | now |
+|---|---|
+| model limitations duplicated in `ru.ts` | `GET /models` → `intended_use`, `limitations`, `display_names` from `ml/configs/model_cards.yaml` (artifact `card.json` → `model_registry.card`) |
+| `load_index` weights / caps, data source hard-coded | `GET /config` → weights, caps, thresholds, alert and recommendation rules, data-source description; the formula tooltip, alert caption and source note are built from it |
+| history parsed the alternative from `recommendation_id` | `decision_log.alternative_org_code`; `Decision.alternative_org_name`; the form sends `alternative_org_code` |
+| no diagnosis name on referrals | `ReferralItem.diagnosis_name` from `dim_icd` (built at ingest) |
+| UI kept its own short factor labels | `short_label` on card and referral factors (`explain_templates.yaml`) |
+| per-referral factor unit implicit | `unit` and `effect_in_unit` on every referral factor |
+| no data-source description | `GET /config` → `data_source` |
+| alerts: no profile / status filter, no `status_label` / `region_rank` | `GET /alerts?profile=&status=`; `status_label`, `region_rank`, `region_n_ranked` |
+| `POST /decisions` not idempotent | `idempotency_key` (unique); the form generates one per submission content — a retry returns the stored row with `200` |
+| stale recommendations example in docs/api.md | refreshed from the running API |
+
+Also added in step 6: `high_load_share` on area rows (overview table, default sort descending; max index kept as a
+column), the role label «роль: …» in the header (`GET /me`), «Скачать отчёт» (XLSX / PDF) on the card, and the API key
+sent by the client (`VITE_API_KEY`, docker: `DEMO_API_KEY`; see docs/security.md for what that implies).

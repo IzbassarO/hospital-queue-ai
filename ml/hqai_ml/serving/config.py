@@ -37,6 +37,14 @@ class RecommendationsConfig(BaseModel):
     min_registrations_28d: int = Field(ge=0)
 
 
+class DataSource(BaseModel):
+    publisher: str
+    description: str
+    period: str
+    datasets: list[str]
+    caveats: list[str] = []
+
+
 class ServingConfig(BaseModel):
     as_of_date: dt.date
     window_days: int = Field(ge=1)
@@ -50,6 +58,7 @@ class ServingConfig(BaseModel):
     recommendations: RecommendationsConfig
     series_start: dt.date
     forecast_horizon: int = Field(ge=1)
+    data_source: DataSource
 
     @model_validator(mode="after")
     def _check(self) -> "ServingConfig":

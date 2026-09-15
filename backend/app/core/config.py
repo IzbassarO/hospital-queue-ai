@@ -14,6 +14,23 @@ class Settings(BaseSettings):
     # browser origins allowed by CORS: any port on localhost / 127.0.0.1 (frontend dev servers)
     cors_allow_origin_regex: str = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
 
+    # demo specialist key seeded at container start (`python -m app.cli seed-demo-key`); empty = no demo key
+    demo_api_key: str = ""
+    # TrueType font with Cyrillic glyphs for PDF export; the first existing path wins
+    pdf_font_paths: list[str] = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "/Library/Fonts/Arial Unicode.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+    ]
+    pdf_bold_font_paths: list[str] = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+        "C:/Windows/Fonts/arialbd.ttf",
+    ]
+    # OpenAPI UI (/docs, /redoc, /openapi.json) — open when enabled; disable in production (docs/security.md)
+    docs_enabled: bool = True
+
     postgres_user: str = "hqai"
     postgres_password: str = "change-me"
     postgres_db: str = "hqai"

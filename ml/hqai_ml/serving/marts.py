@@ -458,13 +458,10 @@ def build(
             f"  national median raw queue trend: hospital × profile {medians[0]:.2f}%/week, "
             f"region × profile {medians[1]:.2f}%/week"
         )
-        # names of 3-character ICD-10 codes where the data itself uses the 3-character code (most codes are
-        # 4-character, so the API falls back to the ICD chapter for the rest; there is no ICD dictionary)
+        # names of 3-character ICD-10 codes from dim_icd (built at ingest from the source systems' spellings of
+        # referral and admission-refusal diagnoses); codes without one fall back to the ICD chapter in the API
         icd3_names = dict(
-            cur.execute(
-                """SELECT icd10_code, mode() WITHIN GROUP (ORDER BY diagnosis_name) FROM fact_referral
-               WHERE icd10_code ~ '^[A-Z][0-9]{2}$' AND diagnosis_name IS NOT NULL GROUP BY icd10_code"""
-            ).fetchall()
+            cur.execute("SELECT icd10_code, icd10_name FROM dim_icd WHERE icd10_code ~ '^[A-Z][0-9]{2}$'").fetchall()
         )
         config = {
             **raw_config,

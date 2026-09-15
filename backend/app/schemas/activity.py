@@ -14,14 +14,16 @@ class ReferralItem(BaseModel):
     hospitalization_code: str
     registration_date: dt.date
     icd10_code: str | None
+    diagnosis_name: str | None = Field(description="name of icd10_code from dim_icd (source systems' spelling)")
     referral_purpose: str | None
     pred_wait_days: float
     pred_refusal_prob: float
     is_high_risk: bool = Field(description="pred_refusal_prob >= high_risk_threshold (0.25)")
     explanation: dict[str, Any] = Field(
-        description='{"wait_time": [top-5 factors], "refusal_risk": [top-5 factors]}; each factor has the raw `value` '
-        "and a display-ready `value_display` (rates in %, counts as integers, days with 1 decimal, "
-        "codes with dictionary names)"
+        description='{"wait_time": [top-5 factors], "refusal_risk": [top-5 factors]}; each factor has the raw `value`, '
+        "a display-ready `value_display` (rates in %, counts as integers, days with 1 decimal, codes with dictionary "
+        "names), `short_label`, `effect` in model units (days / probability) and `effect_in_unit` with `unit` "
+        "(дн. / п.п.)"
     )
 
 
@@ -87,14 +89,29 @@ class DecisionCreate(BaseModel):
     org_code: str = Field(min_length=1, max_length=8)
     profile_code: str = Field(min_length=1, max_length=8)
     recommendation_id: str | None = Field(default=None, max_length=128)
+    alternative_org_code: str | None = Field(
+        default=None,
+        max_length=8,
+        description="the recommended hospital; derived from recommendation_id when omitted",
+    )
     action: Literal["confirm", "reject", "defer"]
     comment: str | None = Field(default=None, max_length=4000)
     actor: str = Field(min_length=1, max_length=200)
+    idempotency_key: str | None = Field(
+        default=None,
+        min_length=8,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9._:-]+$",
+        description="client-generated (e.g. a UUID per form submission); resending the same key returns the stored "
+        "row with 200 instead of creating a duplicate",
+    )
 
 
 class Decision(DecisionCreate):
     id: int
     created_at: dt.datetime
+    alternative_org_name: str | None
+    api_key_label: str | None = Field(description="label of the API key that submitted the decision")
 
 
 class AlertItem(BaseModel):
@@ -106,6 +123,9 @@ class AlertItem(BaseModel):
     profile_name: str
     load_index: float | None
     status: Status
+    status_label: str
+    region_rank: int | None
+    region_n_ranked: int
     queue_now: int
     backlog_days: float | None
     queue_trend_raw_4w: float | None

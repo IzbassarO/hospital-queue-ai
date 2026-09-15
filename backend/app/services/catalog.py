@@ -1,18 +1,22 @@
-"""Health, current models, dictionaries."""
+"""Health, current models, serving configuration, caller identity, dictionaries."""
 
 from sqlalchemy import select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.core.security import ROLE_LABELS, Principal
 from app.db.models import DimProfile, DimRegion, MartBuildInfo, ModelRegistry
-from app.schemas.catalog import DictionariesResponse, DictionaryItem, HealthResponse, ModelInfo, ProfileItem
-from app.services.common import build_info
+from app.schemas.catalog import (
+    ConfigResponse,
+    DictionariesResponse,
+    DictionaryItem,
+    HealthResponse,
+    MeResponse,
+    ModelInfo,
+    ProfileItem,
+)
+from app.services.common import build_info, rnd
 
-MODEL_TITLES = {
-    "wait_time": "A · Время ожидания госпитализации (дни)",
-    "refusal_risk": "B · Риск отказа в госпитализации (вероятность)",
-    "load_forecast": "C · Прогноз направлений и госпитализаций на 14 дней",
-}
 MODEL_ORDER = ("wait_time", "refusal_risk", "load_forecast")
 
 
@@ -59,10 +63,20 @@ def models(session: Session) -> list[ModelInfo]:
             headline = [m for m in overall if m.get("model") == "LightGBM"]
             baselines = [m for m in overall if m.get("model") != "LightGBM"]
             beats, population = None, metrics.get("population")
+        card = r.card or {}
+        display_names = {
+            **card.get("metric_names", {}),
+            **card.get("baseline_names", {}),
+            **card.get("series_level_names", {}),
+            **card.get("target_names", {}),
+        }
         out.append(
             ModelInfo(
                 model_name=r.model_name,
-                title=MODEL_TITLES.get(r.model_name, r.model_name),
+                title=card.get("title", r.model_name),
+                intended_use=card.get("intended_use"),
+                limitations=card.get("limitations", []),
+                display_names=display_names,
                 version=r.version,
                 trained_at=r.trained_at,
                 train_window=r.train_window,
@@ -86,4 +100,48 @@ def dictionaries(session: Session) -> DictionariesResponse:
             ProfileItem(code=p.profile_code, name=p.profile_name or p.profile_code, is_day_hospital=p.is_day_hospital)
             for p in profiles
         ],
+    )
+
+
+def config(session: Session) -> ConfigResponse:
+    info = build_info(session)
+    cfg = info.config
+    return ConfigResponse(
+        as_of_date=info.as_of_date,
+        built_at=info.built_at,
+        window_days=cfg["window_days"],
+        window_start=info.date("window_start"),
+        trend_start=info.date("trend_start"),
+        trend_end=info.date("trend_end"),
+        test_start=info.date("test_start"),
+        test_end=info.date("test_end"),
+        series_start=info.date("series_start"),
+        forecast_horizon=cfg["forecast_horizon"],
+        min_registrations_28d=cfg["min_registrations_28d"],
+        backlog_min_daily_throughput=cfg["backlog_min_daily_throughput"],
+        high_risk_threshold=cfg["high_risk_threshold"],
+        queue_trend_national_median_4w=rnd(
+            cfg["derived"].get("queue_trend_national_median_4w", {}).get("hospital_profile"), 2
+        ),
+        load_index=cfg["load_index"],
+        status_thresholds=cfg["status_thresholds"],
+        alerts=cfg["alerts"],
+        recommendations=cfg["recommendations"],
+        data_source=cfg["data_source"],
+    )
+
+
+PERMISSIONS = {
+    "viewer": ["read"],
+    "specialist": ["read", "decide"],
+    "admin": ["read", "decide", "manage_keys", "read_access_log"],
+}
+
+
+def me(principal: Principal) -> MeResponse:
+    return MeResponse(
+        label=principal.label,
+        role=principal.role,
+        role_label=ROLE_LABELS[principal.role],
+        permissions=PERMISSIONS[principal.role],
     )

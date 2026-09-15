@@ -1,0 +1,6 @@
+{
+  "label": "demo (DEMO_API_KEY)",
+  "role": "specialist",
+  "role_label": "специалист",
+  "permissions": ["read", "decide"]
+}

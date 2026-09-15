@@ -38,7 +38,8 @@ def main() -> int:
     templates = yaml.safe_load((settings.configs_dir / "explain_templates.yaml").read_text(encoding="utf-8"))
     raw_config["explain_display"] = {
         "features": {
-            f: {k: v for k, v in spec.items() if k in ("format", "unit")} for f, spec in templates["features"].items()
+            f: {k: v for k, v in spec.items() if k in ("label", "short_label", "format", "unit")}
+            for f, spec in templates["features"].items()
         },
         "icd_chapters": templates["icd_chapters"],
         "icd_chapter_ranges": [list(r) for r in CHAPTER_RANGES],

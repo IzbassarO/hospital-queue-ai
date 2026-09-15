@@ -24,6 +24,7 @@ from sqlalchemy import (
     String,
     Text,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -56,6 +57,17 @@ class DimProfile(Base):
     name_share: Mapped[float | None] = mapped_column(Double)
     n_referrals: Mapped[int] = mapped_column(Integer)
     is_day_hospital: Mapped[bool] = mapped_column(Boolean)
+
+
+class DimIcd(Base):
+    """ICD-10 code -> most frequent name spelling in the source systems (no official dictionary in the open data)."""
+
+    __tablename__ = "dim_icd"
+
+    icd10_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    icd10_name: Mapped[str] = mapped_column(Text)
+    name_share: Mapped[float] = mapped_column(Double)  # share of named rows using this spelling
+    n_referrals: Mapped[int] = mapped_column(Integer)
 
 
 class ErsbSnapshot(Base):
@@ -247,6 +259,8 @@ class ModelRegistry(Base):
     metrics: Mapped[dict] = mapped_column(JSONB)  # headline metrics; full tables in artifacts/models/.../metrics.json
     is_current: Mapped[bool] = mapped_column(Boolean, index=True)
     artifact_path: Mapped[str] = mapped_column(Text)
+    # title, intended_use, limitations, display names (artifact card.json <- ml/configs/model_cards.yaml)
+    card: Mapped[dict | None] = mapped_column(JSONB)
     registered_at: Mapped[dt.datetime] = mapped_column(DateTime, server_default=func.now())
 
 
@@ -357,6 +371,12 @@ class DecisionLog(Base):
     __table_args__ = (
         CheckConstraint("action IN ('confirm', 'reject', 'defer')", name="ck_decision_log_action"),
         Index("ix_decision_log_org_profile", "org_code", "profile_code"),
+        Index(
+            "ux_decision_log_idempotency_key",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("idempotency_key IS NOT NULL"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -367,4 +387,43 @@ class DecisionLog(Base):
     recommendation_id: Mapped[str | None] = mapped_column(String(128))
     action: Mapped[str] = mapped_column(String(16))
     comment: Mapped[str | None] = mapped_column(Text)
-    actor: Mapped[str] = mapped_column(Text)
+    actor: Mapped[str] = mapped_column(Text)  # free text typed by the person
+    alternative_org_code: Mapped[str | None] = mapped_column(String(8))  # the recommended hospital, if any
+    idempotency_key: Mapped[str | None] = mapped_column(String(128))  # client-supplied; a retry returns the row
+    api_key_label: Mapped[str | None] = mapped_column(Text)  # label of the API key that submitted it
+
+
+# ------------------------------------------------------------------ access control
+class ApiKey(Base):
+    """API keys (only the SHA-256 of the key is stored). role: viewer < specialist < admin."""
+
+    __tablename__ = "api_keys"
+    __table_args__ = (
+        CheckConstraint("role IN ('viewer', 'specialist', 'admin')", name="ck_api_keys_role"),
+        Index("ux_api_keys_key_hash", "key_hash", unique=True),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    key_hash: Mapped[str] = mapped_column(String(64))
+    key_prefix: Mapped[str] = mapped_column(String(16))  # first characters, to recognise a key in lists and logs
+    role: Mapped[str] = mapped_column(String(16))
+    label: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    revoked_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AccessLog(Base):
+    """One row per /api request, written by app.core.access_log after the response."""
+
+    __tablename__ = "access_log"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    ts: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    key_label: Mapped[str | None] = mapped_column(Text)
+    role: Mapped[str | None] = mapped_column(String(16))
+    method: Mapped[str] = mapped_column(String(8))
+    path: Mapped[str] = mapped_column(Text)
+    status: Mapped[int] = mapped_column(SmallInteger)
+    latency_ms: Mapped[float] = mapped_column(Double)
+    client_ip: Mapped[str | None] = mapped_column(String(64))  # TCP peer (the nginx container behind the proxy)
+    forwarded_for: Mapped[str | None] = mapped_column(Text)  # X-Forwarded-For as received — not verified

@@ -58,6 +58,7 @@ AREA_KEYS = {
     "load_index_max",
     "n_hospitals_high_load",
     "n_hospital_profiles_high_load",
+    "high_load_share",
 }
 
 
@@ -112,6 +113,10 @@ async def test_overview(client):
     assert sum(r["queue_now"] for r in regions) == body["national"]["queue_now"]
     assert sum(r["n_hospitals_high_load"] for r in regions) == body["national"]["n_hospitals_high_load"]
     assert max(r["load_index_max"] for r in regions) == body["national"]["load_index_max"]
+    for area in [body["national"], *regions]:
+        ranked, high = area["n_hospital_profiles_ranked"], area["n_hospital_profiles_high_load"]
+        expected = round(high / ranked, 4) if ranked else None
+        assert area["high_load_share"] == expected, area["code"]
 
 
 async def test_queue_trend_is_excess_over_national_median(client, high_load):
@@ -194,6 +199,7 @@ async def test_hospital_profile_card(client, high_load):
         rows = factors[model]
         assert 1 <= len(rows) <= 5
         assert all(r["unit"] == unit and r["label"] and 0 < r["share_in_top5"] <= 1 for r in rows)
+        assert all(r["short_label"] and len(r["short_label"]) <= len(r["label"]) + 20 for r in rows)
         assert [r["mean_abs_effect"] for r in rows] == sorted((r["mean_abs_effect"] for r in rows), reverse=True)
         for r in rows:
             assert_display(r["feature"], r["most_common_value"], r["most_common_value_display"])
@@ -242,6 +248,7 @@ async def test_referrals_sorted_without_patient_identifiers(client, high_load, s
             "hospitalization_code",
             "registration_date",
             "icd10_code",
+            "diagnosis_name",
             "referral_purpose",
             "pred_wait_days",
             "pred_refusal_prob",
@@ -257,8 +264,13 @@ async def test_referrals_sorted_without_patient_identifiers(client, high_load, s
         assert set(i["explanation"]) == {"wait_time", "refusal_risk"}
         for factors in i["explanation"].values():
             for f in factors:
-                assert {"feature", "value", "value_display", "effect", "text"} <= set(f)
+                assert {"feature", "value", "value_display", "effect", "text", "short_label", "unit"} <= set(f)
                 assert_display(f["feature"], f["value"], f["value_display"])
+                assert f["short_label"] and len(f["short_label"]) <= 40
+        for model, unit, scale in (("wait_time", "дн.", 1), ("refusal_risk", "п.п.", 100)):
+            for f in i["explanation"][model]:
+                assert f["unit"] == unit
+                assert f["effect_in_unit"] == pytest.approx(f["effect"] * scale, abs=0.006)
         assert "2025-03-01" <= i["registration_date"] <= "2025-03-31"
     assert (
         await client.get(f"{API}/hospitals/{org}/profiles/{profile}/referrals", params={"sort": "name"})
@@ -272,6 +284,8 @@ async def test_alerts(client):
     assert_ranked(body["items"])
     for item in body["items"]:
         assert item["reasons"] and all(isinstance(r, str) and r for r in item["reasons"])
+        assert item["status_label"] and item["region_n_ranked"] >= 1
+        assert item["region_rank"] is None or 1 <= item["region_rank"] <= item["region_n_ranked"]
         # the trend condition uses the excess trend (over the national median), not the raw one
         assert (item["load_index"] or 0) >= 70 or (item["queue_trend_4w"] or 0) >= 5
 
@@ -371,6 +385,9 @@ async def test_models(client):
     assert [m["model_name"] for m in body] == ["wait_time", "refusal_risk", "load_forecast"]
     for m in body:
         assert m["version"] and m["title"] and m["headline"] and m["baselines"]
+        assert m["intended_use"] and m["limitations"] and all(isinstance(t, str) and t for t in m["limitations"])
+        names = {row.get("model") or row.get("method") for row in m["baselines"]}
+        assert names <= set(m["display_names"]), f"{m['model_name']}: baselines without a display name"
     assert body[2]["beats_baselines"] is True
 
 
@@ -412,6 +429,10 @@ async def test_every_endpoint_under_500_ms(client, high_load, created_decision_i
         "/alerts",
         "/models",
         "/dictionaries",
+        "/me",
+        "/config",
+        f"/hospitals/{org}/profiles/{profile}/export?format=xlsx",
+        f"/hospitals/{org}/profiles/{profile}/export?format=pdf",
         # the largest hospital × profile by referrals (08IV × DH on the full data: 1 400+ referrals)
         f"/hospitals/{big_org}/profiles/{big_profile}",
         f"/hospitals/{big_org}/profiles/{big_profile}/referrals?limit=100",

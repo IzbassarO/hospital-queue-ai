@@ -1,27 +1,44 @@
-import type { LoadIndexComponents } from "../api/types";
+import type { Config, LoadIndexComponents } from "../api/types";
 import { t } from "../i18n";
 import { fmtNumber } from "../lib/format";
 
-// weights of docs/api.md §3 (ml/configs/serving.yaml → load_index.weights); the API returns the scores only
-const PARTS: {
-  key: keyof LoadIndexComponents;
-  label: string;
-  weight: number;
-}[] = [
-  { key: "backlog_score", label: t.loadIndex.backlog, weight: 60 },
-  { key: "refusal_score", label: t.loadIndex.refusal, weight: 25 },
-  { key: "trend_score", label: t.loadIndex.trend, weight: 15 },
-];
+type Weights = Config["load_index"]["weights"];
 
-/** The three 0–1 scores behind load_index as small labelled bars (value printed, not only drawn). */
+/**
+ * The three 0–1 scores behind load_index as small labelled bars (value printed, not only drawn). Weights come from
+ * GET /config; while it loads the bars show without them.
+ */
 export function LoadIndexBars({
   components,
+  weights,
 }: {
   components: LoadIndexComponents;
+  weights?: Weights;
 }) {
+  const parts: {
+    key: keyof LoadIndexComponents;
+    label: string;
+    weight?: number;
+  }[] = [
+    {
+      key: "backlog_score",
+      label: t.loadIndex.backlog,
+      weight: weights?.backlog_rank,
+    },
+    {
+      key: "refusal_score",
+      label: t.loadIndex.refusal,
+      weight: weights?.refusal_rate,
+    },
+    {
+      key: "trend_score",
+      label: t.loadIndex.trend,
+      weight: weights?.queue_trend,
+    },
+  ];
   return (
     <ul className="w-72 space-y-1.5" aria-label={t.loadIndex.components}>
-      {PARTS.map(({ key, label, weight }) => {
+      {parts.map(({ key, label, weight }) => {
         const score = components[key];
         return (
           <li
@@ -30,7 +47,11 @@ export function LoadIndexBars({
           >
             <span className="text-ink">
               {label}{" "}
-              <span className="text-muted">({t.loadIndex.weight(weight)})</span>
+              {weight !== undefined ? (
+                <span className="text-muted">
+                  ({t.loadIndex.weight(Math.round(weight * 100))})
+                </span>
+              ) : null}
             </span>
             <span className="num font-semibold">
               {score === null ? t.common.noData : fmtNumber(score, 2)}

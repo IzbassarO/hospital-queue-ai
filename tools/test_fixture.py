@@ -35,6 +35,13 @@ TABLES: list[tuple[str, str]] = [
     ("dim_region", "SELECT * FROM dim_region"),
     ("dim_profile", "SELECT * FROM dim_profile"),
     (
+        # names of the diagnoses in the fixture's referrals, plus every 3-character code (the marts' ICD-3 names)
+        "dim_icd",
+        "SELECT d.* FROM dim_icd d WHERE length(d.icd10_code) = 3 OR d.icd10_code IN (SELECT f.icd10_code "
+        "FROM fact_referral f JOIN dim_organization o ON o.org_code = f.org_code "
+        "WHERE o.region_code = ANY(%(regions)s))",
+    ),
+    (
         "ersb_snapshot",
         "SELECT e.* FROM ersb_snapshot e WHERE e.ersb_id IN "
         "(SELECT ersb_id FROM dim_organization WHERE region_code = ANY(%(regions)s))",

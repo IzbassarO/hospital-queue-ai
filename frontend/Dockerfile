@@ -8,6 +8,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
+# optional API key compiled into the bundle (the demo key from .env via docker-compose build args)
+ARG VITE_API_KEY=""
+ENV VITE_API_KEY=${VITE_API_KEY}
 RUN npm run build
 
 FROM nginx:1.29-alpine

@@ -2,14 +2,17 @@
 """Predictions of the current registry models -> Postgres.
 
 Run:  make predict        (applies Alembic migrations first; needs `make train`)
+      make registry       (--registry-only: refresh model_registry rows, incl. model cards, without predicting)
 
 Writes, in one transaction (previous predictions are replaced):
   pred_referral        wait time + refusal risk + top-5 explanations for every referral registered in the test period
   pred_daily_forecast  14-day forecast from the configured origin for every hospital × profile and
                        region × profile series
-  model_registry       one row per model version; is_current marks the versions used here
+  model_registry       one row per model version; is_current marks the versions used here; `card` = the
+                       artifact's card.json (ml/configs/model_cards.yaml for versions trained before cards existed)
 """
 
+import argparse
 import json
 import sys
 import time
@@ -46,9 +49,59 @@ def headline_metrics(name: str, metrics: dict) -> dict:
     }
 
 
+def registry_rows(settings: IngestSettings) -> list[tuple]:
+    """(name, version, trained_at, train_window, metrics, artifact path, card) of the current versions."""
+    manifest = store.read_manifest(settings.artifacts_dir)
+    cards = store.load_cards(settings.configs_dir)
+    rows = []
+    for name in ("wait_time", "refusal_risk", "load_forecast"):
+        a = store.load(settings.artifacts_dir, name)
+        card = a.get("card") or cards.get(name)
+        if not a.get("card"):
+            log(f"  {name} {a['version']}: no card.json in the artifact, using ml/configs/model_cards.yaml")
+        rows.append(
+            (
+                name,
+                a["version"],
+                a["meta"]["trained_at"],
+                json.dumps(a["meta"]["training_window"]),
+                json.dumps(headline_metrics(name, a["metrics"]), ensure_ascii=False),
+                manifest[name]["path"],
+                json.dumps(card or {}, ensure_ascii=False),
+            )
+        )
+    return rows
+
+
+def write_registry(cur: psycopg.Cursor, rows: list[tuple]) -> None:
+    for name, version, trained_at, window, metrics, path, card in rows:
+        cur.execute(
+            """INSERT INTO model_registry (model_name, version, trained_at, train_window,
+                       metrics, is_current, artifact_path, card)
+                       VALUES (%s, %s, %s, %s, %s, true, %s, %s)
+                       ON CONFLICT (model_name, version) DO UPDATE
+                       SET metrics = EXCLUDED.metrics, train_window = EXCLUDED.train_window,
+                           card = EXCLUDED.card, is_current = true""",
+            (name, version, trained_at, window, metrics, path, card),
+        )
+        cur.execute(
+            "UPDATE model_registry SET is_current = false WHERE model_name = %s AND version <> %s", (name, version)
+        )
+
+
 def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--registry-only", action="store_true", help="only refresh model_registry (no predictions)")
+    args = ap.parse_args()
     warnings.filterwarnings("ignore", category=UserWarning)
     settings = IngestSettings()
+    if args.registry_only:
+        rows = registry_rows(settings)
+        with psycopg.connect(settings.pg_conninfo) as pg, pg.cursor() as cur:
+            write_registry(cur, rows)
+            pg.commit()
+        log(f"model_registry: {[(r[0], r[1]) for r in rows]}")
+        return 0
     cfg = load_model_config(settings)
     con = connect(settings.processed_dir)
 
@@ -97,20 +150,7 @@ def main() -> int:
     )
 
     # ---- write
-    manifest = store.read_manifest(settings.artifacts_dir)
-    registry_rows = []
-    for name in ("wait_time", "refusal_risk", "load_forecast"):
-        a = store.load(settings.artifacts_dir, name)
-        registry_rows.append(
-            (
-                name,
-                a["version"],
-                a["meta"]["trained_at"],
-                json.dumps(a["meta"]["training_window"]),
-                json.dumps(headline_metrics(name, a["metrics"]), ensure_ascii=False),
-                manifest[name]["path"],
-            )
-        )
+    current = registry_rows(settings)
 
     fc_cols = [
         "series_id",
@@ -143,18 +183,7 @@ def main() -> int:
                         for k, v in zip(fc_cols, row, strict=True)
                     ]
                 )
-        for name, version, trained_at, window, metrics, path in registry_rows:
-            cur.execute(
-                """INSERT INTO model_registry (model_name, version, trained_at, train_window,
-                           metrics, is_current, artifact_path)
-                           VALUES (%s, %s, %s, %s, %s, true, %s)
-                           ON CONFLICT (model_name, version) DO UPDATE
-                           SET metrics = EXCLUDED.metrics, train_window = EXCLUDED.train_window, is_current = true""",
-                (name, version, trained_at, window, metrics, path),
-            )
-            cur.execute(
-                "UPDATE model_registry SET is_current = false WHERE model_name = %s AND version <> %s", (name, version)
-            )
+        write_registry(cur, current)
         counts = {
             t: cur.execute(f"SELECT count(*) FROM {t}").fetchone()[0]
             for t in ("pred_referral", "pred_daily_forecast", "model_registry")

@@ -6,18 +6,24 @@
 hospital-queue-ai/
 ├── backend/            FastAPI service + database schema (docs/api.md)
 │   ├── app/
-│   │   ├── main.py         FastAPI app: /api/v1 router, CORS, error handlers
+│   │   ├── main.py         FastAPI app: /api/v1 router, CORS, access-log middleware, error handlers
+│   │   ├── cli.py          create-key, seed-demo-key, list-keys, revoke-key (make create-key)
 │   │   ├── core/config.py  settings (pydantic-settings, reads .env)
+│   │   ├── core/security.py API-key authentication, roles viewer < specialist < admin (docs/security.md)
+│   │   ├── core/access_log.py ASGI middleware: one access_log row per /api request
 │   │   ├── api/            routers (routes.py) and dependencies (session, pagination)
 │   │   ├── schemas/        Pydantic request / response models
 │   │   ├── services/       status (overview, regions, hospital card), recommend (rule v1 + estimator
-│   │   │                   interface), activity (referrals, decisions, alerts), catalog (health, models, dictionaries),
-│   │   │                   display (display-ready explanation values)
+│   │   │                   interface), activity (referrals, idempotent decisions, alerts), catalog (health, me, config,
+│   │   │                   models, dictionaries), display (display-ready explanation values), export (XLSX / PDF card),
+│   │   │                   admin (API keys, access log)
 │   │   └── db/
 │   │       ├── session.py  SQLAlchemy engine / session dependency
-│   │       └── models.py   SQLAlchemy models: data layer, predictions, model registry, serving marts, decision_log
+│   │       └── models.py   SQLAlchemy models: data layer (incl. dim_icd), predictions, model registry (+ card), serving
+│   │                           marts, decision_log, api_keys, access_log
 │   ├── alembic/            migrations (schema owner): 0001 data layer, 0002 predictions, 0003 marts + decision_log,
-│   │                       0004 excess queue trend
+│   │                       0004 excess queue trend, 0005 dim_icd + model cards + decision idempotency + api_keys +
+│   │                           access_log
 │   ├── tests/              API tests (pytest + httpx) against the running Postgres
 │   │   └── fixtures/       2-region CI dataset (*.csv.gz + manifest.json, < 5 MB), built by tools/test_fixture.py
 │   ├── Dockerfile          python:3.12-slim, non-root, alembic upgrade head + uvicorn
@@ -45,15 +51,17 @@ hospital-queue-ai/
 ├── tools/              audit.py (make audit), test_fixture.py (make fixture / fixture-load)
 ├── .github/workflows/  ci.yml: lint + API tests on push and pull request
 ├── db/init.sql         Postgres extensions (pgvector, pg_trgm)
-├── docs/               this file, data.md, model_card.md, api.md, frontend.md
+├── docs/               this file, data.md, model_card.md, api.md, frontend.md, security.md
 ├── data/               raw/ (read-only input), processed/ (Parquet)   — gitignored
 ├── reports/            generated reports                               — gitignored
 ├── notebooks/          exploration                                     — gitignored
 ├── artifacts/          trained models etc.                             — gitignored
 ├── scratch/            temporary / exploratory / verification files   — gitignored
+├── backups/            make backup (pg_dump)                           — gitignored
 ├── docker-compose.yml  postgres (pgvector/pgvector:pg16) + backend (FastAPI, port 8000) + frontend (nginx, port 3000)
-├── Makefile            up, down, migrate, ingest, baseline, psql, train, predict, marts, api-dev, test,
-│                       lint, fmt, audit, fixture, fixture-load, web-install, web-dev, web-lint, web-test, web-build
+├── Makefile            up, down, migrate, ingest, baseline, psql, train, predict, registry, marts, create-key, backup,
+│                       restore, api-dev, test, lint, fmt, audit, fixture, fixture-load, web-install, web-dev, web-lint,
+│                       web-test, web-build
 ├── pyproject.toml      repository tool config (ruff)
 └── .env.example
 ```
@@ -75,8 +83,8 @@ hospital-queue-ai/
 - **The frontend only talks to the API.** It is a static bundle served by nginx, which also proxies `/api` to the
   backend, so the browser sees one origin. It keeps no state besides the TanStack Query cache and the last actor
   name in `localStorage`; every response is validated against a schema mirroring `backend/app/schemas`.
-- **The backend only reads tables** (plus writes `decision_log`, the human-in-the-loop record, which no pipeline
-  truncates). It has no ML dependencies; the image contains `backend/` only. Heavy per-row work (ranking, trends,
+- **The backend only reads tables** (plus writes `decision_log`, the human-in-the-loop record, `api_keys` and
+  `access_log`, none of which any pipeline truncates). It has no ML dependencies; the image contains `backend/` only. Heavy per-row work (ranking, trends,
   medians) happens at mart build time so every endpoint stays well under 500 ms.
 - **Scratch work** (project rule): every temporary, exploratory or self-verification file created by
   an agent or developer — scratch scripts, ad-hoc checks, test dumps, comparison outputs — lives under
@@ -86,6 +94,16 @@ hospital-queue-ai/
 - **Explanation values for display** are formatted by the backend (`services/display.py`): the per-feature format
   comes from `ml/configs/explain_templates.yaml`, copied into `mart_build_info.config` by `make marts`, so the API
   (which has no access to `ml/`) formats values the same way as the model's Russian sentences.
+- **Access control and audit** (docs/security.md): every route except the health checks declares a role dependency
+  (`ViewerDep` / `SpecialistDep` / `AdminDep`, checked by `make audit`); the key's label and role go into
+  `request.state`, and the access-log middleware writes one row per `/api` request after the response. Keys: SHA-256
+  in `api_keys`; the demo specialist key from `DEMO_API_KEY` is seeded at container start and compiled into the UI.
+- **Texts shown to users live with the data they describe**: model cards in `ml/configs/model_cards.yaml` (copied into
+  each artifact as `card.json` and into `model_registry.card`), factor short labels in `explain_templates.yaml`, the
+  data-source description and formula parameters in `serving.yaml` (`GET /config`). The frontend renders them and
+  keeps only UI wording in `ru.ts`.
+- **Exports** (`services/export.py`) reuse the card, recommendation and decision services, so a downloaded XLSX/PDF
+  has the same numbers as the screen; PDF uses a TrueType font with Cyrillic glyphs (DejaVu Sans in the image).
 - **Manual dictionaries** that need human review live in `ml/configs/` and are versioned in git
   (`regions.yaml`, `org_matches.yaml`); the pipeline regenerates `regions.yaml` but preserves manual overrides.
 
@@ -173,8 +191,8 @@ Endpoints, formulas and examples: [`docs/api.md`](api.md).
 | component | how it runs |
 |---|---|
 | Postgres | `docker compose` service `postgres`, image `pgvector/pgvector:pg16`, volume `pgdata`, healthcheck `pg_isready` |
-| API | `docker compose` service `backend` (`make up`): image built from `backend/Dockerfile` (python:3.12-slim, non-root user), env from `.env` with `POSTGRES_HOST=postgres`, starts after the postgres healthcheck, runs `alembic upgrade head` then uvicorn on port 8000 (`API_PORT`), healthcheck `GET /health`. Docs at http://localhost:8000/docs |
-| frontend | `docker compose` service `frontend` (`make up`): image built from `frontend/Dockerfile` (node:22-alpine builds the bundle, nginx:1.29-alpine serves it), port 3000 (`FRONTEND_PORT`), starts after the backend healthcheck, proxies `/api/` to `backend:8000` (re-resolving the service name, so a recreated backend keeps working), healthcheck `GET /healthz`. http://localhost:3000 |
+| API | `docker compose` service `backend` (`make up`): image built from `backend/Dockerfile` (python:3.12-slim + DejaVu fonts, non-root user), env from `.env` with `POSTGRES_HOST=postgres`, starts after the postgres healthcheck, runs `alembic upgrade head`, then `python -m app.cli seed-demo-key` (`DEMO_API_KEY`), then uvicorn on port 8000 (`API_PORT`), healthcheck `GET /health`. Docs at http://localhost:8000/docs |
+| frontend | `docker compose` service `frontend` (`make up`): image built from `frontend/Dockerfile` (node:22-alpine builds the bundle with build arg `VITE_API_KEY` = `DEMO_API_KEY`, nginx:1.29-alpine serves it), port 3000 (`FRONTEND_PORT`), starts after the backend healthcheck, proxies `/api/` to `backend:8000` (re-resolving the service name, so a recreated backend keeps working), healthcheck `GET /healthz`. http://localhost:3000 |
 | frontend (development) | `make web-dev` — Vite on port 5173 with hot reload, `/api` proxied to `localhost:8000` (`API_PROXY_TARGET` to change) |
 | API (development) | `make api-dev` — uvicorn with auto-reload on port 8001 against the same Postgres |
 | migrations | `make migrate` (also part of `make ingest`, `make predict`, `make marts`, and of the backend container start) |
@@ -183,6 +201,9 @@ Endpoints, formulas and examples: [`docs/api.md`](api.md).
 | train | `make train` — reads Parquet only; writes `artifacts/models/` and `reports/02_models.md` (~5 min) |
 | predict | `make predict` — migrations, then current models → Postgres prediction tables (~2 min), then marts |
 | marts | `make marts` — serving marts from facts, aggregates and predictions (~3 s) |
+| registry | `make registry` — refresh `model_registry` (metrics, model cards) from the artifacts without predicting (< 1 s) |
+| keys | `make create-key ROLE=… LABEL=…` (prints the key once); `python -m app.cli list-keys / revoke-key` |
+| backup | `make backup` → `backups/hqai_<timestamp>.dump` (`pg_dump -Fc` inside the postgres container); `make restore FILE=…` (`pg_restore --clean --single-transaction`, asks for `yes` unless `CONFIRM=yes`) |
 | tests | `make test` — API tests in-process against the running Postgres (`HQAI_API_BASE_URL=http://localhost:8000 make test` for the container) |
 | lint | `make lint` (ruff check + format check) / `make fmt` (fix + format) on `backend/`, `ml/`, `tools/`; config in the root `pyproject.toml`, cache in `scratch/` |
 | audit | `make audit` — before every commit, see below |
@@ -201,11 +222,17 @@ Endpoints, formulas and examples: [`docs/api.md`](api.md).
 | pytest | the API tests fail |
 | web-lint | when `frontend/package.json` exists: `npm run lint` (ESLint + `prettier --check`) fails; also fails if `frontend/node_modules` is missing (`make web-install`) |
 | web-build | when `frontend/package.json` exists: `npm run build` (`tsc -b` + Vite production build) fails |
+| api-auth | a FastAPI route other than `/health` and `/api/v1/health` has no auth dependency (`__hqai_auth__` marker of `require_role`) in its dependency tree or router include |
 | api-docs | an endpoint heading in `docs/api.md` (a `###` heading holding `` `METHOD /path` ``) has no route in the app's OpenAPI schema under `/api/v1`, or vice versa (path parameter names and query strings are ignored) |
 
-**CI** (`.github/workflows/ci.yml`, on push and pull request): Ubuntu, Python 3.12, a `pgvector/pgvector:pg16`
-service container. Steps: `pip install -r requirements.txt` → `make lint` → `db/init.sql` (extensions) →
-`make fixture-load` (migrations + the 2-region fixture) → `make marts` → `alembic check` → `make test`.
+**CI** (`.github/workflows/ci.yml`, on push and pull request), two jobs:
+
+- `backend`: Ubuntu, Python 3.12, a `pgvector/pgvector:pg16` service container. Steps: `pip install -r
+  requirements.txt` → DejaVu fonts (PDF export test) → `make lint` → `db/init.sql` (extensions) → `make fixture-load`
+  (migrations + the 2-region fixture) → `make marts` → `alembic check` → `make test` (incl. role matrix,
+  idempotency, exports, access log; the tests create and remove their own API keys).
+- `frontend`: Node 22, `npm ci` → `npm run lint` → `npm test` (Vitest, incl. the client against the docs/api.md
+  examples) → `npm run build`.
 
 ```mermaid
 flowchart LR

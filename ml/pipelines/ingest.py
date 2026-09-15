@@ -5,7 +5,7 @@ Run:  make ingest          (applies Alembic migrations first)
       PYTHONPATH=ml .venv/bin/python ml/pipelines/ingest.py [--skip-load]
 
 Writes:
-  data/processed/<table>.parquet, data/processed/_manifest.json
+  data/processed/<table>.parquet (incl. dim_icd: ICD-10 code -> most frequent source spelling), _manifest.json
   ml/configs/regions.yaml           (region code dictionary, manual overrides preserved)
   reports/01_org_matching.csv       (fuzzy hospital <-> ERSB matches for review)
 Reads:
@@ -96,6 +96,8 @@ def main() -> int:
     )
     log(f"dim_organization: {manifest['dim_organization']}")
     dictionaries.build_ersb_snapshot(con)
+    manifest["dim_icd"] = dictionaries.build_dim_icd(con)
+    log(f"dim_icd: {manifest['dim_icd']}")
 
     # ---- facts + aggregates
     facts.build_fact_referral(con, params)
