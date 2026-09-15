@@ -1,4 +1,5 @@
 """Model B — probability that a referral ends in refusal (vs hospitalization)."""
+
 import numpy as np
 import pandas as pd
 
@@ -22,8 +23,11 @@ def baselines(train: pd.DataFrame, test: pd.DataFrame) -> dict[str, np.ndarray]:
     g = float(train["refused"].mean())
     pr = train.groupby(["profile_code", "region_code"])["refused"].mean().rename("b2")
     hp = train.groupby(["org_code", "profile_code"])["refused"].mean().rename("b3")
-    t = test[["profile_code", "region_code", "org_code"]].join(pr, on=["profile_code", "region_code"]) \
-                                                     .join(hp, on=["org_code", "profile_code"])
+    t = (
+        test[["profile_code", "region_code", "org_code"]]
+        .join(pr, on=["profile_code", "region_code"])
+        .join(hp, on=["org_code", "profile_code"])
+    )
     b2 = t["b2"].fillna(g).to_numpy(float)
     b3 = t["b3"].fillna(pd.Series(b2, index=t.index)).to_numpy(float)
     return {
@@ -56,9 +60,17 @@ def train_and_evaluate(df: pd.DataFrame, cfg: ModelConfig, display: dict) -> dic
 
     def seg(sub):
         m, b = classification_metrics(sub["y"], sub["LightGBM"], top), classification_metrics(sub["y"], sub[b3], top)
-        return {"n": m["n"], "refusal_rate": m["base_rate"], "mean_pred_model": float(sub["LightGBM"].mean()),
-                "roc_auc_model": m["roc_auc"], "roc_auc_b3": b["roc_auc"], "pr_auc_model": m["pr_auc"],
-                "pr_auc_b3": b["pr_auc"], "brier_model": m["brier"], "brier_b3": b["brier"]}
+        return {
+            "n": m["n"],
+            "refusal_rate": m["base_rate"],
+            "mean_pred_model": float(sub["LightGBM"].mean()),
+            "roc_auc_model": m["roc_auc"],
+            "roc_auc_b3": b["roc_auc"],
+            "pr_auc_model": m["pr_auc"],
+            "pr_auc_b3": b["pr_auc"],
+            "brier_model": m["brier"],
+            "brier_b3": b["brier"],
+        }
 
     regions, profiles = rt.region_and_profile_segments(test, cfg.wait_time.top_profiles)
 
@@ -66,17 +78,23 @@ def train_and_evaluate(df: pd.DataFrame, cfg: ModelConfig, display: dict) -> dic
     ablation = [
         {"model": "LightGBM (main, without planned_lag_days)", **classification_metrics(y, prob, top)},
         {"model": "LightGBM + planned_lag_days", **classification_metrics(y, abl.model.predict(test), top)},
-        {"model": "planned_dt missing (as a score)",
-         **classification_metrics(y, test["planned_lag_days"].isna().astype(float).to_numpy(), top)},
+        {
+            "model": "planned_dt missing (as a score)",
+            **classification_metrics(y, test["planned_lag_days"].isna().astype(float).to_numpy(), top),
+        },
     ]
 
     return {
         "model": model,
         "best_iteration": fit.best_iteration,
         "metrics": {
-            "population": {"definition": "outcome in (hospitalized, refused)", "train_rows": len(train),
-                           "test_rows": len(test), "train_refusal_rate": float(train["refused"].mean()),
-                           "test_refusal_rate": float(y.mean())},
+            "population": {
+                "definition": "outcome in (hospitalized, refused)",
+                "train_rows": len(train),
+                "test_rows": len(test),
+                "train_refusal_rate": float(train["refused"].mean()),
+                "test_refusal_rate": float(y.mean()),
+            },
             "best_iteration": fit.best_iteration,
             "overall": overall,
             "calibration_model": calibration_table(y, prob, cfg.refusal_risk.calibration_bins),

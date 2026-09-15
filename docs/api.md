@@ -71,7 +71,8 @@ profile rows; their medians and shares are recomputed over the underlying referr
 | `backlog_days` | `queue_now / daily_throughput_28d` — days to clear today's queue at the recent admission rate; **NULL when throughput < 0.5 per day** |
 | `forecast_registrations_14d`, `forecast_hospitalizations_14d` | sums of `pred_daily_forecast` (`origin_date = as_of_date`, horizons 1–14; hospital level for hospitals — `forecast_method` says `model` or `region_share_fallback` — region level for regions). Hospital sums are not reconciled with region forecasts |
 | `n_test_referrals`, `high_risk_share` | test-period referrals in `pred_referral` and the share with `pred_refusal_prob ≥ 0.25`; NULL when there are none |
-| `queue_trend_4w` | weekly mean of `queue_length` for each of the 4 trend weeks, OLS slope over week index 0–3, divided by the mean of the 4 weekly means × 100 → **% of the mean queue per week**; NULL if the mean is 0 |
+| `queue_trend_raw_4w` | weekly mean of `queue_length` for each of the 4 trend weeks, OLS slope over week index 0–3, divided by the mean of the 4 weekly means × 100 → **% of the mean queue per week**; NULL if the mean is 0. Returned for transparency, not used for scoring |
+| `queue_trend_4w` | **excess trend**: `queue_trend_raw_4w − national median` of `queue_trend_raw_4w` over the rows of the same mart with sufficient data (same 4 weeks; percentage points per week). Currently 2.57 %/week for hospital × profile and 3.23 %/week for region × profile rows — `GET /overview` returns the hospital one as `thresholds.queue_trend_national_median_4w`, `mart_build_info.config.derived` keeps both. Used by `load_index` and alerts; see §7 for why |
 | `has_sufficient_data` | `registrations_28d ≥ 10`. Rows below are listed with `status = insufficient_data` and no `load_index` |
 | `status` / `status_label` | `high` (Высокая нагрузка) if `load_index ≥ 70`, `elevated` (Повышенная) if ≥ 40, `normal` (Нормальная), `insufficient_data` (Недостаточно данных) |
 | `region_rank`, `region_n_ranked`, `in_region_top` | hospital rows only: rank of `load_index` among the region's hospital × profile rows (1 = highest), the number of ranked rows, and `region_rank ≤ ceil(0.20 × region_n_ranked)` |
@@ -87,7 +88,7 @@ load_index = round( 100 × Σ wᵢ·sᵢ / Σ wᵢ , 1 )      over the component
 component          weight wᵢ   score sᵢ ∈ [0, 1]
 backlog_rank       0.60        mid-rank percentile of backlog within the same profile nationally
 refusal_rate       0.25        min(refusal_rate_28d / 0.30, 1)
-queue_trend        0.15        min(max(queue_trend_4w, 0) / 20, 1)
+queue_trend        0.15        min(max(queue_trend_4w, 0) / 20, 1)      queue_trend_4w = excess over the national median
 ```
 
 **Backlog score (rank-based).** Peers = all rows of the same `profile_code` (hospital rows nationally for the
@@ -105,15 +106,16 @@ their positions. Ranking within the profile compares a cardiology ward with card
 hospital.
 
 **Refusal and trend scores** are linear with caps: a 30% refusal rate (~3× the national 10.9% of planned referrals)
-or a queue growing 20% per week already count as maximal. Shrinking queues give a trend score of 0.
+or a queue growing 20 percentage points per week faster than the national median already count as maximal. Queues
+growing no faster than the median (including shrinking ones) give a trend score of 0.
 
 **Missing components** are dropped and the weights renormalised (`refusal_score` is NULL when nothing was
 resolved in the window, `trend_score` when the 4-week mean queue is 0). The three scores are returned in
 `components` so the UI can show what drives the index.
 
 Worked example (`ZIQ9` × `241`, Astana perinatal centre, pathology of pregnancy): backlog 108.2 days → percentile
-0.9875 among pathology-of-pregnancy wards; refusal rate 68.6% → 1.0 (capped); trend +19.1%/week → 0.955.
-`100 × (0.60·0.9875 + 0.25·1.0 + 0.15·0.955) / 1.0 = 98.6`.
+0.9875 among pathology-of-pregnancy wards; refusal rate 68.6% → 1.0 (capped); raw trend +19.1%/week, excess over the
+national median 19.1 − 2.57 = +16.5 → 0.826. `100 × (0.60·0.9875 + 0.25·1.0 + 0.15·0.826) / 1.0 = 96.6`.
 
 Weights, caps and thresholds: `ml/configs/serving.yaml` → `load_index`, `status_thresholds`,
 `min_registrations_28d`, `backlog_min_daily_throughput`. The mart SQL (`ml/hqai_ml/serving/marts.py`) was checked
@@ -147,18 +149,23 @@ The historical median is an **association**: hospital B's patients waited less i
 redirecting a patient would shorten their wait by that much (the response carries this `disclaimer`). A person
 decides (`POST /decisions`).
 
-On the current data 652 hospital × profile rows trigger the rule and 253 of them get at least one alternative.
+On the current data 653 hospital × profile rows trigger the rule and 252 of them get at least one alternative.
 
 ## 5. Alerts
 
 `GET /alerts` lists hospital × profile rows with
 
 - `load_index ≥ 70`, **or**
-- `queue_trend_4w ≥ 5%` per week, for rows with sufficient data **and `queue_now ≥ 10`** (a percentage trend on a
-  queue of 1–9 is noise; `alerts.queue_trend_min_queue_now` in `serving.yaml`),
+- excess trend `queue_trend_4w ≥ 5` percentage points per week **above the national median** (§2), for rows with
+  sufficient data **and `queue_now ≥ 10`** (a percentage trend on a queue of 1–9 is noise;
+  `alerts.queue_trend_min_queue_now` in `serving.yaml`),
 
-highest `load_index` first, each with Russian `reasons`. 776 alerts on the current data: 216 by `load_index` only,
-229 by both, **331 by the trend condition only** — read those with the queue-trend caveat in §7.
+highest `load_index` first, each with Russian `reasons` (the trend reason quotes the raw trend, the excess and the
+median). 660 alerts on the current data: 252 by `load_index` only, 153 by both, 255 by the trend condition only.
+
+Before the excess trend (raw trend ≥ 5%/week, raw trend in `load_index`) there were 776 alerts (216 / 229 / 331) and
+445 rows at `load_index ≥ 70`. Switching removed 116 alerts and added none; 40 rows left `load_index ≥ 70` and none
+entered (1 289 rows changed `load_index`, 61 changed `status`).
 
 ---
 
@@ -185,14 +192,15 @@ hospitals with at least one profile at `load_index ≥ 70`.
 {
   "as_of_date": "2025-03-31",
   "built_at": "2026-09-15T09:11:25",
-  "thresholds": {"load_index_high": 70.0, "load_index_elevated": 40.0, "min_registrations_28d": 10},
+  "thresholds": {"load_index_high": 70.0, "load_index_elevated": 40.0, "min_registrations_28d": 10,
+                 "queue_trend_national_median_4w": 2.57},
   "national": {
     "code": "KZ", "name": "Казахстан", "level": "national",
     "queue_now": 89545, "registrations_28d": 209243, "hospitalizations_28d": 178854, "refusals_28d": 18816,
     "refusal_rate_28d": 0.0952, "median_wait_28d": 8.0, "n_waits_28d": 70284,
     "forecast_registrations_14d": 136515.6, "forecast_hospitalizations_14d": 116641.5, "high_risk_share": 0.1088,
     "n_hospitals": 1406, "n_hospital_profiles": 6537, "n_hospital_profiles_ranked": 3217,
-    "load_index_max": 98.6, "n_hospitals_high_load": 241, "n_hospital_profiles_high_load": 445
+    "load_index_max": 96.6, "n_hospitals_high_load": 224, "n_hospital_profiles_high_load": 405
   },
   "regions": [
     {
@@ -218,14 +226,14 @@ highest `load_index` first (not paginated: at most ~90 profiles).
   "profiles": [
     {
       "region_code": "71", "region_name": "г. Астана", "profile_code": "614", "profile_name": "Паллиативной помощи",
-      "n_hospitals": 1, "n_hospitals_high_load": 1, "load_index_max_hospital": 94.2,
+      "n_hospitals": 1, "n_hospitals_high_load": 1, "load_index_max_hospital": 92.4,
       "as_of_date": "2025-03-31", "queue_now": 1, "registrations_28d": 13, "hospitalizations_28d": 10,
       "refusals_28d": 3, "refusal_rate_28d": 0.2308, "n_waits_28d": 2, "median_wait_28d": 10.5,
       "daily_throughput_28d": 0.36, "backlog_days": null, "forecast_registrations_14d": 7.5,
       "forecast_hospitalizations_14d": 6.5, "n_test_referrals": 14, "high_risk_share": 0.1429,
-      "queue_trend_4w": 20.8, "has_sufficient_data": true, "load_index": 94.2,
+      "queue_trend_raw_4w": 20.8, "queue_trend_4w": 17.6, "has_sufficient_data": true, "load_index": 92.4,
       "status": "high", "status_label": "Высокая нагрузка",
-      "components": {"backlog_score": 1.0, "refusal_score": 0.7692, "trend_score": 1.0}
+      "components": {"backlog_score": 1.0, "refusal_score": 0.7692, "trend_score": 0.8783}
     }
   ]
 }
@@ -249,9 +257,10 @@ then by queue). `404` for an unknown region or profile.
       "as_of_date": "2025-03-31", "queue_now": 85, "registrations_28d": 98, "hospitalizations_28d": 22,
       "refusals_28d": 48, "refusal_rate_28d": 0.6857, "n_waits_28d": 22, "median_wait_28d": 19.0,
       "daily_throughput_28d": 0.79, "backlog_days": 108.2, "forecast_registrations_14d": 53.1,
-      "forecast_hospitalizations_14d": 21.2, "n_test_referrals": 99, "high_risk_share": 1.0, "queue_trend_4w": 19.1,
-      "has_sufficient_data": true, "load_index": 98.6, "status": "high", "status_label": "Высокая нагрузка",
-      "components": {"backlog_score": 0.9875, "refusal_score": 1.0, "trend_score": 0.9548},
+      "forecast_hospitalizations_14d": 21.2, "n_test_referrals": 99, "high_risk_share": 1.0,
+      "queue_trend_raw_4w": 19.1, "queue_trend_4w": 16.5,
+      "has_sufficient_data": true, "load_index": 96.6, "status": "high", "status_label": "Высокая нагрузка",
+      "components": {"backlog_score": 0.9875, "refusal_score": 1.0, "trend_score": 0.8262},
       "forecast_method": "model", "region_rank": 1, "region_n_ranked": 244, "in_region_top": true
     }
   ],
@@ -269,12 +278,21 @@ the hospital × profile's test-period referrals.
   ignores refusals and lost to "last known queue" in every backtest cell (`docs/model_card.md` §5); `note` says so.
 - Factors: from `pred_referral.explanation` (top-5 SHAP factors per referral). Per feature: `mean_abs_effect` and
   `mean_effect` over all referrals of the hospital × profile (a referral where the feature is not in its top 5 adds
-  0), `share_in_top5`, `most_common_value`. Units: days for `wait_time`, percentage points for `refusal_risk`.
+  0), `share_in_top5`, `most_common_value` (raw) and `most_common_value_display`. Units: days for `wait_time`,
+  percentage points for `refusal_risk`.
+- **Display-ready values** (`most_common_value_display` here, `value_display` next to each factor's raw `value` in
+  referral explanations): rates as percentages with 1 decimal (`46,1%`), counts as integers (`75`), days with 1
+  decimal (`13,0 дн.`), weekdays `Пн…Вс`, region / hospital / profile codes as `name (code)`, ICD chapters as
+  `XV — name`, 3-character ICD codes as `code — name` where the data has a name for the 3-character code itself and
+  otherwise `code (класс XV — chapter name)` (no ICD dictionary is in the open data; most codes in the data are
+  4-character), free text as is, missing values `нет данных`. Russian number format (decimal comma). Formats per
+  feature: `ml/configs/explain_templates.yaml` (copied to `mart_build_info.config.explain_display` by `make marts`);
+  code: `backend/app/services/display.py`.
   These describe what the models associate with this hospital's predictions, not causes.
 
 ```json
 {
-  "status": {"org_code": "ZIQ9", "profile_code": "241", "load_index": 98.6, "queue_now": 85, "…": "…"},
+  "status": {"org_code": "ZIQ9", "profile_code": "241", "load_index": 96.6, "queue_now": 85, "…": "…"},
   "series": [
     {"date": "2025-02-02", "registrations": 0, "hospitalizations": 1, "refusals": 1, "queue": 56},
     {"date": "2025-02-03", "registrations": 2, "hospitalizations": 3, "refusals": 0, "queue": 55},
@@ -295,17 +313,19 @@ the hospital × profile's test-period referrals.
     "wait_time": [
       {"feature": "hp_median_wait_prev", "label": "медианное ожидание в стационаре по профилю до даты направления, дней",
        "mean_abs_effect": 2.99, "mean_effect": 2.99, "unit": "дн.", "direction": "up", "share_in_top5": 1.0,
-       "most_common_value": "13.0"},
+       "most_common_value": "13.0", "most_common_value_display": "13,0 дн."},
       {"feature": "icd3", "label": "диагноз (МКБ-10)", "mean_abs_effect": 1.89, "mean_effect": -1.09, "unit": "дн.",
-       "direction": "down", "share_in_top5": 1.0, "most_common_value": "O99"},
+       "direction": "down", "share_in_top5": 1.0, "most_common_value": "O99",
+       "most_common_value_display": "O99 (класс XV — Беременность, роды и послеродовой период)"},
       "… up to 5 …"
     ],
     "refusal_risk": [
       {"feature": "org_code", "label": "стационар", "mean_abs_effect": 18.35, "mean_effect": 18.35, "unit": "п.п.",
-       "direction": "up", "share_in_top5": 1.0, "most_common_value": "ZIQ9"},
+       "direction": "up", "share_in_top5": 1.0, "most_common_value": "ZIQ9",
+       "most_common_value_display": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны (ZIQ9)"},
       {"feature": "hp_refusal_rate_prev", "label": "доля отказов в стационаре по профилю до даты направления",
        "mean_abs_effect": 11.83, "mean_effect": 11.83, "unit": "п.п.", "direction": "up", "share_in_top5": 1.0,
-       "most_common_value": "0.46111111111111114"},
+       "most_common_value": "0.46111111111111114", "most_common_value_display": "46,1%"},
       "… up to 5 …"
     ]
   }
@@ -330,12 +350,15 @@ referral id, referring organisation or dates other than registration).
       "explanation": {
         "wait_time": [
           {"shap": 0.2278, "text": "медианное ожидание в стационаре по профилю до даты направления, дней: 13,0 → +3 дня",
-           "value": 13.0, "effect": 2.8659, "feature": "hp_median_wait_prev", "direction": "up"},
+           "value": 13.0, "value_display": "13,0 дн.", "effect": 2.8659, "feature": "hp_median_wait_prev",
+           "direction": "up"},
           "… top 5 …"
         ],
         "refusal_risk": [
           {"shap": 1.1506, "text": "стационар: ГКП на ПХВ \"Городской перинатальный центр\" акимата города Астаны (ZIQ9) → +19,7 п.п. к риску отказа",
-           "value": "ZIQ9", "effect": 0.1975, "feature": "org_code", "direction": "up"},
+           "value": "ZIQ9",
+           "value_display": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны (ZIQ9)",
+           "effect": 0.1975, "feature": "org_code", "direction": "up"},
           "… top 5 …"
         ]
       }
@@ -432,15 +455,15 @@ Rule in [section 5](#5-alerts).
       "region_code": "71", "region_name": "г. Астана", "org_code": "ZIQ9",
       "org_name": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Городской перинатальный центр\" акимата города Астаны",
       "profile_code": "241", "profile_name": "Патологии беременности",
-      "load_index": 98.6, "status": "high", "queue_now": 85, "backlog_days": 108.2, "queue_trend_4w": 19.1,
-      "refusal_rate_28d": 0.6857,
+      "load_index": 96.6, "status": "high", "queue_now": 85, "backlog_days": 108.2,
+      "queue_trend_raw_4w": 19.1, "queue_trend_4w": 16.5, "refusal_rate_28d": 0.6857,
       "reasons": [
-        "Индекс нагрузки 98,6 ≥ 70: место 1 из 244 в регионе, очередь рассасывается за 108,2 дн.",
-        "Очередь растёт на 19,1% в неделю за последние 4 недели (сейчас 85 чел.)"
+        "Индекс нагрузки 96,6 ≥ 70: место 1 из 244 в регионе, очередь рассасывается за 108,2 дн.",
+        "Очередь растёт на 19,1% в неделю за последние 4 недели — на 16,5 п.п. быстрее медианы по стране (2,6%); сейчас 85 чел."
       ]
     }
   ],
-  "total": 776, "limit": 2, "offset": 0
+  "total": 660, "limit": 2, "offset": 0
 }
 ```
 
@@ -495,18 +518,21 @@ Regions (sorted by name) and all bed profiles, for dropdowns.
 - **As-of snapshot, not live.** Everything is computed as of 2025-03-31, the end of the open-data window. Queue levels
   are lower bounds (no referrals before 2025-01-01, `docs/data.md` §5).
 - **Rank-based backlog among sparse peers.** A profile served by few hospitals, most with empty queues, can put a row
-  with a queue of 1–9 at a high backlog percentile (e.g. palliative care in Astana: queue 1, `load_index` 94.2);
-  68 of the 445 rows at `load_index ≥ 70` have `queue_now < 10`. The UI should always show `queue_now` and
+  with a queue of 1–9 at a high backlog percentile (e.g. palliative care in Astana: queue 1, `load_index` 92.4);
+  62 of the 405 rows at `load_index ≥ 70` have `queue_now < 10`. The UI should always show `queue_now` and
   `components` next to the index. `load_index` compares within a profile; it is not a capacity measure (no bed counts
   in the data).
 - **Queue trends are inflated by the missing history.** No referrals before 2025-01-01 exist, so the reconstructed
   queue is still "filling up" in March: step 3 found that the national queue growth in February–March is fully
   explained by that artifact (`reports/02_models.md` §4 / `reports/01_baseline.md` §6). Over the trend weeks
   (2025-03-03 … 03-30) the national queue grows +3.3% per week and the median hospital × profile row with sufficient
-  data +2.6% per week; 42% of those rows reach the 5% alert threshold. Consequences: the trend component (15% of
-  `load_index`) is biased upward — 32 of the 445 rows at `load_index ≥ 70` would fall below 70 without it — and many
-  of the 331 trend-only alerts are likely artifacts, especially for long-wait profiles. With a longer history the
-  bias disappears; until then a trend should be read relative to the national one (+3.3%/week), not against 0.
+  data +2.6% per week; 42% of those rows have a raw trend ≥ 5%/week. **Mitigation:** scoring and alerts use the
+  excess trend over the national median (§2), which removes the common drift — 35% of rows are ≥ 5 points above
+  the median, the trend component of `load_index` is 0 for rows growing no faster than the median, and 22 of the
+  405 rows at `load_index ≥ 70` would fall below 70 without the trend component. It does not remove differences
+  between profiles: long-wait profiles fill up longer after 2025-01-01, so their excess trend is still biased
+  upward and some of the 255 trend-only alerts remain artifacts. The raw trend stays in `queue_trend_raw_4w`. With a
+  longer history the bias disappears and the median correction becomes close to a no-op.
 - **Small numbers.** Rows need only 10 registrations in 28 days; refusal rates and medians behind them can rest on a
   handful of referrals (`n_waits_28d` is returned for that reason).
 - **Associations, not causes** — recommendations and explanation factors (see §4 and `docs/model_card.md` §7).

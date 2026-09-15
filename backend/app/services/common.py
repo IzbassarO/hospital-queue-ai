@@ -1,4 +1,5 @@
 """Shared service helpers: errors, the serving parameters the marts were built with, row → schema."""
+
 import datetime as dt
 from dataclasses import dataclass
 from typing import Any
@@ -58,12 +59,25 @@ def rnd(value: float | None, digits: int) -> float | None:
 
 
 _METRIC_DIGITS = {
-    "refusal_rate_28d": 4, "median_wait_28d": 1, "daily_throughput_28d": 2, "backlog_days": 1,
-    "forecast_registrations_14d": 1, "forecast_hospitalizations_14d": 1, "high_risk_share": 4,
-    "queue_trend_4w": 1, "load_index": 1,
+    "refusal_rate_28d": 4,
+    "median_wait_28d": 1,
+    "daily_throughput_28d": 2,
+    "backlog_days": 1,
+    "forecast_registrations_14d": 1,
+    "forecast_hospitalizations_14d": 1,
+    "high_risk_share": 4,
+    "queue_trend_raw_4w": 1,
+    "queue_trend_4w": 1,
+    "load_index": 1,
 }
-_INT_METRICS = ("queue_now", "registrations_28d", "hospitalizations_28d", "refusals_28d", "n_waits_28d",
-                "n_test_referrals")
+_INT_METRICS = (
+    "queue_now",
+    "registrations_28d",
+    "hospitalizations_28d",
+    "refusals_28d",
+    "n_waits_28d",
+    "n_test_referrals",
+)
 
 
 def _metrics(row: MartHospitalProfileStatus | MartRegionProfileStatus) -> dict[str, Any]:
@@ -75,8 +89,10 @@ def _metrics(row: MartHospitalProfileStatus | MartRegionProfileStatus) -> dict[s
         status=row.status,
         status_label=STATUS_LABELS[row.status],
         components=LoadIndexComponents(
-            backlog_score=rnd(row.backlog_score, 4), refusal_score=rnd(row.refusal_score, 4),
-            trend_score=rnd(row.trend_score, 4)),
+            backlog_score=rnd(row.backlog_score, 4),
+            refusal_score=rnd(row.refusal_score, 4),
+            trend_score=rnd(row.trend_score, 4),
+        ),
     )
     return out
 
@@ -84,32 +100,52 @@ def _metrics(row: MartHospitalProfileStatus | MartRegionProfileStatus) -> dict[s
 def hospital_status(row: MartHospitalProfileStatus) -> HospitalProfileStatus:
     return HospitalProfileStatus(
         **_metrics(row),
-        region_code=row.region_code, region_name=row.region_name, org_code=row.org_code, org_name=row.org_name,
-        profile_code=row.profile_code, profile_name=row.profile_name, forecast_method=row.forecast_method,
-        region_rank=row.region_rank, region_n_ranked=row.region_n_ranked, in_region_top=row.in_region_top,
+        region_code=row.region_code,
+        region_name=row.region_name,
+        org_code=row.org_code,
+        org_name=row.org_name,
+        profile_code=row.profile_code,
+        profile_name=row.profile_name,
+        forecast_method=row.forecast_method,
+        region_rank=row.region_rank,
+        region_n_ranked=row.region_n_ranked,
+        in_region_top=row.in_region_top,
     )
 
 
 def region_status(row: MartRegionProfileStatus) -> RegionProfileStatus:
     return RegionProfileStatus(
         **_metrics(row),
-        region_code=row.region_code, region_name=row.region_name, profile_code=row.profile_code,
-        profile_name=row.profile_name, n_hospitals=row.n_hospitals, n_hospitals_high_load=row.n_hospitals_high_load,
+        region_code=row.region_code,
+        region_name=row.region_name,
+        profile_code=row.profile_code,
+        profile_name=row.profile_name,
+        n_hospitals=row.n_hospitals,
+        n_hospitals_high_load=row.n_hospitals_high_load,
         load_index_max_hospital=rnd(row.load_index_max_hospital, 1),
     )
 
 
 def area_kpis(row: MartAreaStatus) -> AreaKpis:
     return AreaKpis(
-        code=row.area_code, name=row.area_name, level=row.area_level, queue_now=row.queue_now,
-        registrations_28d=row.registrations_28d, hospitalizations_28d=row.hospitalizations_28d,
-        refusals_28d=row.refusals_28d, refusal_rate_28d=rnd(row.refusal_rate_28d, 4),
-        median_wait_28d=rnd(row.median_wait_28d, 1), n_waits_28d=row.n_waits_28d,
+        code=row.area_code,
+        name=row.area_name,
+        level=row.area_level,
+        queue_now=row.queue_now,
+        registrations_28d=row.registrations_28d,
+        hospitalizations_28d=row.hospitalizations_28d,
+        refusals_28d=row.refusals_28d,
+        refusal_rate_28d=rnd(row.refusal_rate_28d, 4),
+        median_wait_28d=rnd(row.median_wait_28d, 1),
+        n_waits_28d=row.n_waits_28d,
         forecast_registrations_14d=rnd(row.forecast_registrations_14d, 1),
         forecast_hospitalizations_14d=rnd(row.forecast_hospitalizations_14d, 1),
-        high_risk_share=rnd(row.high_risk_share, 4), n_hospitals=row.n_hospitals,
-        n_hospital_profiles=row.n_hospital_profiles, n_hospital_profiles_ranked=row.n_hospital_profiles_ranked,
-        load_index_max=rnd(row.load_index_max, 1), n_hospitals_high_load=row.n_hospitals_high_load,
+        high_risk_share=rnd(row.high_risk_share, 4),
+        n_hospitals=row.n_hospitals,
+        n_hospital_profiles=row.n_hospital_profiles,
+        n_hospital_profiles_ranked=row.n_hospital_profiles_ranked,
+        load_index_max=rnd(row.load_index_max, 1),
+        n_hospitals_high_load=row.n_hospitals_high_load,
         n_hospital_profiles_high_load=row.n_hospital_profiles_high_load,
     )
 

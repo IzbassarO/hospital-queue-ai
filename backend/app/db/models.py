@@ -5,6 +5,7 @@ Serving marts: filled by ml/pipelines/build_marts.py (docs/api.md). decision_log
 Column names here must match the Parquet files written by hqai_ml.ingest
 (the loader COPYs by column name).
 """
+
 import datetime as dt
 from decimal import Decimal
 
@@ -13,6 +14,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Date,
+    DateTime,
     Double,
     ForeignKey,
     Index,
@@ -21,7 +23,6 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
-    DateTime,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -224,11 +225,11 @@ class PredDailyForecast(Base):
     origin_date: Mapped[dt.date] = mapped_column(Date, primary_key=True)  # last known day
     horizon: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
     target_date: Mapped[dt.date] = mapped_column(Date, index=True)
-    level: Mapped[str] = mapped_column(String(16))                        # hospital | region
+    level: Mapped[str] = mapped_column(String(16))  # hospital | region
     org_code: Mapped[str | None] = mapped_column(String(8), index=True)
     region_code: Mapped[str] = mapped_column(String(4), index=True)
     profile_code: Mapped[str] = mapped_column(String(8), index=True)
-    method: Mapped[str] = mapped_column(String(32))                       # model | region_share_fallback
+    method: Mapped[str] = mapped_column(String(32))  # model | region_share_fallback
     pred_registrations: Mapped[float] = mapped_column(Double)
     pred_hospitalizations: Mapped[float] = mapped_column(Double)
     pred_queue: Mapped[float] = mapped_column(Double)
@@ -270,7 +271,8 @@ class _StatusMetrics:
     forecast_hospitalizations_14d: Mapped[float | None] = mapped_column(Double)
     n_test_referrals: Mapped[int] = mapped_column(Integer)
     high_risk_share: Mapped[float | None] = mapped_column(Double)
-    queue_trend_4w: Mapped[float | None] = mapped_column(Double)
+    queue_trend_raw_4w: Mapped[float | None] = mapped_column(Double)  # % of mean weekly queue per week
+    queue_trend_4w: Mapped[float | None] = mapped_column(Double)  # excess: raw − national median trend
     has_sufficient_data: Mapped[bool] = mapped_column(Boolean)
     backlog_score: Mapped[float | None] = mapped_column(Double)
     refusal_score: Mapped[float | None] = mapped_column(Double)
@@ -290,9 +292,9 @@ class MartHospitalProfileStatus(_StatusMetrics, Base):
     org_name: Mapped[str] = mapped_column(Text)
     profile_name: Mapped[str] = mapped_column(Text)
     forecast_method: Mapped[str | None] = mapped_column(String(32))
-    region_rank: Mapped[int | None] = mapped_column(Integer)      # rank of load_index within the region (1 = highest)
-    region_n_ranked: Mapped[int] = mapped_column(Integer)         # rows with a load_index in the region
-    in_region_top: Mapped[bool] = mapped_column(Boolean)          # region_rank <= ceil(region_top_fraction * region_n_ranked)
+    region_rank: Mapped[int | None] = mapped_column(Integer)  # rank of load_index within the region (1 = highest)
+    region_n_ranked: Mapped[int] = mapped_column(Integer)  # rows with a load_index in the region
+    in_region_top: Mapped[bool] = mapped_column(Boolean)  # region_rank <= ceil(region_top_fraction * region_n_ranked)
 
 
 class MartRegionProfileStatus(_StatusMetrics, Base):

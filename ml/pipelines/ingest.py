@@ -12,6 +12,7 @@ Reads:
   ml/configs/org_matches.yaml       (manual hospital <-> ERSB accept/reject overrides)
 data/raw is only read.
 """
+
 import argparse
 import datetime as dt
 import json
@@ -44,8 +45,12 @@ def main() -> int:
     work_db = out / "_work.duckdb"
     work_db.unlink(missing_ok=True)
     spill = out / "_spill"
-    manifest: dict = {"started_at": dt.datetime.now().isoformat(timespec="seconds"), "params": params.model_dump(mode="json"),
-                      "sources": {}, "tables": {}}
+    manifest: dict = {
+        "started_at": dt.datetime.now().isoformat(timespec="seconds"),
+        "params": params.model_dump(mode="json"),
+        "sources": {},
+        "tables": {},
+    }
 
     con = duckdb.connect(str(work_db))
     con.execute(f"SET memory_limit='{settings.duckdb_memory_limit}'")
@@ -63,9 +68,12 @@ def main() -> int:
         manifest["sources"][f"dataset_{n}"]["rows"] = rows
         log(f"staged dataset {n} -> {table}: {rows:,} rows from {len(src[n].valid)} file(s)")
     paths = "[" + ", ".join("'" + str(p).replace("'", "''") + "'" for p in src[2].valid) + "]"
-    waiting_codes = [r[0] for r in con.execute(
-        f"SELECT DISTINCT trim(region_origin_code) FROM read_csv({paths}, header=true, all_varchar=true) ORDER BY 1"
-    ).fetchall()]
+    waiting_codes = [
+        r[0]
+        for r in con.execute(
+            f"SELECT DISTINCT trim(region_origin_code) FROM read_csv({paths}, header=true, all_varchar=true) ORDER BY 1"
+        ).fetchall()
+    ]
     manifest["sources"]["dataset_2"]["region_codes"] = waiting_codes
     log(f"dataset 2: {len(waiting_codes)} distinct region_origin_code values")
 
@@ -79,10 +87,13 @@ def main() -> int:
 
     # ---- dictionaries
     dictionaries.build_dim_profile(con, params)
-    manifest["dim_region"] = dictionaries.build_dim_region(con, params, settings.configs_dir / "regions.yaml", waiting_codes)
+    manifest["dim_region"] = dictionaries.build_dim_region(
+        con, params, settings.configs_dir / "regions.yaml", waiting_codes
+    )
     log(f"dim_region: {manifest['dim_region']}")
     manifest["dim_organization"] = dictionaries.build_dim_organization(
-        con, params, settings.reports_dir / "01_org_matching.csv", settings.configs_dir / "org_matches.yaml")
+        con, params, settings.reports_dir / "01_org_matching.csv", settings.configs_dir / "org_matches.yaml"
+    )
     log(f"dim_organization: {manifest['dim_organization']}")
     dictionaries.build_ersb_snapshot(con)
 
@@ -115,7 +126,9 @@ def main() -> int:
 
     manifest["finished_at"] = dt.datetime.now().isoformat(timespec="seconds")
     manifest["seconds"] = round(time.time() - T0, 1)
-    (out / "_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    (out / "_manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
+    )
     log(f"done — manifest: {out / '_manifest.json'}")
     return 0
 

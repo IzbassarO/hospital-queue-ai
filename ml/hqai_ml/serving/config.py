@@ -1,4 +1,5 @@
 """ml/configs/serving.yaml, validated, plus the date windows derived from it."""
+
 import datetime as dt
 from pathlib import Path
 

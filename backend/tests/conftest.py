@@ -4,6 +4,7 @@ By default the app runs in-process (httpx + ASGI transport), so the tests exerci
 Set HQAI_API_BASE_URL (e.g. http://localhost:8000) to run the same tests against a running server,
 such as the docker `backend` service.
 """
+
 import os
 from collections.abc import AsyncIterator, Iterator
 
@@ -35,8 +36,9 @@ async def client() -> AsyncIterator[httpx.AsyncClient]:
     async with http:
         health = await http.get(f"{API}/health")
         if health.status_code != 200 or health.json().get("marts_as_of_date") is None:
-            pytest.exit(f"API not ready ({health.status_code}: {health.text}) — run `make up && make marts`",
-                        returncode=2)
+            pytest.exit(
+                f"API not ready ({health.status_code}: {health.text}) — run `make up && make marts`", returncode=2
+            )
         yield http
 
 

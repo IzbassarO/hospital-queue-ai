@@ -1,4 +1,5 @@
 """Staging: raw VARCHAR tables -> typed, cleaned `stg_*` tables with normalized names."""
+
 import duckdb
 
 from hqai_ml.ingest.normalize import register_name_map

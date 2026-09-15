@@ -14,6 +14,7 @@ The estimator is the swappable part. v1 (`HistoricalMedianEstimator`) uses the h
 wait of the last 28 days — an association, not a causal effect. A causal module will provide another
 implementation of the same protocol; nothing else in this module has to change.
 """
+
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -45,8 +46,9 @@ class WaitEffectEstimator(Protocol):
 
     method: str
 
-    def estimate(self, current: MartHospitalProfileStatus,
-                 alternative: MartHospitalProfileStatus) -> WaitEstimate | None:
+    def estimate(
+        self, current: MartHospitalProfileStatus, alternative: MartHospitalProfileStatus
+    ) -> WaitEstimate | None:
         """None when no estimate is possible for this pair."""
         ...
 
@@ -56,17 +58,19 @@ class HistoricalMedianEstimator:
 
     method = "historical_median"
 
-    def estimate(self, current: MartHospitalProfileStatus,
-                 alternative: MartHospitalProfileStatus) -> WaitEstimate | None:
+    def estimate(
+        self, current: MartHospitalProfileStatus, alternative: MartHospitalProfileStatus
+    ) -> WaitEstimate | None:
         if current.median_wait_28d is None or alternative.median_wait_28d is None:
             return None
         return WaitEstimate(current.median_wait_28d, alternative.median_wait_28d)
 
 
-def recommendation_id(current: MartHospitalProfileStatus, alternative: MartHospitalProfileStatus,
-                      method: str) -> str:
-    return (f"rec-v1:{method}:{current.as_of_date.isoformat()}:{current.org_code}:{current.profile_code}:"
-            f"{alternative.org_code}")
+def recommendation_id(current: MartHospitalProfileStatus, alternative: MartHospitalProfileStatus, method: str) -> str:
+    return (
+        f"rec-v1:{method}:{current.as_of_date.isoformat()}:{current.org_code}:{current.profile_code}:"
+        f"{alternative.org_code}"
+    )
 
 
 def _num(value: float | None, digits: int = 1) -> str:
@@ -94,8 +98,9 @@ def _days(value: float) -> str:
     return f"{_num(value, 0)} {word}"
 
 
-def explanation_text(current: MartHospitalProfileStatus, alternative: MartHospitalProfileStatus,
-                     estimate: WaitEstimate) -> str:
+def explanation_text(
+    current: MartHospitalProfileStatus, alternative: MartHospitalProfileStatus, estimate: WaitEstimate
+) -> str:
     return (
         f"В стационаре «{alternative.org_name}» ожидаемое время ожидания госпитализации по профилю "
         f"«{current.profile_name}» — {_days(estimate.expected_wait_alternative)} против "
@@ -106,8 +111,9 @@ def explanation_text(current: MartHospitalProfileStatus, alternative: MartHospit
     )
 
 
-def recommend(session: Session, org_code: str, profile_code: str,
-              estimator: WaitEffectEstimator | None = None) -> RecommendationResponse:
+def recommend(
+    session: Session, org_code: str, profile_code: str, estimator: WaitEffectEstimator | None = None
+) -> RecommendationResponse:
     estimator = estimator or HistoricalMedianEstimator()
     info = build_info(session)
     rule_cfg = info.config["recommendations"]
@@ -120,12 +126,16 @@ def recommend(session: Session, org_code: str, profile_code: str,
     if current.load_index is None:
         reason = "Недостаточно данных для индекса нагрузки (меньше 10 направлений за 28 дней)."
     elif not current.in_region_top:
-        reason = (f"Индекс нагрузки {_num(current.load_index)} не входит в верхние "
-                  f"{_num(rule.region_top_fraction * 100, 0)}% по региону (место {current.region_rank} "
-                  f"из {current.region_n_ranked}); рекомендации не формируются.")
+        reason = (
+            f"Индекс нагрузки {_num(current.load_index)} не входит в верхние "
+            f"{_num(rule.region_top_fraction * 100, 0)}% по региону (место {current.region_rank} "
+            f"из {current.region_n_ranked}); рекомендации не формируются."
+        )
     elif current.backlog_days is None:
-        reason = ("Срок рассасывания очереди не определён (меньше 0,5 госпитализации в день), "
-                  "поэтому сравнить стационары по очереди нельзя.")
+        reason = (
+            "Срок рассасывания очереди не определён (меньше 0,5 госпитализации в день), "
+            "поэтому сравнить стационары по очереди нельзя."
+        )
     else:
         m = MartHospitalProfileStatus
         candidates = session.scalars(
@@ -145,38 +155,54 @@ def recommend(session: Session, org_code: str, profile_code: str,
                 scored.append((alt, estimate))
         scored.sort(key=lambda pair: (-pair[1].delta_days, pair[0].backlog_days, pair[0].org_code))
         for alt, estimate in scored[: rule.max_alternatives]:
-            alternatives.append(Alternative(
-                recommendation_id=recommendation_id(current, alt, estimator.method),
-                org_code=alt.org_code, org_name=alt.org_name, region_code=alt.region_code,
-                profile_code=alt.profile_code,
-                expected_wait_current=round(estimate.expected_wait_current, 1),
-                expected_wait_alternative=round(estimate.expected_wait_alternative, 1),
-                delta_days=round(estimate.delta_days, 1),
-                refusal_rate_current=rnd(current.refusal_rate_28d, 4),
-                refusal_rate_alternative=rnd(alt.refusal_rate_28d, 4),
-                backlog_days_current=round(current.backlog_days, 1),
-                backlog_days_alternative=round(alt.backlog_days, 1),
-                load_index_alternative=rnd(alt.load_index, 1),
-                registrations_28d_alternative=alt.registrations_28d,
-                method=estimator.method,
-                explanation=explanation_text(current, alt, estimate),
-            ))
+            alternatives.append(
+                Alternative(
+                    recommendation_id=recommendation_id(current, alt, estimator.method),
+                    org_code=alt.org_code,
+                    org_name=alt.org_name,
+                    region_code=alt.region_code,
+                    profile_code=alt.profile_code,
+                    expected_wait_current=round(estimate.expected_wait_current, 1),
+                    expected_wait_alternative=round(estimate.expected_wait_alternative, 1),
+                    delta_days=round(estimate.delta_days, 1),
+                    refusal_rate_current=rnd(current.refusal_rate_28d, 4),
+                    refusal_rate_alternative=rnd(alt.refusal_rate_28d, 4),
+                    backlog_days_current=round(current.backlog_days, 1),
+                    backlog_days_alternative=round(alt.backlog_days, 1),
+                    load_index_alternative=rnd(alt.load_index, 1),
+                    registrations_28d_alternative=alt.registrations_28d,
+                    method=estimator.method,
+                    explanation=explanation_text(current, alt, estimate),
+                )
+            )
         if not alternatives:
-            reason = (f"В регионе нет стационаров того же профиля с меньшей очередью, не менее "
-                      f"{rule.min_registrations_28d} направлений за 28 дней и ожиданием короче минимум на "
-                      f"{_days(rule.min_wait_delta_days)}.")
+            reason = (
+                f"В регионе нет стационаров того же профиля с меньшей очередью, не менее "
+                f"{rule.min_registrations_28d} направлений за 28 дней и ожиданием короче минимум на "
+                f"{_days(rule.min_wait_delta_days)}."
+            )
 
     return RecommendationResponse(
         as_of_date=info.as_of_date,
-        region_code=current.region_code, region_name=current.region_name,
-        org_code=current.org_code, org_name=current.org_name,
-        profile_code=current.profile_code, profile_name=current.profile_name,
-        method=estimator.method, eligible=eligible, reason=reason,
+        region_code=current.region_code,
+        region_name=current.region_name,
+        org_code=current.org_code,
+        org_name=current.org_name,
+        profile_code=current.profile_code,
+        profile_name=current.profile_name,
+        method=estimator.method,
+        eligible=eligible,
+        reason=reason,
         current=CurrentState(
-            load_index=rnd(current.load_index, 1), status=current.status, region_rank=current.region_rank,
-            region_n_ranked=current.region_n_ranked, in_region_top=current.in_region_top,
-            backlog_days=rnd(current.backlog_days, 1), median_wait_28d=rnd(current.median_wait_28d, 1),
-            refusal_rate_28d=rnd(current.refusal_rate_28d, 4), registrations_28d=current.registrations_28d,
+            load_index=rnd(current.load_index, 1),
+            status=current.status,
+            region_rank=current.region_rank,
+            region_n_ranked=current.region_n_ranked,
+            in_region_top=current.in_region_top,
+            backlog_days=rnd(current.backlog_days, 1),
+            median_wait_28d=rnd(current.median_wait_28d, 1),
+            refusal_rate_28d=rnd(current.refusal_rate_28d, 4),
+            registrations_28d=current.registrations_28d,
         ),
         rule=rule,
         alternatives=alternatives,

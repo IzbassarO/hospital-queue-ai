@@ -1,10 +1,9 @@
 """Shared response pieces: pagination, load-index status block."""
+
 import datetime as dt
-from typing import Generic, Literal, TypeVar
+from typing import Literal
 
 from pydantic import BaseModel, Field
-
-T = TypeVar("T")
 
 Status = Literal["high", "elevated", "normal", "insufficient_data"]
 
@@ -16,7 +15,7 @@ STATUS_LABELS: dict[str, str] = {
 }
 
 
-class Page(BaseModel, Generic[T]):
+class Page[T](BaseModel):
     items: list[T]
     total: int = Field(description="rows matching the filters, before limit/offset")
     limit: int
@@ -28,7 +27,9 @@ class LoadIndexComponents(BaseModel):
 
     backlog_score: float | None = Field(description="mid-rank percentile of backlog within the profile nationally")
     refusal_score: float | None = Field(description="refusal_rate_28d / refusal_rate_cap, clipped to [0, 1]")
-    trend_score: float | None = Field(description="max(queue_trend_4w, 0) / queue_trend_cap_pct, clipped to [0, 1]")
+    trend_score: float | None = Field(
+        description="max(queue_trend_4w, 0) / queue_trend_cap_pct, clipped to [0, 1] (excess trend, floored at 0)"
+    )
 
 
 class StatusMetrics(BaseModel):
@@ -48,7 +49,13 @@ class StatusMetrics(BaseModel):
     forecast_hospitalizations_14d: float | None
     n_test_referrals: int = Field(description="referrals of the test period scored by model B")
     high_risk_share: float | None = Field(description="share of test-period referrals with refusal probability >= 0.25")
-    queue_trend_4w: float | None = Field(description="% of the mean weekly queue per week, last 4 full weeks")
+    queue_trend_raw_4w: float | None = Field(
+        description="raw trend: % of the mean weekly queue per week, last 4 full weeks"
+    )
+    queue_trend_4w: float | None = Field(
+        description="excess trend: queue_trend_raw_4w minus the national median raw trend of the same weeks "
+        "(percentage points per week); used by alerts and load_index"
+    )
     has_sufficient_data: bool = Field(description="registrations_28d >= 10; otherwise no load_index")
     load_index: float | None = Field(description="0–100, see docs/api.md")
     status: Status

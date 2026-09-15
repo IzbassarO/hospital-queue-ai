@@ -1,4 +1,5 @@
 """Rolling-origin backtest runner and forecast metric tables."""
+
 import datetime as dt
 from collections.abc import Callable
 
@@ -33,7 +34,7 @@ def error_table(ev: pd.DataFrame, group_cols: list[str], methods: dict[str, str]
     rows = []
     for keys, sub in ev.groupby(group_cols, sort=True):
         keys = keys if isinstance(keys, tuple) else (keys,)
-        row = dict(zip(group_cols, keys))
+        row = dict(zip(group_cols, keys, strict=True))
         row["n"] = int(len(sub))
         row["actual_total"] = float(sub["y"].sum())
         for label, col in methods.items():

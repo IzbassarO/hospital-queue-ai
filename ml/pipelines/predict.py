@@ -5,9 +5,11 @@ Run:  make predict        (applies Alembic migrations first; needs `make train`)
 
 Writes, in one transaction (previous predictions are replaced):
   pred_referral        wait time + refusal risk + top-5 explanations for every referral registered in the test period
-  pred_daily_forecast  14-day forecast from the configured origin for every hospital × profile and region × profile series
+  pred_daily_forecast  14-day forecast from the configured origin for every hospital × profile and
+                       region × profile series
   model_registry       one row per model version; is_current marks the versions used here
 """
+
 import json
 import sys
 import time
@@ -37,7 +39,11 @@ def log(msg: str) -> None:
 def headline_metrics(name: str, metrics: dict) -> dict:
     if name in ("wait_time", "refusal_risk"):
         return {"population": metrics["population"], "overall": metrics["overall"]}
-    return {"series": metrics["series"], "beats_seasonal_naive": metrics["beats_seasonal_naive"], "pooled": metrics["pooled"]}
+    return {
+        "series": metrics["series"],
+        "beats_seasonal_naive": metrics["beats_seasonal_naive"],
+        "pooled": metrics["pooled"],
+    }
 
 
 def main() -> int:
@@ -58,18 +64,26 @@ def main() -> int:
 
     referral_rows = []
     for start in range(0, len(test), BATCH):
-        part = test.iloc[start:start + BATCH]
+        part = test.iloc[start : start + BATCH]
         pred_wait = wait.predict(part)
         pred_ref = refusal.predict(part)
         ex_wait = explain_batch(wait, part, cfg.explain.top_k)
         ex_ref = explain_batch(refusal, part, cfg.explain.top_k)
         for i, rid in enumerate(part["referral_id"].to_numpy()):
-            referral_rows.append((
-                int(rid), codes.at[rid, "hospitalization_code"], part["registration_date"].iat[i],
-                part["org_code"].iat[i], part["profile_code"].iat[i], wait.version, refusal.version,
-                float(pred_wait[i]), float(pred_ref[i]),
-                json.dumps({"wait_time": ex_wait[i], "refusal_risk": ex_ref[i]}, ensure_ascii=False),
-            ))
+            referral_rows.append(
+                (
+                    int(rid),
+                    codes.at[rid, "hospitalization_code"],
+                    part["registration_date"].iat[i],
+                    part["org_code"].iat[i],
+                    part["profile_code"].iat[i],
+                    wait.version,
+                    refusal.version,
+                    float(pred_wait[i]),
+                    float(pred_ref[i]),
+                    json.dumps({"wait_time": ex_wait[i], "refusal_risk": ex_ref[i]}, ensure_ascii=False),
+                )
+            )
         log(f"  explained {min(start + BATCH, len(test)):,} / {len(test):,}")
 
     # ---- load forecast
@@ -78,38 +92,73 @@ def main() -> int:
     hospital, region = load_panels(con)
     fc = load_forecast.production_forecast(hospital, region, boosters, art["categories"], art["series"], cfg)
     fc["model_version"] = art["version"]
-    log(f"forecast rows: {len(fc):,} (origin {cfg.load_forecast.forecast_origin}, {fc['series_id'].nunique():,} series)")
+    log(
+        f"forecast rows: {len(fc):,} (origin {cfg.load_forecast.forecast_origin}, {fc['series_id'].nunique():,} series)"
+    )
 
     # ---- write
     manifest = store.read_manifest(settings.artifacts_dir)
     registry_rows = []
     for name in ("wait_time", "refusal_risk", "load_forecast"):
         a = store.load(settings.artifacts_dir, name)
-        registry_rows.append((name, a["version"], a["meta"]["trained_at"], json.dumps(a["meta"]["training_window"]),
-                              json.dumps(headline_metrics(name, a["metrics"]), ensure_ascii=False),
-                              manifest[name]["path"]))
+        registry_rows.append(
+            (
+                name,
+                a["version"],
+                a["meta"]["trained_at"],
+                json.dumps(a["meta"]["training_window"]),
+                json.dumps(headline_metrics(name, a["metrics"]), ensure_ascii=False),
+                manifest[name]["path"],
+            )
+        )
 
-    fc_cols = ["series_id", "origin_date", "horizon", "target_date", "level", "org_code", "region_code", "profile_code",
-               "method", "pred_registrations", "pred_hospitalizations", "pred_queue", "model_version"]
+    fc_cols = [
+        "series_id",
+        "origin_date",
+        "horizon",
+        "target_date",
+        "level",
+        "org_code",
+        "region_code",
+        "profile_code",
+        "method",
+        "pred_registrations",
+        "pred_hospitalizations",
+        "pred_queue",
+        "model_version",
+    ]
     with psycopg.connect(settings.pg_conninfo) as pg, pg.cursor() as cur:
         cur.execute("TRUNCATE pred_referral, pred_daily_forecast")
-        with cur.copy("""COPY pred_referral (referral_id, hospitalization_code, registration_date, org_code, profile_code,
+        with cur.copy("""COPY pred_referral (referral_id, hospitalization_code, registration_date,
+                         org_code, profile_code,
                          wait_model_version, refusal_model_version, pred_wait_days, pred_refusal_prob, explanation)
                          FROM STDIN""") as copy:
             for row in referral_rows:
                 copy.write_row(row)
         with cur.copy(f"COPY pred_daily_forecast ({', '.join(fc_cols)}) FROM STDIN") as copy:
             for row in fc[fc_cols].itertuples(index=False):
-                copy.write_row([None if pd.isna(v) else (int(v) if k == "horizon" else v) for k, v in zip(fc_cols, row)])
+                copy.write_row(
+                    [
+                        None if pd.isna(v) else (int(v) if k == "horizon" else v)
+                        for k, v in zip(fc_cols, row, strict=True)
+                    ]
+                )
         for name, version, trained_at, window, metrics, path in registry_rows:
-            cur.execute("""INSERT INTO model_registry (model_name, version, trained_at, train_window, metrics, is_current, artifact_path)
+            cur.execute(
+                """INSERT INTO model_registry (model_name, version, trained_at, train_window,
+                           metrics, is_current, artifact_path)
                            VALUES (%s, %s, %s, %s, %s, true, %s)
                            ON CONFLICT (model_name, version) DO UPDATE
                            SET metrics = EXCLUDED.metrics, train_window = EXCLUDED.train_window, is_current = true""",
-                        (name, version, trained_at, window, metrics, path))
-            cur.execute("UPDATE model_registry SET is_current = false WHERE model_name = %s AND version <> %s", (name, version))
-        counts = {t: cur.execute(f"SELECT count(*) FROM {t}").fetchone()[0]
-                  for t in ("pred_referral", "pred_daily_forecast", "model_registry")}
+                (name, version, trained_at, window, metrics, path),
+            )
+            cur.execute(
+                "UPDATE model_registry SET is_current = false WHERE model_name = %s AND version <> %s", (name, version)
+            )
+        counts = {
+            t: cur.execute(f"SELECT count(*) FROM {t}").fetchone()[0]
+            for t in ("pred_referral", "pred_daily_forecast", "model_registry")
+        }
         if counts["pred_referral"] != len(referral_rows) or counts["pred_daily_forecast"] != len(fc):
             raise RuntimeError(f"row count mismatch after load: {counts}")
         pg.commit()

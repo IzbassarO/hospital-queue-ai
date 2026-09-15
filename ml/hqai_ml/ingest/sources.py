@@ -2,6 +2,7 @@
 
 data/raw is read-only: files are only opened for reading.
 """
+
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -9,15 +10,63 @@ from pathlib import Path
 import duckdb
 
 EXPECTED_HEADERS = {
-    1: ["hospitalization_code", "referring_mo", "hospital_mo", "icd10_ref_diag_code", "diagnosis_name", "bed_profile",
-        "registration_dt", "planned_dt", "polyclinic_dt", "hospitalization_dt", "refusal_dt", "territorial_type",
-        "referral_purpose", "finance_source", "sdu_load_date"],
-    2: ["region_origin_code", "mo_destination_code", "profile_code", "patient_seq_no", "icd10_ref_diag_code",
-        "diagnosis_name", "operation_code", "operation_name", "registration_dt", "planned_dt", "sdu_load_date"],
-    3: ["region_in", "org_in", "resident", "insured", "benefit_cat", "refuse_dt", "attach_region", "attach_org",
-        "icd10", "icd_name", "amount", "finance_src", "sdu_load_date"],
-    4: ["medicine_organization", "discharged_total", "discharged_children", "treated_budget", "treated_paid",
-        "discharged_within_day", "deaths_total", "bed_days", "amount_to_pay", "sdu_load_date"],
+    1: [
+        "hospitalization_code",
+        "referring_mo",
+        "hospital_mo",
+        "icd10_ref_diag_code",
+        "diagnosis_name",
+        "bed_profile",
+        "registration_dt",
+        "planned_dt",
+        "polyclinic_dt",
+        "hospitalization_dt",
+        "refusal_dt",
+        "territorial_type",
+        "referral_purpose",
+        "finance_source",
+        "sdu_load_date",
+    ],
+    2: [
+        "region_origin_code",
+        "mo_destination_code",
+        "profile_code",
+        "patient_seq_no",
+        "icd10_ref_diag_code",
+        "diagnosis_name",
+        "operation_code",
+        "operation_name",
+        "registration_dt",
+        "planned_dt",
+        "sdu_load_date",
+    ],
+    3: [
+        "region_in",
+        "org_in",
+        "resident",
+        "insured",
+        "benefit_cat",
+        "refuse_dt",
+        "attach_region",
+        "attach_org",
+        "icd10",
+        "icd_name",
+        "amount",
+        "finance_src",
+        "sdu_load_date",
+    ],
+    4: [
+        "medicine_organization",
+        "discharged_total",
+        "discharged_children",
+        "treated_budget",
+        "treated_paid",
+        "discharged_within_day",
+        "deaths_total",
+        "bed_days",
+        "amount_to_pay",
+        "sdu_load_date",
+    ],
 }
 _PART = re.compile(r"Часть\s+(\d+)\s+из\s+(\d+)", re.IGNORECASE)
 

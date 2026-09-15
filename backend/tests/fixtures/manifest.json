@@ -1,0 +1,83 @@
+{
+  "description": "2-region test fixture for CI (tools/test_fixture.py); MoH open data and model outputs only",
+  "regions": [
+    "62",
+    "59"
+  ],
+  "since": "2025-02-02",
+  "test_start": "2025-03-01",
+  "test_end": "2025-03-31",
+  "as_of": "2025-03-31",
+  "tables": [
+    {
+      "table": "dim_region",
+      "file": "dim_region.csv.gz",
+      "rows": 20,
+      "bytes": 850,
+      "sha256": "4f45747207414f78056256fcf08a33b4d9e5343b211790d0fb7bd00329ee095d"
+    },
+    {
+      "table": "dim_profile",
+      "file": "dim_profile.csv.gz",
+      "rows": 97,
+      "bytes": 1660,
+      "sha256": "1f42e4b20e277a2698726976851f6537106c06f4a7b888a30a631ebeef3fcf2b"
+    },
+    {
+      "table": "ersb_snapshot",
+      "file": "ersb_snapshot.csv.gz",
+      "rows": 65,
+      "bytes": 5340,
+      "sha256": "2c1badaca4600f05d143eeaaaa6d2534cc0cbeb766c0f5fe22ebd6b35791106e"
+    },
+    {
+      "table": "dim_organization",
+      "file": "dim_organization.csv.gz",
+      "rows": 66,
+      "bytes": 3104,
+      "sha256": "82346b0cc52381bf28c51d7a7149b0ff865424007728d29a1f18c2641ea9917f"
+    },
+    {
+      "table": "fact_referral",
+      "file": "fact_referral.csv.gz",
+      "rows": 19698,
+      "bytes": 1063505,
+      "sha256": "946d6364b8b03ada142a0712119969d34a1afeff0fc648abdade0a596c32fba7"
+    },
+    {
+      "table": "agg_daily_hospital_profile",
+      "file": "agg_daily_hospital_profile.csv.gz",
+      "rows": 16646,
+      "bytes": 70132,
+      "sha256": "f1128b5a8e203b885c075de692c02babaa15e4faff037db4042b1ef3e3e30c02"
+    },
+    {
+      "table": "agg_daily_region_profile",
+      "file": "agg_daily_region_profile.csv.gz",
+      "rows": 6322,
+      "bytes": 26943,
+      "sha256": "493fcd7abdbb3ca07ed82465fbb1dfe3974bcfbec5cb248902e09a14413c50df"
+    },
+    {
+      "table": "pred_referral",
+      "file": "pred_referral.csv.gz",
+      "rows": 8320,
+      "bytes": 979383,
+      "sha256": "4695c8a31ea19edef59d0838ce8d43edbf307ded77f995c7d2d46c15eac7f0e4"
+    },
+    {
+      "table": "pred_daily_forecast",
+      "file": "pred_daily_forecast.csv.gz",
+      "rows": 5544,
+      "bytes": 187725,
+      "sha256": "40abd8b3b55acfe90312113eaa986664496864184786619e26afd785022fa816"
+    },
+    {
+      "table": "model_registry",
+      "file": "model_registry.csv.gz",
+      "rows": 3,
+      "bytes": 2108,
+      "sha256": "f623a3048cd7ba124f5e5adec8f1de368659270beef5f62cfdd6045081b37796"
+    }
+  ]
+}

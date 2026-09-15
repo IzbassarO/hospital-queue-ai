@@ -1,4 +1,5 @@
 """All /api/v1 endpoints. Read-only except POST /decisions. Contract: docs/api.md."""
+
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query, Response, status
@@ -8,7 +9,8 @@ from app.schemas.activity import AlertItem, Decision, DecisionCreate, Recommenda
 from app.schemas.catalog import DictionariesResponse, HealthResponse, ModelInfo
 from app.schemas.common import Message, Page
 from app.schemas.status import HospitalProfileCard, HospitalProfileStatus, OverviewResponse, RegionDetailResponse
-from app.services import activity, catalog, recommend, status as status_service
+from app.services import activity, catalog, recommend
+from app.services import status as status_service
 
 router = APIRouter()
 
@@ -30,49 +32,81 @@ def get_overview(session: SessionDep) -> OverviewResponse:
     return status_service.overview(session)
 
 
-@router.get("/regions/{region_code}", response_model=RegionDetailResponse, responses={**NOT_FOUND, **NOT_BUILT},
-            tags=["monitoring"])
+@router.get(
+    "/regions/{region_code}",
+    response_model=RegionDetailResponse,
+    responses={**NOT_FOUND, **NOT_BUILT},
+    tags=["monitoring"],
+)
 def get_region(region_code: str, session: SessionDep) -> RegionDetailResponse:
     """Region KPIs and every profile of the region with its status."""
     return status_service.region_detail(session, region_code)
 
 
-@router.get("/regions/{region_code}/hospitals", response_model=Page[HospitalProfileStatus],
-            responses={**NOT_FOUND, **NOT_BUILT}, tags=["monitoring"])
+@router.get(
+    "/regions/{region_code}/hospitals",
+    response_model=Page[HospitalProfileStatus],
+    responses={**NOT_FOUND, **NOT_BUILT},
+    tags=["monitoring"],
+)
 def get_region_hospitals(
-    region_code: str, session: SessionDep, page: PaginationDep,
+    region_code: str,
+    session: SessionDep,
+    page: PaginationDep,
     profile: Annotated[str | None, Query(description="profile code, e.g. 031; all profiles if omitted")] = None,
 ) -> Page[HospitalProfileStatus]:
     """Hospital × profile rows of the region, highest load_index first."""
     return status_service.region_hospitals(session, region_code, profile, page.limit, page.offset)
 
 
-@router.get("/hospitals/{org_code}/profiles/{profile_code}", response_model=HospitalProfileCard,
-            responses={**NOT_FOUND, **NOT_BUILT}, tags=["hospital"])
+@router.get(
+    "/hospitals/{org_code}/profiles/{profile_code}",
+    response_model=HospitalProfileCard,
+    responses={**NOT_FOUND, **NOT_BUILT},
+    tags=["hospital"],
+)
 def get_hospital_profile(org_code: str, profile_code: str, session: SessionDep) -> HospitalProfileCard:
     """Status card, daily series, 14-day forecast and aggregated explanation factors."""
     return status_service.hospital_card(session, org_code, profile_code)
 
 
-@router.get("/hospitals/{org_code}/profiles/{profile_code}/referrals", response_model=Page[ReferralItem],
-            responses={**NOT_FOUND, **NOT_BUILT}, tags=["hospital"])
+@router.get(
+    "/hospitals/{org_code}/profiles/{profile_code}/referrals",
+    response_model=Page[ReferralItem],
+    responses={**NOT_FOUND, **NOT_BUILT},
+    tags=["hospital"],
+)
 def get_hospital_referrals(
-    org_code: str, profile_code: str, session: SessionDep, page: PaginationDep,
-    sort: Annotated[Literal["risk", "wait"], Query(description="risk: refusal probability; wait: predicted wait")] = "risk",
+    org_code: str,
+    profile_code: str,
+    session: SessionDep,
+    page: PaginationDep,
+    sort: Annotated[
+        Literal["risk", "wait"], Query(description="risk: refusal probability; wait: predicted wait")
+    ] = "risk",
 ) -> Page[ReferralItem]:
     """Test-period referrals with model predictions and explanations."""
     return activity.referrals(session, org_code, profile_code, sort, page.limit, page.offset)
 
 
-@router.get("/hospitals/{org_code}/profiles/{profile_code}/recommendations", response_model=RecommendationResponse,
-            responses={**NOT_FOUND, **NOT_BUILT}, tags=["hospital"])
+@router.get(
+    "/hospitals/{org_code}/profiles/{profile_code}/recommendations",
+    response_model=RecommendationResponse,
+    responses={**NOT_FOUND, **NOT_BUILT},
+    tags=["hospital"],
+)
 def get_recommendations(org_code: str, profile_code: str, session: SessionDep) -> RecommendationResponse:
     """Rule-based v1: up to 3 alternative hospitals in the same region and profile."""
     return recommend.recommend(session, org_code, profile_code)
 
 
-@router.post("/decisions", response_model=Decision, status_code=status.HTTP_201_CREATED,
-             responses={**NOT_FOUND, 422: {"description": "invalid decision"}}, tags=["decisions"])
+@router.post(
+    "/decisions",
+    response_model=Decision,
+    status_code=status.HTTP_201_CREATED,
+    responses={**NOT_FOUND, 422: {"description": "invalid decision"}},
+    tags=["decisions"],
+)
 def post_decision(payload: DecisionCreate, session: SessionDep) -> Decision:
     """Record a person's decision (confirm / reject / defer) on a hospital × profile or a recommendation."""
     return activity.create_decision(session, payload)
@@ -80,7 +114,8 @@ def post_decision(payload: DecisionCreate, session: SessionDep) -> Decision:
 
 @router.get("/decisions", response_model=Page[Decision], tags=["decisions"])
 def get_decisions(
-    session: SessionDep, page: PaginationDep,
+    session: SessionDep,
+    page: PaginationDep,
     org: Annotated[str | None, Query(description="hospital code")] = None,
     profile: Annotated[str | None, Query(description="profile code")] = None,
 ) -> Page[Decision]:
@@ -90,7 +125,8 @@ def get_decisions(
 
 @router.get("/alerts", response_model=Page[AlertItem], responses={**NOT_FOUND, **NOT_BUILT}, tags=["monitoring"])
 def get_alerts(
-    session: SessionDep, page: PaginationDep,
+    session: SessionDep,
+    page: PaginationDep,
     region: Annotated[str | None, Query(description="region code; all regions if omitted")] = None,
 ) -> Page[AlertItem]:
     """Hospital × profile rows with load_index ≥ 70 or a queue growing ≥ 5% per week."""

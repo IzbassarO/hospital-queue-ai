@@ -1,4 +1,5 @@
 """LightGBM helpers shared by the models: stable categorical encoding and early-stopped fitting."""
+
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
@@ -20,14 +21,26 @@ def encode(df: pd.DataFrame, features: list[str], categories: dict[str, list[str
     return X
 
 
-def fit_early_stopped(X: pd.DataFrame, y: np.ndarray, holdout: np.ndarray, params: dict, categorical: list[str],
-                      max_rounds: int, patience: int) -> tuple[lgb.Booster, int]:
+def fit_early_stopped(
+    X: pd.DataFrame,
+    y: np.ndarray,
+    holdout: np.ndarray,
+    params: dict,
+    categorical: list[str],
+    max_rounds: int,
+    patience: int,
+) -> tuple[lgb.Booster, int]:
     """Pick the number of rounds on a temporal holdout, then refit on all rows with that many rounds."""
     fit_rows, hold_rows = ~holdout, holdout
     d_fit = lgb.Dataset(X[fit_rows], y[fit_rows], categorical_feature=categorical, free_raw_data=False)
     d_hold = lgb.Dataset(X[hold_rows], y[hold_rows], categorical_feature=categorical, reference=d_fit)
-    probe = lgb.train(params, d_fit, num_boost_round=max_rounds, valid_sets=[d_hold],
-                      callbacks=[lgb.early_stopping(patience, verbose=False)])
+    probe = lgb.train(
+        params,
+        d_fit,
+        num_boost_round=max_rounds,
+        valid_sets=[d_hold],
+        callbacks=[lgb.early_stopping(patience, verbose=False)],
+    )
     best = max(1, probe.best_iteration)
     full = lgb.train(params, lgb.Dataset(X, y, categorical_feature=categorical), num_boost_round=best)
     return full, best

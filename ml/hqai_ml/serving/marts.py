@@ -8,6 +8,7 @@ mart_build_info                id = 1: as_of_date, built_at, the serving config 
 Everything runs as SQL in one transaction (TRUNCATE + INSERT … SELECT): a failure leaves the
 previous marts intact, and the API never sees a half-built state.
 """
+
 import datetime as dt
 import json
 
@@ -21,7 +22,7 @@ NATIONAL_NAME = "Казахстан"
 
 # ----------------------------------------------------------------------------------------------
 # Shared scoring SQL. Input relation `joined` must provide: series key columns, profile_code,
-# queue_now, refusal_rate_28d, daily_throughput_28d, queue_trend_4w, has_sufficient_data.
+# queue_now, refusal_rate_28d, daily_throughput_28d, queue_trend_4w (excess trend), has_sufficient_data.
 # ----------------------------------------------------------------------------------------------
 _SCORING = """
 backlog AS (
@@ -75,7 +76,8 @@ _METRIC_COLUMNS = """
     as_of_date, queue_now, registrations_28d, hospitalizations_28d, refusals_28d, refusal_rate_28d,
     n_waits_28d, median_wait_28d, daily_throughput_28d, backlog_days,
     forecast_registrations_14d, forecast_hospitalizations_14d, n_test_referrals, high_risk_share,
-    queue_trend_4w, has_sufficient_data, backlog_score, refusal_score, trend_score, load_index, status
+    queue_trend_raw_4w, queue_trend_4w, has_sufficient_data, backlog_score, refusal_score, trend_score, load_index,
+    status
 """
 
 HOSPITAL_SQL = f"""
@@ -103,7 +105,7 @@ weekly AS (
 trend AS (
     SELECT org_code, profile_code,
            CASE WHEN count(*) = %(trend_weeks)s AND avg(queue_mean) > 0
-                THEN regr_slope(queue_mean, week_idx) / avg(queue_mean) * 100 END AS queue_trend_4w
+                THEN regr_slope(queue_mean, week_idx) / avg(queue_mean) * 100 END AS queue_trend_raw_4w
     FROM weekly GROUP BY 1, 2
 ),
 waits AS (
@@ -130,7 +132,7 @@ risk AS (
     WHERE registration_date BETWEEN %(test_start)s AND %(test_end)s
     GROUP BY 1, 2
 ),
-joined AS (
+joined_raw AS (
     SELECT b.org_code, b.profile_code, o.region_code, r.region_name, o.org_name,
            coalesce(p.profile_name, b.profile_code) AS profile_name,
            b.queue_now, b.registrations_28d, b.hospitalizations_28d, b.refusals_28d,
@@ -140,7 +142,7 @@ joined AS (
            b.hospitalizations_28d::float8 / %(window_days)s AS daily_throughput_28d,
            f.forecast_registrations_14d, f.forecast_hospitalizations_14d, f.forecast_method,
            coalesce(k.n_test_referrals, 0) AS n_test_referrals, k.high_risk_share,
-           t.queue_trend_4w,
+           t.queue_trend_raw_4w,
            b.registrations_28d >= %(min_reg)s AS has_sufficient_data
     FROM base b
     JOIN dim_organization o ON o.org_code = b.org_code
@@ -150,6 +152,15 @@ joined AS (
     LEFT JOIN waits w ON w.org_code = b.org_code AND w.profile_code = b.profile_code
     LEFT JOIN fc f ON f.org_code = b.org_code AND f.profile_code = b.profile_code
     LEFT JOIN risk k ON k.org_code = b.org_code AND k.profile_code = b.profile_code
+),
+-- national median of the raw trend over the rows of this mart with sufficient data (same 4 weeks)
+national_trend AS (
+    SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY queue_trend_raw_4w) AS median_trend
+    FROM joined_raw WHERE has_sufficient_data AND queue_trend_raw_4w IS NOT NULL
+),
+joined AS (
+    SELECT jr.*, jr.queue_trend_raw_4w - nt.median_trend AS queue_trend_4w
+    FROM joined_raw jr CROSS JOIN national_trend nt
 ),
 {_SCORING},
 regional AS (
@@ -165,7 +176,8 @@ SELECT org_code, profile_code, region_code, region_name, org_name, profile_name,
        %(as_of)s::date, queue_now, registrations_28d, hospitalizations_28d, refusals_28d, refusal_rate_28d,
        n_waits_28d, median_wait_28d, daily_throughput_28d, backlog_days,
        forecast_registrations_14d, forecast_hospitalizations_14d, n_test_referrals, high_risk_share,
-       queue_trend_4w, has_sufficient_data, backlog_score, refusal_score, trend_score, load_index, status
+       queue_trend_raw_4w, queue_trend_4w, has_sufficient_data, backlog_score, refusal_score, trend_score,
+       load_index, status
 FROM regional
 """
 
@@ -194,7 +206,7 @@ weekly AS (
 trend AS (
     SELECT region_code, profile_code,
            CASE WHEN count(*) = %(trend_weeks)s AND avg(queue_mean) > 0
-                THEN regr_slope(queue_mean, week_idx) / avg(queue_mean) * 100 END AS queue_trend_4w
+                THEN regr_slope(queue_mean, week_idx) / avg(queue_mean) * 100 END AS queue_trend_raw_4w
     FROM weekly GROUP BY 1, 2
 ),
 waits AS (
@@ -228,7 +240,7 @@ hosp AS (
     FROM mart_hospital_profile_status
     GROUP BY 1, 2
 ),
-joined AS (
+joined_raw AS (
     SELECT b.region_code, b.profile_code, r.region_name,
            coalesce(p.profile_name, b.profile_code) AS profile_name,
            coalesce(h.n_hospitals, 0) AS n_hospitals,
@@ -241,7 +253,7 @@ joined AS (
            b.hospitalizations_28d::float8 / %(window_days)s AS daily_throughput_28d,
            f.forecast_registrations_14d, f.forecast_hospitalizations_14d,
            coalesce(k.n_test_referrals, 0) AS n_test_referrals, k.high_risk_share,
-           t.queue_trend_4w,
+           t.queue_trend_raw_4w,
            b.registrations_28d >= %(min_reg)s AS has_sufficient_data
     FROM base b
     JOIN dim_region r ON r.region_code = b.region_code
@@ -252,13 +264,23 @@ joined AS (
     LEFT JOIN risk k ON k.region_code = b.region_code AND k.profile_code = b.profile_code
     LEFT JOIN hosp h ON h.region_code = b.region_code AND h.profile_code = b.profile_code
 ),
+-- national median of the raw trend over the rows of this mart with sufficient data (same 4 weeks)
+national_trend AS (
+    SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY queue_trend_raw_4w) AS median_trend
+    FROM joined_raw WHERE has_sufficient_data AND queue_trend_raw_4w IS NOT NULL
+),
+joined AS (
+    SELECT jr.*, jr.queue_trend_raw_4w - nt.median_trend AS queue_trend_4w
+    FROM joined_raw jr CROSS JOIN national_trend nt
+),
 {_SCORING}
 SELECT region_code, profile_code, region_name, profile_name, n_hospitals, n_hospitals_high_load,
        load_index_max_hospital,
        %(as_of)s::date, queue_now, registrations_28d, hospitalizations_28d, refusals_28d, refusal_rate_28d,
        n_waits_28d, median_wait_28d, daily_throughput_28d, backlog_days,
        forecast_registrations_14d, forecast_hospitalizations_14d, n_test_referrals, high_risk_share,
-       queue_trend_4w, has_sufficient_data, backlog_score, refusal_score, trend_score, load_index, status
+       queue_trend_raw_4w, queue_trend_4w, has_sufficient_data, backlog_score, refusal_score, trend_score,
+       load_index, status
 FROM labelled
 """
 
@@ -370,10 +392,11 @@ def check_inputs(cur: psycopg.Cursor, cfg: ServingConfig, test_start: dt.date, t
         "agg_region_max_date": cur.execute("SELECT max(date) FROM agg_daily_region_profile").fetchone()[0],
         "agg_min_date": cur.execute("SELECT min(date) FROM agg_daily_hospital_profile").fetchone()[0],
         "forecast_rows_at_origin": cur.execute(
-            "SELECT count(*) FROM pred_daily_forecast WHERE origin_date = %s", (cfg.as_of_date,)).fetchone()[0],
+            "SELECT count(*) FROM pred_daily_forecast WHERE origin_date = %s", (cfg.as_of_date,)
+        ).fetchone()[0],
         "pred_referral_rows": cur.execute(
-            "SELECT count(*) FROM pred_referral WHERE registration_date BETWEEN %s AND %s",
-            (test_start, test_end)).fetchone()[0],
+            "SELECT count(*) FROM pred_referral WHERE registration_date BETWEEN %s AND %s", (test_start, test_end)
+        ).fetchone()[0],
     }
     problems = []
     for key in ("agg_hospital_max_date", "agg_region_max_date"):
@@ -382,8 +405,10 @@ def check_inputs(cur: psycopg.Cursor, cfg: ServingConfig, test_start: dt.date, t
     if facts["agg_min_date"] is None or facts["agg_min_date"] > min(cfg.trend_start, cfg.series_start):
         problems.append(f"aggregates start {facts['agg_min_date']}, after the trend/series window")
     if facts["forecast_rows_at_origin"] == 0:
-        problems.append(f"pred_daily_forecast has no rows with origin_date = {cfg.as_of_date} (run `make predict`, "
-                        "or align load_forecast.forecast_origin with serving.as_of_date)")
+        problems.append(
+            f"pred_daily_forecast has no rows with origin_date = {cfg.as_of_date} (run `make predict`, "
+            "or align load_forecast.forecast_origin with serving.as_of_date)"
+        )
     if facts["pred_referral_rows"] == 0:
         problems.append("pred_referral is empty for the test period (run `make predict`)")
     if problems:
@@ -391,43 +416,81 @@ def check_inputs(cur: psycopg.Cursor, cfg: ServingConfig, test_start: dt.date, t
     return facts
 
 
-def build(conninfo: str, cfg: ServingConfig, raw_config: dict, test_start: dt.date, test_end: dt.date,
-          log=print) -> dict:
+def build(
+    conninfo: str, cfg: ServingConfig, raw_config: dict, test_start: dt.date, test_end: dt.date, log=print
+) -> dict:
     params = sql_params(cfg, test_start, test_end)
     with psycopg.connect(conninfo) as con, con.cursor() as cur:
         inputs = check_inputs(cur, cfg, test_start, test_end)
         cur.execute(f"TRUNCATE {', '.join(MART_TABLES)}")
-        for name, sql in (("mart_hospital_profile_status", HOSPITAL_SQL),
-                          ("mart_region_profile_status", REGION_SQL),
-                          ("mart_area_status", AREA_SQL)):
+        for name, sql in (
+            ("mart_hospital_profile_status", HOSPITAL_SQL),
+            ("mart_region_profile_status", REGION_SQL),
+            ("mart_area_status", AREA_SQL),
+        ):
             cur.execute(sql, params)
             log(f"  {name}: {cur.rowcount:,} rows")
 
         counts = {t: cur.execute(f"SELECT count(*) FROM {t}").fetchone()[0] for t in MART_TABLES}
         expected = {
             "mart_hospital_profile_status": cur.execute(
-                "SELECT count(*) FROM (SELECT DISTINCT org_code, profile_code FROM agg_daily_hospital_profile) t").fetchone()[0],
+                "SELECT count(*) FROM (SELECT DISTINCT org_code, profile_code FROM agg_daily_hospital_profile) t"
+            ).fetchone()[0],
             "mart_region_profile_status": cur.execute(
-                "SELECT count(*) FROM (SELECT DISTINCT region_code, profile_code FROM agg_daily_region_profile) t").fetchone()[0],
-            "mart_area_status": cur.execute("SELECT count(*) + 1 FROM dim_region").fetchone()[0],
+                "SELECT count(*) FROM (SELECT DISTINCT region_code, profile_code FROM agg_daily_region_profile) t"
+            ).fetchone()[0],
+            # regions present in the aggregates (all 20 on the full data, fewer on a test fixture) + national
+            "mart_area_status": cur.execute(
+                """SELECT count(DISTINCT a.region_code) + 1 FROM agg_daily_region_profile a
+                   JOIN dim_region r ON r.region_code = a.region_code"""
+            ).fetchone()[0],
         }
         if counts != expected:
             raise RuntimeError(f"mart row counts {counts} differ from the expected {expected}")
 
+        medians = cur.execute(
+            """SELECT (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY queue_trend_raw_4w)
+                        FROM mart_hospital_profile_status WHERE has_sufficient_data AND queue_trend_raw_4w IS NOT NULL),
+                       (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY queue_trend_raw_4w)
+                        FROM mart_region_profile_status WHERE has_sufficient_data AND queue_trend_raw_4w IS NOT NULL)"""
+        ).fetchone()
+        log(
+            f"  national median raw queue trend: hospital × profile {medians[0]:.2f}%/week, "
+            f"region × profile {medians[1]:.2f}%/week"
+        )
+        # names of 3-character ICD-10 codes where the data itself uses the 3-character code (most codes are
+        # 4-character, so the API falls back to the ICD chapter for the rest; there is no ICD dictionary)
+        icd3_names = dict(
+            cur.execute(
+                """SELECT icd10_code, mode() WITHIN GROUP (ORDER BY diagnosis_name) FROM fact_referral
+               WHERE icd10_code ~ '^[A-Z][0-9]{2}$' AND diagnosis_name IS NOT NULL GROUP BY icd10_code"""
+            ).fetchall()
+        )
         config = {
             **raw_config,
             "derived": {
-                "window_start": cfg.window_start.isoformat(), "trend_start": cfg.trend_start.isoformat(),
-                "trend_end": cfg.trend_end.isoformat(), "test_start": test_start.isoformat(),
-                "test_end": test_end.isoformat(), "national_code": NATIONAL_CODE,
+                "icd3_names": icd3_names,
+                "queue_trend_national_median_4w": {"hospital_profile": medians[0], "region_profile": medians[1]},
+                "window_start": cfg.window_start.isoformat(),
+                "trend_start": cfg.trend_start.isoformat(),
+                "trend_end": cfg.trend_end.isoformat(),
+                "test_start": test_start.isoformat(),
+                "test_end": test_end.isoformat(),
+                "national_code": NATIONAL_CODE,
             },
         }
-        cur.execute("""INSERT INTO mart_build_info (id, as_of_date, built_at, config, row_counts)
+        cur.execute(
+            """INSERT INTO mart_build_info (id, as_of_date, built_at, config, row_counts)
                        VALUES (1, %s, %s, %s, %s)
                        ON CONFLICT (id) DO UPDATE SET as_of_date = EXCLUDED.as_of_date, built_at = EXCLUDED.built_at,
                            config = EXCLUDED.config, row_counts = EXCLUDED.row_counts""",
-                    (cfg.as_of_date, dt.datetime.now().replace(microsecond=0),
-                     json.dumps(config, ensure_ascii=False, default=str), json.dumps(counts)))
+            (
+                cfg.as_of_date,
+                dt.datetime.now().replace(microsecond=0),
+                json.dumps(config, ensure_ascii=False, default=str),
+                json.dumps(counts),
+            ),
+        )
         for table in MART_TABLES:
             cur.execute(f"ANALYZE {table}")
         con.commit()

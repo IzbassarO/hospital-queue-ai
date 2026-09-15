@@ -1,4 +1,5 @@
 """Dictionaries: dim_region (+ ml/configs/regions.yaml), dim_profile, dim_organization, ersb_snapshot."""
+
 import csv
 from pathlib import Path
 
@@ -13,13 +14,26 @@ from hqai_ml.ingest.normalize import core_key, name_key, number_tokens
 # Official KATO 2-digit region codes, for human review in regions.yaml only.
 # NOT used for the mapping (the mapping is derived from the data).
 KATO_REFERENCE = {
-    "10": "Абайская область", "11": "Акмолинская область", "15": "Актюбинская область",
-    "19": "Алматинская область", "23": "Атырауская область", "27": "Западно-Казахстанская область",
-    "31": "Жамбылская область", "33": "Жетысуская область", "35": "Карагандинская область",
-    "39": "Костанайская область", "43": "Кызылординская область", "47": "Мангистауская область",
-    "55": "Павлодарская область", "59": "Северо-Казахстанская область", "61": "Туркестанская область",
-    "62": "Улытауская область", "63": "Восточно-Казахстанская область", "71": "г. Астана",
-    "75": "г. Алматы", "79": "г. Шымкент",
+    "10": "Абайская область",
+    "11": "Акмолинская область",
+    "15": "Актюбинская область",
+    "19": "Алматинская область",
+    "23": "Атырауская область",
+    "27": "Западно-Казахстанская область",
+    "31": "Жамбылская область",
+    "33": "Жетысуская область",
+    "35": "Карагандинская область",
+    "39": "Костанайская область",
+    "43": "Кызылординская область",
+    "47": "Мангистауская область",
+    "55": "Павлодарская область",
+    "59": "Северо-Казахстанская область",
+    "61": "Туркестанская область",
+    "62": "Улытауская область",
+    "63": "Восточно-Казахстанская область",
+    "71": "г. Астана",
+    "75": "г. Алматы",
+    "79": "г. Шымкент",
 }
 
 REGIONS_YAML_HEADER = """\
@@ -67,7 +81,9 @@ def _load_regions_yaml(path: Path) -> dict:
     return {str(k): v for k, v in (data.get("regions") or {}).items()}
 
 
-def build_dim_region(con: duckdb.DuckDBPyConnection, p: IngestParams, regions_yaml: Path, waiting_codes: list[str]) -> dict:
+def build_dim_region(
+    con: duckdb.DuckDBPyConnection, p: IngestParams, regions_yaml: Path, waiting_codes: list[str]
+) -> dict:
     votes = con.execute(
         """WITH hosp_region AS (      -- each dataset-3 hospital key -> its (majority) region name
                SELECT org_in_key, arg_max(region_in, n) AS region_in
@@ -110,14 +126,23 @@ def build_dim_region(con: duckdb.DuckDBPyConnection, p: IngestParams, regions_ya
             "in_dataset2": code in waiting_codes,
             "kato_reference": KATO_REFERENCE.get(code),
         }
-        rows.append({
-            "region_code": code, "region_name": name, "vote_region_name": vote_name, "vote_share": share,
-            "vote_referrals": total,
-            "runner_up_name": out[code]["vote"]["runner_up"], "runner_up_share": out[code]["vote"]["runner_up_share"],
-            "is_ambiguous": ambiguous, "manual_override": manual,
-        })
+        rows.append(
+            {
+                "region_code": code,
+                "region_name": name,
+                "vote_region_name": vote_name,
+                "vote_share": share,
+                "vote_referrals": total,
+                "runner_up_name": out[code]["vote"]["runner_up"],
+                "runner_up_share": out[code]["vote"]["runner_up_share"],
+                "is_ambiguous": ambiguous,
+                "manual_override": manual,
+            }
+        )
 
-    body = yaml.safe_dump({"min_share": p.region_vote_min_share, "regions": out}, allow_unicode=True, sort_keys=False, width=120)
+    body = yaml.safe_dump(
+        {"min_share": p.region_vote_min_share, "regions": out}, allow_unicode=True, sort_keys=False, width=120
+    )
     regions_yaml.write_text(REGIONS_YAML_HEADER + "\n" + body, encoding="utf-8")
 
     df = pd.DataFrame(rows)
@@ -139,7 +164,10 @@ def build_dim_region(con: duckdb.DuckDBPyConnection, p: IngestParams, regions_ya
     names_per_code = pd.DataFrame(lookup, columns=["key", "region_code"]).drop_duplicates()
     collisions = names_per_code[names_per_code.duplicated("key", keep=False)]
     con.register("_region_lookup_df", names_per_code.drop_duplicates("key"))
-    con.execute("CREATE OR REPLACE TABLE region_lookup AS SELECT key::VARCHAR AS key, region_code::VARCHAR AS region_code FROM _region_lookup_df")
+    con.execute(
+        "CREATE OR REPLACE TABLE region_lookup AS SELECT key::VARCHAR AS key, region_code::VARCHAR AS region_code "
+        "FROM _region_lookup_df"
+    )
     con.unregister("_region_lookup_df")
     return {
         "codes": len(codes),
@@ -150,8 +178,9 @@ def build_dim_region(con: duckdb.DuckDBPyConnection, p: IngestParams, regions_ya
 
 
 # ------------------------------------------------------------- dim_organization
-def build_dim_organization(con: duckdb.DuckDBPyConnection, p: IngestParams, matching_csv: Path,
-                           overrides_yaml: Path) -> dict:
+def build_dim_organization(
+    con: duckdb.DuckDBPyConnection, p: IngestParams, matching_csv: Path, overrides_yaml: Path
+) -> dict:
     con.execute(
         """CREATE OR REPLACE TABLE stg_org AS
         WITH names AS (SELECT org_code, hospital_mo, hospital_key, count(*) n FROM stg_referral GROUP BY ALL),
@@ -175,10 +204,12 @@ def build_dim_organization(con: duckdb.DuckDBPyConnection, p: IngestParams, matc
     )
 
     orgs = con.execute("SELECT org_code, org_name, org_key, n_referrals FROM stg_org").fetchdf()
-    ersb = con.execute("SELECT ersb_id, org_name, org_key, discharged_total FROM stg_ersb WHERE org_key IS NOT NULL").fetchdf()
+    ersb = con.execute(
+        "SELECT ersb_id, org_name, org_key, discharged_total FROM stg_ersb WHERE org_key IS NOT NULL"
+    ).fetchdf()
     # exact key -> ERSB row with the largest discharged_total (ERSB has a few duplicate names)
     exact = ersb.sort_values(["discharged_total", "ersb_id"], ascending=[False, True]).drop_duplicates("org_key")
-    exact_by_key = dict(zip(exact.org_key, exact.ersb_id))
+    exact_by_key = dict(zip(exact.org_key, exact.ersb_id, strict=True))
     ersb_cores = [core_key(k) for k in ersb.org_key]
     ersb_rows = ersb.to_dict("records")
 
@@ -208,18 +239,25 @@ def build_dim_organization(con: duckdb.DuckDBPyConnection, p: IngestParams, matc
         shown = best or max(scored, default=None, key=lambda s: (s[2], s[1]))
         if shown:
             row = ersb_rows[shown[3]]
-            fuzzy_rows.append({
-                "decision": "accepted" if shown[0] else "rejected", "reject_reason": shown[4],
-                "org_code": o.org_code, "org_name": o.org_name, "n_referrals": o.n_referrals,
-                "ersb_id": int(row["ersb_id"]), "ersb_name": row["org_name"],
-                "ersb_discharged_total": int(row["discharged_total"]),
-                "token_set_ratio": round(shown[2], 1), "token_sort_ratio": round(shown[1], 1),
-                "candidates_above_set_threshold": len(cands),
-            })
+            fuzzy_rows.append(
+                {
+                    "decision": "accepted" if shown[0] else "rejected",
+                    "reject_reason": shown[4],
+                    "org_code": o.org_code,
+                    "org_name": o.org_name,
+                    "n_referrals": o.n_referrals,
+                    "ersb_id": int(row["ersb_id"]),
+                    "ersb_name": row["org_name"],
+                    "ersb_discharged_total": int(row["discharged_total"]),
+                    "token_set_ratio": round(shown[2], 1),
+                    "token_sort_ratio": round(shown[1], 1),
+                    "candidates_above_set_threshold": len(cands),
+                }
+            )
 
     # manual overrides (ml/configs/org_matches.yaml) win over the automatic result
-    overrides = load_org_overrides(overrides_yaml, set(orgs.org_code), set(int(i) for i in ersb.ersb_id))
-    ersb_name = dict(zip(ersb.ersb_id.astype(int), ersb.org_name))
+    overrides = load_org_overrides(overrides_yaml, set(orgs.org_code), {int(i) for i in ersb.ersb_id})
+    ersb_name = dict(zip(ersb.ersb_id.astype(int), ersb.org_name, strict=True))
     review_by_org = {r["org_code"]: r for r in fuzzy_rows}
     applied = {"accept": 0, "reject": set()}
     for i, (org_code, ersb_id, _score, _method) in enumerate(matches):
@@ -236,7 +274,9 @@ def build_dim_organization(con: duckdb.DuckDBPyConnection, p: IngestParams, matc
         else:
             continue
         row = review_by_org.setdefault(org_code, {"org_code": org_code})
-        row.update({"decision": decision, "reject_reason": reason, "ersb_id": shown_id, "ersb_name": ersb_name[shown_id]})
+        row.update(
+            {"decision": decision, "reject_reason": reason, "ersb_id": shown_id, "ersb_name": ersb_name[shown_id]}
+        )
     fuzzy_rows = list(review_by_org.values())
 
     con.register("_org_match_df", pd.DataFrame(matches, columns=["org_code", "ersb_id", "match_score", "match_method"]))
@@ -253,26 +293,47 @@ def build_dim_organization(con: duckdb.DuckDBPyConnection, p: IngestParams, matc
 
     matching_csv.parent.mkdir(parents=True, exist_ok=True)
     fuzzy_rows.sort(key=lambda r: (r["decision"], r.get("token_set_ratio") or 0, r.get("token_sort_ratio") or 0))
-    fields = ["decision", "reject_reason", "org_code", "org_name", "n_referrals", "ersb_id", "ersb_name",
-              "ersb_discharged_total", "token_set_ratio", "token_sort_ratio", "candidates_above_set_threshold"]
+    fields = [
+        "decision",
+        "reject_reason",
+        "org_code",
+        "org_name",
+        "n_referrals",
+        "ersb_id",
+        "ersb_name",
+        "ersb_discharged_total",
+        "token_set_ratio",
+        "token_sort_ratio",
+        "candidates_above_set_threshold",
+    ]
     with open(matching_csv, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.DictWriter(f, fieldnames=fields, restval="")
         w.writeheader()
         w.writerows(fuzzy_rows)
 
     stats = con.execute(
-        """SELECT count(*), count(*) FILTER (WHERE match_method = 'exact'), count(*) FILTER (WHERE match_method = 'fuzzy'),
+        """SELECT count(*), count(*) FILTER (WHERE match_method = 'exact'),
+                   count(*) FILTER (WHERE match_method = 'fuzzy'),
                   count(*) FILTER (WHERE ersb_id IS NULL),
                   count(*) FILTER (WHERE region_method = 'admission_refusals_region'),
                   count(*) FILTER (WHERE match_method = 'manual')
            FROM dim_organization"""
     ).fetchone()
-    return {"orgs": stats[0], "ersb_exact": stats[1], "ersb_fuzzy": stats[2], "ersb_unmatched": stats[3],
-            "region_from_admission_refusals": stats[4], "ersb_manual": stats[5],
-            "manual_accepts_applied": applied["accept"], "manual_rejects_applied": len(applied["reject"]),
-            # rejects whose pair the automatic matching did not produce this run (kept as guards)
-            "manual_rejects_not_triggered": sorted(f"{o}->{e}" for o, e in overrides["reject"] if (o, e) not in applied["reject"]),
-            "fuzzy_rejected_near_misses": sum(r["decision"] == "rejected" for r in fuzzy_rows)}
+    return {
+        "orgs": stats[0],
+        "ersb_exact": stats[1],
+        "ersb_fuzzy": stats[2],
+        "ersb_unmatched": stats[3],
+        "region_from_admission_refusals": stats[4],
+        "ersb_manual": stats[5],
+        "manual_accepts_applied": applied["accept"],
+        "manual_rejects_applied": len(applied["reject"]),
+        # rejects whose pair the automatic matching did not produce this run (kept as guards)
+        "manual_rejects_not_triggered": sorted(
+            f"{o}->{e}" for o, e in overrides["reject"] if (o, e) not in applied["reject"]
+        ),
+        "fuzzy_rejected_near_misses": sum(r["decision"] == "rejected" for r in fuzzy_rows),
+    }
 
 
 def load_org_overrides(path: Path, org_codes: set[str], ersb_ids: set[int]) -> dict:

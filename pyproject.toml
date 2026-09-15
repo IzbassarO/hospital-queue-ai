@@ -1,0 +1,27 @@
+# Repository-wide tool configuration. Packages have their own pyproject.toml (backend/, ml/); ruff ignores those
+# (no [tool.ruff] there) and uses this one. `make lint` / `make fmt`.
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+include = ["backend/**/*.py", "ml/**/*.py", "tools/**/*.py"]
+src = ["backend", "backend/tests", "ml"]
+cache-dir = "scratch/.ruff_cache"  # caches only under scratch/ (project rule)
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # import order
+    "B",    # bugbear
+    "UP",   # pyupgrade (py312)
+    "SIM",  # simplifications
+    "C4",   # comprehensions
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "hqai_ml", "conftest"]
+
+[tool.ruff.format]
+quote-style = "double"

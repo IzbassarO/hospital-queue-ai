@@ -1,4 +1,5 @@
 """Metric functions. All return plain floats (None when undefined) so results serialize to JSON."""
+
 import math
 
 import numpy as np
@@ -55,8 +56,11 @@ def calibration_table(y, prob, bins: int = 10) -> list[dict]:
     """Equal-frequency bins of predicted probability: mean predicted vs observed rate."""
     df = pd.DataFrame({"y": np.asarray(y, int), "p": np.asarray(prob, float)})
     df["bin"] = pd.qcut(df["p"].rank(method="first"), bins, labels=False)
-    out = df.groupby("bin").agg(n=("y", "size"), p_min=("p", "min"), p_max=("p", "max"),
-                                mean_pred=("p", "mean"), observed=("y", "mean")).reset_index()
+    out = (
+        df.groupby("bin")
+        .agg(n=("y", "size"), p_min=("p", "min"), p_max=("p", "max"), mean_pred=("p", "mean"), observed=("y", "mean"))
+        .reset_index()
+    )
     return [{k: (int(v) if k in ("bin", "n") else float(v)) for k, v in r.items()} for r in out.to_dict("records")]
 
 

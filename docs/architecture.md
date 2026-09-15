@@ -11,12 +11,15 @@ hospital-queue-ai/
 │   │   ├── api/            routers (routes.py) and dependencies (session, pagination)
 │   │   ├── schemas/        Pydantic request / response models
 │   │   ├── services/       status (overview, regions, hospital card), recommend (rule v1 + estimator
-│   │   │                   interface), activity (referrals, decisions, alerts), catalog (health, models, dictionaries)
+│   │   │                   interface), activity (referrals, decisions, alerts), catalog (health, models, dictionaries),
+│   │   │                   display (display-ready explanation values)
 │   │   └── db/
 │   │       ├── session.py  SQLAlchemy engine / session dependency
 │   │       └── models.py   SQLAlchemy models: data layer, predictions, model registry, serving marts, decision_log
-│   ├── alembic/            migrations (schema owner): 0001 data layer, 0002 predictions, 0003 marts + decision_log
+│   ├── alembic/            migrations (schema owner): 0001 data layer, 0002 predictions, 0003 marts + decision_log,
+│   │                       0004 excess queue trend
 │   ├── tests/              API tests (pytest + httpx) against the running Postgres
+│   │   └── fixtures/       2-region CI dataset (*.csv.gz + manifest.json, < 5 MB), built by tools/test_fixture.py
 │   ├── Dockerfile          python:3.12-slim, non-root, alembic upgrade head + uvicorn
 │   ├── alembic.ini
 │   └── pyproject.toml
@@ -34,6 +37,8 @@ hospital-queue-ai/
 │   └── configs/            ingest.yaml, regions.yaml, org_matches.yaml, models.yaml, explain_templates.yaml,
 │                           serving.yaml (load_index weights, thresholds, recommendation rule)
 ├── frontend/           placeholder
+├── tools/              audit.py (make audit), test_fixture.py (make fixture / fixture-load)
+├── .github/workflows/  ci.yml: lint + API tests on push and pull request
 ├── db/init.sql         Postgres extensions (pgvector, pg_trgm)
 ├── docs/               this file, data.md, model_card.md, api.md
 ├── data/               raw/ (read-only input), processed/ (Parquet)   — gitignored
@@ -42,7 +47,9 @@ hospital-queue-ai/
 ├── artifacts/          trained models etc.                             — gitignored
 ├── scratch/            temporary / exploratory / verification files   — gitignored
 ├── docker-compose.yml  postgres (pgvector/pgvector:pg16) + backend (FastAPI, port 8000)
-├── Makefile            up, down, migrate, ingest, baseline, psql, train, predict, marts, api-dev, test
+├── Makefile            up, down, migrate, ingest, baseline, psql, train, predict, marts, api-dev, test,
+│                       lint, fmt, audit, fixture, fixture-load
+├── pyproject.toml      repository tool config (ruff)
 └── .env.example
 ```
 
@@ -68,6 +75,9 @@ hospital-queue-ai/
   `scratch/` (gitignored) and nowhere else. Everything outside `scratch/` is product code, config,
   migrations, docs or tests that a maintainer would keep. The step-1 inventory script
   (`scratch/00_inventory.py`) is kept there as a one-off.
+- **Explanation values for display** are formatted by the backend (`services/display.py`): the per-feature format
+  comes from `ml/configs/explain_templates.yaml`, copied into `mart_build_info.config` by `make marts`, so the API
+  (which has no access to `ml/`) formats values the same way as the model's Russian sentences.
 - **Manual dictionaries** that need human review live in `ml/configs/` and are versioned in git
   (`regions.yaml`, `org_matches.yaml`); the pipeline regenerates `regions.yaml` but preserves manual overrides.
 
@@ -162,3 +172,38 @@ Endpoints, formulas and examples: [`docs/api.md`](api.md).
 | predict | `make predict` — migrations, then current models → Postgres prediction tables (~2 min), then marts |
 | marts | `make marts` — serving marts from facts, aggregates and predictions (~3 s) |
 | tests | `make test` — API tests in-process against the running Postgres (`HQAI_API_BASE_URL=http://localhost:8000 make test` for the container) |
+| lint | `make lint` (ruff check + format check) / `make fmt` (fix + format) on `backend/`, `ml/`, `tools/`; config in the root `pyproject.toml`, cache in `scratch/` |
+| audit | `make audit` — before every commit, see below |
+| CI | GitHub Actions `.github/workflows/ci.yml`, see below |
+
+## Quality gates
+
+**`make audit`** (`tools/audit.py`) prints one line per check and exits non-zero if any fails:
+
+| check | fails when |
+|---|---|
+| layout | a tracked-candidate file (anything not matched by `.gitignore`, found without git) is outside `backend ml frontend db docs tools .github` or is a root file other than the config files (`README.md`, `Makefile`, `docker-compose.yml`, `requirements.txt`, `pyproject.toml`, `.gitignore`, `.env.example`, …) |
+| secrets | a tracked candidate is a `.env` (not `.env.example`), or contains a private key, AWS / GitHub / Slack / `sk-…` / Google API key, a credential-like assignment (`password`, `secret`, `token`, `api_key` … with a literal value that is not a placeholder such as `change-me` or `${VAR}`) or a password in a URL. Gzipped fixtures are scanned decompressed. `scratch/` and the local `.env` are gitignored and therefore not candidates |
+| alembic | `alembic check` reports drift between the SQLAlchemy models and the migrations |
+| ruff | `ruff check` or `ruff format --check` fails |
+| pytest | the API tests fail |
+| api-docs | an endpoint heading in `docs/api.md` (a `###` heading holding `` `METHOD /path` ``) has no route in the app's OpenAPI schema under `/api/v1`, or vice versa (path parameter names and query strings are ignored) |
+
+**CI** (`.github/workflows/ci.yml`, on push and pull request): Ubuntu, Python 3.12, a `pgvector/pgvector:pg16`
+service container. Steps: `pip install -r requirements.txt` → `make lint` → `db/init.sql` (extensions) →
+`make fixture-load` (migrations + the 2-region fixture) → `make marts` → `alembic check` → `make test`.
+
+```mermaid
+flowchart LR
+    FULL[("local Postgres<br/>full open data")] -- "make fixture<br/>regions 62, 59" --> FX["backend/tests/fixtures<br/>*.csv.gz + manifest.json<br/>(~2.2 MB)"]
+    FX -- "make fixture-load" --> CIPG[("CI Postgres 16<br/>+ pgvector")]
+    CIPG -- "make marts" --> CIPG
+    CIPG --> TESTS["make test"]
+```
+
+The fixture holds, for two small regions, the dictionaries, the referrals and daily aggregates the marts and API
+read (from the start of the card series), test-period predictions with explanations, the forecast at `as_of_date`
+and the current model registry rows — only data derived from the MoH open data. The marts are rebuilt from it in
+CI, so the mart SQL runs there too; tests are written to hold on both the full data and the fixture (e.g. region
+counts are not hard-coded). The loader verifies checksums and row counts against `manifest.json` and refuses to
+load into a database that already has referrals unless `--replace` is given.

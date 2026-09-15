@@ -5,7 +5,8 @@
 #   icd_chapter              roman numeral + chapter name below
 #   weekday                  1..7 -> Пн..Вс
 #   text                     value as is
-#   int / float1 / percent   numbers (percent expects a share 0..1)
+#   icd_code                 3-character ICD-10 code (shown with its chapter by the API)
+#   int / float1 / percent   numbers (percent expects a share 0..1); optional `unit` for display
 # Effects: wait_time -> "+6 дней" (contribution to the predicted wait, in days);
 #          refusal_risk -> "+2,3 п.п." (contribution to the refusal probability, percentage points).
 
@@ -48,7 +49,7 @@ features:
   hospital_region_code: {label: "регион стационара", format: region}
   profile_code: {label: "профиль койки", format: profile}
   icd_chapter: {label: "класс диагноза МКБ-10", format: icd_chapter}
-  icd3: {label: "диагноз (МКБ-10)", format: text}
+  icd3: {label: "диагноз (МКБ-10)", format: icd_code}
   referral_purpose: {label: "цель госпитализации", format: text}
   finance_source: {label: "источник финансирования", format: text}
   territorial_type: {label: "тип местности", format: text}
@@ -59,11 +60,11 @@ features:
   hosp_reg_28d: {label: "направлений в стационар за 28 дней", format: int}
   hosp_hosp_7d: {label: "госпитализаций в стационаре за 7 дней", format: int}
   hosp_hosp_28d: {label: "госпитализаций в стационаре за 28 дней", format: int}
-  hp_median_wait_prev: {label: "медианное ожидание в стационаре по профилю до даты направления, дней", format: float1}
+  hp_median_wait_prev: {label: "медианное ожидание в стационаре по профилю до даты направления, дней", format: float1, unit: "дн."}
   hp_n_hosp_prev: {label: "госпитализаций по профилю в стационаре до даты направления", format: int}
   hp_refusal_rate_prev: {label: "доля отказов в стационаре по профилю до даты направления", format: percent}
   hp_n_resolved_prev: {label: "завершённых направлений по профилю в стационаре до даты направления", format: int}
-  ersb_throughput_per_day: {label: "выписок в день по данным ЕРСБ", format: float1}
-  ersb_avg_los: {label: "средняя длительность пребывания по ЕРСБ, дней", format: float1}
+  ersb_throughput_per_day: {label: "выписок в день по данным ЕРСБ", format: float1, unit: "в день"}
+  ersb_avg_los: {label: "средняя длительность пребывания по ЕРСБ, дней", format: float1, unit: "дн."}
   adm_refusals_28d: {label: "отказов в приёмном покое стационара за 28 дней", format: int}
   planned_lag_days: {label: "дней до плановой даты госпитализации", format: int}

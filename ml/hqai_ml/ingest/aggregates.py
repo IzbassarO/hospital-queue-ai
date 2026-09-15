@@ -1,4 +1,5 @@
 """Daily aggregate tables (dense calendar for the referral aggregates)."""
+
 import duckdb
 
 from hqai_ml.ingest.config import IngestParams
@@ -29,7 +30,8 @@ def build_agg_daily_hospital_profile(con: duckdb.DuckDBPyConnection, p: IngestPa
                    - count(*) FILTER (WHERE leave_date < $start) AS n
             FROM f GROUP BY ALL),
         reg AS (SELECT org_code, profile_code, registration_date AS date, count(*) n FROM f GROUP BY ALL),
-        lev AS (SELECT org_code, profile_code, leave_date AS date, count(*) n FROM f WHERE leave_date IS NOT NULL GROUP BY ALL),
+        lev AS (SELECT org_code, profile_code, leave_date AS date, count(*) n FROM f
+                WHERE leave_date IS NOT NULL GROUP BY ALL),
         hosp AS (SELECT org_code, profile_code, hospitalization_date AS date, count(*) n FROM f
                  WHERE outcome = 'hospitalized' GROUP BY ALL),
         ref AS (SELECT org_code, profile_code, refusal_date AS date, count(*) n FROM f

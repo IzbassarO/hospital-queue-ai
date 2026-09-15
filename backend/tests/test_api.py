@@ -1,27 +1,63 @@
 """Every endpoint: status 200 and the expected shape; the recommendation rule; decisions persistence;
 latency budget for the live demo."""
+
 import datetime as dt
+import re
 import time
 import uuid
 
 import httpx
 import pytest
+from sqlalchemy import text
 
+from app.db.session import SessionLocal
 from conftest import API, TEST_ACTOR_PREFIX
 
 pytestmark = pytest.mark.anyio
 
 STATUS_METRIC_KEYS = {
-    "as_of_date", "queue_now", "registrations_28d", "hospitalizations_28d", "refusals_28d", "refusal_rate_28d",
-    "n_waits_28d", "median_wait_28d", "daily_throughput_28d", "backlog_days", "forecast_registrations_14d",
-    "forecast_hospitalizations_14d", "n_test_referrals", "high_risk_share", "queue_trend_4w",
-    "has_sufficient_data", "load_index", "status", "status_label", "components",
+    "as_of_date",
+    "queue_now",
+    "registrations_28d",
+    "hospitalizations_28d",
+    "refusals_28d",
+    "refusal_rate_28d",
+    "n_waits_28d",
+    "median_wait_28d",
+    "daily_throughput_28d",
+    "backlog_days",
+    "forecast_registrations_14d",
+    "forecast_hospitalizations_14d",
+    "n_test_referrals",
+    "high_risk_share",
+    "queue_trend_raw_4w",
+    "queue_trend_4w",
+    "has_sufficient_data",
+    "load_index",
+    "status",
+    "status_label",
+    "components",
 }
 AREA_KEYS = {
-    "code", "name", "level", "queue_now", "registrations_28d", "hospitalizations_28d", "refusals_28d",
-    "refusal_rate_28d", "median_wait_28d", "n_waits_28d", "forecast_registrations_14d",
-    "forecast_hospitalizations_14d", "high_risk_share", "n_hospitals", "n_hospital_profiles",
-    "n_hospital_profiles_ranked", "load_index_max", "n_hospitals_high_load", "n_hospital_profiles_high_load",
+    "code",
+    "name",
+    "level",
+    "queue_now",
+    "registrations_28d",
+    "hospitalizations_28d",
+    "refusals_28d",
+    "refusal_rate_28d",
+    "median_wait_28d",
+    "n_waits_28d",
+    "forecast_registrations_14d",
+    "forecast_hospitalizations_14d",
+    "high_risk_share",
+    "n_hospitals",
+    "n_hospital_profiles",
+    "n_hospital_profiles_ranked",
+    "load_index_max",
+    "n_hospitals_high_load",
+    "n_hospital_profiles_high_load",
 }
 
 
@@ -43,7 +79,7 @@ def assert_ranked(items: list[dict]) -> None:
     ranked = [x for x in indexes if x is not None]
     assert ranked == sorted(ranked, reverse=True), "not sorted by load_index desc"
     if None in indexes:
-        assert all(x is None for x in indexes[indexes.index(None):]), "rows without load_index must come last"
+        assert all(x is None for x in indexes[indexes.index(None) :]), "rows without load_index must come last"
 
 
 # ------------------------------------------------------------------------------------------ service
@@ -68,11 +104,28 @@ async def test_overview(client):
     assert body["as_of_date"] == "2025-03-31"
     assert set(body["national"]) == AREA_KEYS and body["national"]["code"] == "KZ"
     regions = body["regions"]
-    assert len(regions) == 20
+    dictionary = await get_json(client, "/dictionaries")
+    # every region with data (all 20 on the full data, 2 on the CI fixture), each a known region
+    assert 1 <= len(regions) <= len(dictionary["regions"])
+    assert {r["code"] for r in regions} <= {r["code"] for r in dictionary["regions"]}
     assert all(set(r) == AREA_KEYS and r["level"] == "region" and r["name"] for r in regions)
     assert sum(r["queue_now"] for r in regions) == body["national"]["queue_now"]
     assert sum(r["n_hospitals_high_load"] for r in regions) == body["national"]["n_hospitals_high_load"]
     assert max(r["load_index_max"] for r in regions) == body["national"]["load_index_max"]
+
+
+async def test_queue_trend_is_excess_over_national_median(client, high_load):
+    """queue_trend_4w = queue_trend_raw_4w − national median raw trend; the trend score uses the excess,
+    floored at 0."""
+    median = (await get_json(client, "/overview"))["thresholds"]["queue_trend_national_median_4w"]
+    assert median is not None
+    hospitals = await get_json(client, f"/regions/{high_load['region_code']}/hospitals", limit=500)
+    rows = [h for h in hospitals["items"] if h["queue_trend_4w"] is not None]
+    assert rows
+    for h in rows:
+        assert h["queue_trend_raw_4w"] - h["queue_trend_4w"] == pytest.approx(median, abs=0.11)
+        if h["has_sufficient_data"] and h["queue_trend_4w"] <= 0:
+            assert h["components"]["trend_score"] == 0
 
 
 async def test_region_detail(client, high_load):
@@ -81,7 +134,7 @@ async def test_region_detail(client, high_load):
     assert body["region"]["code"] == high_load["region_code"] and set(body["region"]) == AREA_KEYS
     assert body["profiles"], "a region has profiles"
     for p in body["profiles"]:
-        assert STATUS_METRIC_KEYS <= set(p)
+        assert set(p) >= STATUS_METRIC_KEYS
         assert p["region_code"] == high_load["region_code"] and p["profile_name"]
         assert (p["load_index"] is None) == (p["status"] == "insufficient_data")
     assert_ranked(body["profiles"])
@@ -99,7 +152,7 @@ async def test_region_hospitals_ranked_and_paginated(client, high_load):
     assert_page(body, 5)
     assert_ranked(body["items"])
     for item in body["items"]:
-        assert STATUS_METRIC_KEYS <= set(item) and item["region_code"] == region and item["org_name"]
+        assert set(item) >= STATUS_METRIC_KEYS and item["region_code"] == region and item["org_name"]
 
     second = await get_json(client, f"/regions/{region}/hospitals", limit=5, offset=5)
     assert_page(second, 5, 5)
@@ -118,7 +171,7 @@ async def test_hospital_profile_card(client, high_load):
     assert set(body) == {"status", "series", "forecast", "explanation_factors"}
 
     status = body["status"]
-    assert STATUS_METRIC_KEYS <= set(status)
+    assert set(status) >= STATUS_METRIC_KEYS
     assert (status["org_code"], status["profile_code"]) == (org, profile)
     assert status["load_index"] == high_load["load_index"]
 
@@ -142,6 +195,38 @@ async def test_hospital_profile_card(client, high_load):
         assert 1 <= len(rows) <= 5
         assert all(r["unit"] == unit and r["label"] and 0 < r["share_in_top5"] <= 1 for r in rows)
         assert [r["mean_abs_effect"] for r in rows] == sorted((r["mean_abs_effect"] for r in rows), reverse=True)
+        for r in rows:
+            assert_display(r["feature"], r["most_common_value"], r["most_common_value_display"])
+
+
+def assert_display(feature: str, raw, display: str) -> None:
+    """Display-ready factor values: rates in % with 1 decimal, counts as integers, days with 1 decimal,
+    codes with their dictionary names."""
+    assert isinstance(display, str) and display, (feature, raw)
+    if raw is None:
+        return
+    if feature in ("hp_refusal_rate_prev",):
+        assert re.fullmatch(r"\d+,\d%", display), (feature, raw, display)
+    elif feature in (
+        "queue_hp_prev_day",
+        "day_of_window",
+        "hp_n_hosp_prev",
+        "hp_n_resolved_prev",
+        "hosp_reg_7d",
+        "hosp_reg_28d",
+        "hosp_hosp_7d",
+        "hosp_hosp_28d",
+        "adm_refusals_28d",
+    ):
+        assert re.fullmatch(r"-?[\d ]+", display), (feature, raw, display)
+    elif feature in ("hp_median_wait_prev", "ersb_avg_los"):
+        assert re.fullmatch(r"[\d ]+,\d дн\.", display), (feature, raw, display)
+    elif feature in ("org_code", "profile_code", "region_code", "hospital_region_code"):
+        assert display.endswith(f"({raw})") and len(display) > len(str(raw)) + 3, (feature, raw, display)
+    elif feature == "icd3":
+        assert display.startswith(str(raw)) and len(display) > len(str(raw)) + 3, (feature, raw, display)
+    elif feature == "registration_weekday":
+        assert display in ("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"), (feature, raw, display)
 
 
 @pytest.mark.parametrize("sort,key", [("risk", "pred_refusal_prob"), ("wait", "pred_wait_days")])
@@ -151,16 +236,33 @@ async def test_referrals_sorted_without_patient_identifiers(client, high_load, s
     assert_page(body, 20)
     items = body["items"]
     assert items
-    assert all(set(i) == {"hospitalization_code", "registration_date", "icd10_code", "referral_purpose",
-                          "pred_wait_days", "pred_refusal_prob", "is_high_risk", "explanation"} for i in items)
+    assert all(
+        set(i)
+        == {
+            "hospitalization_code",
+            "registration_date",
+            "icd10_code",
+            "referral_purpose",
+            "pred_wait_days",
+            "pred_refusal_prob",
+            "is_high_risk",
+            "explanation",
+        }
+        for i in items
+    )
     values = [i[key] for i in items]
     assert values == sorted(values, reverse=True)
     for i in items:
         assert i["hospitalization_code"].split(".")[1:3] == [org, profile]
         assert set(i["explanation"]) == {"wait_time", "refusal_risk"}
+        for factors in i["explanation"].values():
+            for f in factors:
+                assert {"feature", "value", "value_display", "effect", "text"} <= set(f)
+                assert_display(f["feature"], f["value"], f["value_display"])
         assert "2025-03-01" <= i["registration_date"] <= "2025-03-31"
-    assert (await client.get(f"{API}/hospitals/{org}/profiles/{profile}/referrals",
-                             params={"sort": "name"})).status_code == 422
+    assert (
+        await client.get(f"{API}/hospitals/{org}/profiles/{profile}/referrals", params={"sort": "name"})
+    ).status_code == 422
 
 
 async def test_alerts(client):
@@ -170,6 +272,7 @@ async def test_alerts(client):
     assert_ranked(body["items"])
     for item in body["items"]:
         assert item["reasons"] and all(isinstance(r, str) and r for r in item["reasons"])
+        # the trend condition uses the excess trend (over the national median), not the raw one
         assert (item["load_index"] or 0) >= 70 or (item["queue_trend_4w"] or 0) >= 5
 
 
@@ -193,8 +296,9 @@ async def test_recommendation_alternatives_same_region_and_profile(client):
             assert alt["org_code"] != org
             assert alt["region_code"] == body["region_code"] and alt["profile_code"] == profile
             assert alt["delta_days"] >= body["rule"]["min_wait_delta_days"]
-            assert alt["delta_days"] == pytest.approx(alt["expected_wait_current"] - alt["expected_wait_alternative"],
-                                                      abs=0.11)
+            assert alt["delta_days"] == pytest.approx(
+                alt["expected_wait_current"] - alt["expected_wait_alternative"], abs=0.11
+            )
             assert alt["backlog_days_alternative"] < alt["backlog_days_current"]
             # independent check: the alternative's own card says it is in the same region and profile
             card = await get_json(client, f"/hospitals/{alt['org_code']}/profiles/{profile}")
@@ -215,12 +319,17 @@ async def test_recommendation_not_triggered_outside_region_top(client, high_load
 
 # ------------------------------------------------------------------------------------------ decisions
 async def test_decision_is_persisted_and_listed(client, high_load, created_decision_ids):
-    recs = await get_json(client, f"/hospitals/{high_load['org_code']}/profiles/{high_load['profile_code']}/recommendations")
+    recs = await get_json(
+        client, f"/hospitals/{high_load['org_code']}/profiles/{high_load['profile_code']}/recommendations"
+    )
     payload = {
-        "region_code": high_load["region_code"], "org_code": high_load["org_code"],
+        "region_code": high_load["region_code"],
+        "org_code": high_load["org_code"],
         "profile_code": high_load["profile_code"],
         "recommendation_id": recs["alternatives"][0]["recommendation_id"] if recs["alternatives"] else None,
-        "action": "defer", "comment": f"тест {uuid.uuid4()}", "actor": f"{TEST_ACTOR_PREFIX}{uuid.uuid4().hex[:8]}",
+        "action": "defer",
+        "comment": f"тест {uuid.uuid4()}",
+        "actor": f"{TEST_ACTOR_PREFIX}{uuid.uuid4().hex[:8]}",
     }
     response = await client.post(f"{API}/decisions", json=payload)
     assert response.status_code == 201, response.text
@@ -232,15 +341,24 @@ async def test_decision_is_persisted_and_listed(client, high_load, created_decis
     assert_page(listed, 500)
     match = [d for d in listed["items"] if d["id"] == created["id"]]
     assert match and {k: match[0][k] for k in payload} == payload
-    assert all(d["org_code"] == payload["org_code"] and d["profile_code"] == payload["profile_code"]
-               for d in listed["items"])
+    assert all(
+        d["org_code"] == payload["org_code"] and d["profile_code"] == payload["profile_code"] for d in listed["items"]
+    )
 
 
 async def test_invalid_decisions_are_rejected(client, high_load):
-    base = {"region_code": high_load["region_code"], "org_code": high_load["org_code"],
-            "profile_code": high_load["profile_code"], "action": "confirm", "actor": f"{TEST_ACTOR_PREFIX}invalid"}
-    for bad in ({**base, "action": "approve"}, {**base, "actor": ""},
-                {**base, "region_code": "75" if base["region_code"] != "75" else "71"}):
+    base = {
+        "region_code": high_load["region_code"],
+        "org_code": high_load["org_code"],
+        "profile_code": high_load["profile_code"],
+        "action": "confirm",
+        "actor": f"{TEST_ACTOR_PREFIX}invalid",
+    }
+    for bad in (
+        {**base, "action": "approve"},
+        {**base, "actor": ""},
+        {**base, "region_code": "75" if base["region_code"] != "75" else "71"},
+    ):
         response = await client.post(f"{API}/decisions", json=bad)
         assert response.status_code == 422, (bad, response.text)
     unknown_region = await client.post(f"{API}/decisions", json={**base, "region_code": "00"})
@@ -259,22 +377,44 @@ async def test_models(client):
 async def test_dictionaries(client):
     body = await get_json(client, "/dictionaries")
     assert body["national_code"] == "KZ"
-    assert len(body["regions"]) == 20 and all(r["code"] and r["name"] for r in body["regions"])
+    assert len(body["regions"]) > 0 and all(r["code"] and r["name"] for r in body["regions"])
     assert len(body["profiles"]) > 0 and all(set(p) == {"code", "name", "is_day_hospital"} for p in body["profiles"])
 
 
 # ------------------------------------------------------------------------------------------ latency
+def largest_hospital_profile() -> tuple[str, str]:
+    """The hospital × profile with the most test-period referrals (heaviest explanation aggregation)."""
+    with SessionLocal() as session:
+        return tuple(
+            session.execute(
+                text(
+                    "SELECT org_code, profile_code FROM mart_hospital_profile_status "
+                    "ORDER BY n_test_referrals DESC, org_code, profile_code LIMIT 1"
+                )
+            ).one()
+        )
+
+
 async def test_every_endpoint_under_500_ms(client, high_load, created_decision_ids):
     org, profile, region = high_load["org_code"], high_load["profile_code"], high_load["region_code"]
+    big_org, big_profile = largest_hospital_profile()
     paths = [
-        "/health", "/overview", f"/regions/{region}", f"/regions/{region}/hospitals?profile={profile}",
-        f"/regions/{region}/hospitals", f"/hospitals/{org}/profiles/{profile}",
+        "/health",
+        "/overview",
+        f"/regions/{region}",
+        f"/regions/{region}/hospitals?profile={profile}",
+        f"/regions/{region}/hospitals",
+        f"/hospitals/{org}/profiles/{profile}",
         f"/hospitals/{org}/profiles/{profile}/referrals?sort=risk&limit=50",
         f"/hospitals/{org}/profiles/{profile}/referrals?sort=wait&limit=50",
-        f"/hospitals/{org}/profiles/{profile}/recommendations", f"/decisions?org={org}&profile={profile}",
-        "/alerts", "/models", "/dictionaries",
-        # the largest hospital × profile by referrals (explanation aggregation over 1 400+ referrals)
-        "/hospitals/08IV/profiles/DH",
+        f"/hospitals/{org}/profiles/{profile}/recommendations",
+        f"/decisions?org={org}&profile={profile}",
+        "/alerts",
+        "/models",
+        "/dictionaries",
+        # the largest hospital × profile by referrals (08IV × DH on the full data: 1 400+ referrals)
+        f"/hospitals/{big_org}/profiles/{big_profile}",
+        f"/hospitals/{big_org}/profiles/{big_profile}/referrals?limit=100",
     ]
     slow = {}
     for path in paths:
@@ -286,8 +426,13 @@ async def test_every_endpoint_under_500_ms(client, high_load, created_decision_i
         if elapsed_ms >= 500:
             slow[path] = round(elapsed_ms)
 
-    payload = {"region_code": region, "org_code": org, "profile_code": profile, "action": "confirm",
-               "actor": f"{TEST_ACTOR_PREFIX}latency"}
+    payload = {
+        "region_code": region,
+        "org_code": org,
+        "profile_code": profile,
+        "action": "confirm",
+        "actor": f"{TEST_ACTOR_PREFIX}latency",
+    }
     start = time.perf_counter()
     response = await client.post(f"{API}/decisions", json=payload)
     elapsed_ms = (time.perf_counter() - start) * 1000

@@ -1,4 +1,5 @@
 """Shared dependencies of the routers."""
+
 from dataclasses import dataclass
 from typing import Annotated
 

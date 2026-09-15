@@ -1,4 +1,5 @@
 """Referrals, recommendations, decisions, alerts."""
+
 import datetime as dt
 from typing import Any, Literal
 
@@ -17,7 +18,11 @@ class ReferralItem(BaseModel):
     pred_wait_days: float
     pred_refusal_prob: float
     is_high_risk: bool = Field(description="pred_refusal_prob >= high_risk_threshold (0.25)")
-    explanation: dict[str, Any] = Field(description='{"wait_time": [top-5 factors], "refusal_risk": [top-5 factors]}')
+    explanation: dict[str, Any] = Field(
+        description='{"wait_time": [top-5 factors], "refusal_risk": [top-5 factors]}; each factor has the raw `value` '
+        "and a display-ready `value_display` (rates in %, counts as integers, days with 1 decimal, "
+        "codes with dictionary names)"
+    )
 
 
 class RecommendationRule(BaseModel):
@@ -103,6 +108,7 @@ class AlertItem(BaseModel):
     status: Status
     queue_now: int
     backlog_days: float | None
+    queue_trend_raw_4w: float | None
     queue_trend_4w: float | None
     refusal_rate_28d: float | None
     reasons: list[str] = Field(description="Russian reason strings")

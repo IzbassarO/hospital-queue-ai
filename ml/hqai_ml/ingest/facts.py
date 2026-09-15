@@ -1,4 +1,5 @@
 """Fact tables: fact_referral (dataset 1) and fact_admission_refusal (dataset 3)."""
+
 import datetime as dt
 
 import duckdb
@@ -12,7 +13,8 @@ def build_fact_referral(con: duckdb.DuckDBPyConnection, p: IngestParams) -> None
         WITH b AS (
             SELECT s.*,
                    count(*) OVER (PARTITION BY s.hospitalization_code) > 1 AS is_dup_code,
-                   coalesce(s.planned_dt_raw < $pmin OR s.planned_dt_raw >= $pmax_excl, false) AS planned_dt_out_of_range,
+                   coalesce(s.planned_dt_raw < $pmin OR s.planned_dt_raw >= $pmax_excl, false)
+                       AS planned_dt_out_of_range,
                    CASE WHEN s.hospitalization_dt IS NOT NULL THEN 'hospitalized'
                         WHEN s.refusal_dt IS NOT NULL THEN 'refused'
                         ELSE 'open' END AS outcome,
@@ -41,9 +43,11 @@ def build_fact_referral(con: duckdb.DuckDBPyConnection, p: IngestParams) -> None
             CASE c.outcome WHEN 'hospitalized' THEN c.hospitalization_date
                            WHEN 'refused' THEN c.refusal_date END AS resolution_date,
             CASE WHEN c.outcome = 'hospitalized'
-                 THEN CAST(greatest(date_diff('day', c.registration_date, c.hospitalization_date), 0) AS INTEGER) END AS wait_days,
+                 THEN CAST(greatest(date_diff('day', c.registration_date, c.hospitalization_date), 0) AS INTEGER)
+                     END AS wait_days,
             CASE WHEN c.outcome = 'refused'
-                 THEN CAST(greatest(date_diff('day', c.registration_date, c.refusal_date), 0) AS INTEGER) END AS wait_to_refusal_days,
+                 THEN CAST(greatest(date_diff('day', c.registration_date, c.refusal_date), 0) AS INTEGER)
+                     END AS wait_to_refusal_days,
             coalesce(c.hospitalization_dt < c.registration_dt + INTERVAL 1 DAY, false) AS same_day_registration,
             coalesce(c.hospitalization_dt < c.registration_dt, false) AS retro_registration,
             c.planned_dt_out_of_range,
@@ -77,7 +81,8 @@ def build_fact_admission_refusal(con: duckdb.DuckDBPyConnection) -> None:
                         ELSE 'exact_ambiguous' END AS org_match_method
             FROM cand WHERE rk = 1)
         SELECT
-            row_number() OVER (ORDER BY s.refuse_dt, s.source_part, s.org_in, s.icd10_code, s.attach_org, s.amount) AS refusal_id,
+            row_number() OVER (ORDER BY s.refuse_dt, s.source_part, s.org_in, s.icd10_code, s.attach_org, s.amount)
+                AS refusal_id,
             s.source_part, s.region_in, lr.region_code, s.org_in, m.org_code, m.org_match_method,
             s.resident, s.insured, s.benefit_cat, s.refuse_dt, CAST(s.refuse_dt AS DATE) AS refuse_date,
             s.attach_region, la.region_code AS attach_region_code, s.attach_org,

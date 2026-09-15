@@ -1,5 +1,4 @@
 """Overview, region and hospital × profile status (reads the marts only, except the card's series)."""
-import datetime as dt
 
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
@@ -19,6 +18,7 @@ from app.schemas.status import (
     Thresholds,
 )
 from app.services.common import (
+    BuildInfo,
     area_kpis,
     build_info,
     hospital_row,
@@ -27,7 +27,9 @@ from app.services.common import (
     region_status,
     require_profile,
     require_region,
+    rnd,
 )
+from app.services.display import ValueFormatter
 
 FORECAST_NOTE = (
     "Прогноз числа направлений и госпитализаций на 14 дней (модель C). Производный прогноз очереди не "
@@ -48,6 +50,9 @@ def overview(session: Session) -> OverviewResponse:
             load_index_high=cfg["status_thresholds"]["high"],
             load_index_elevated=cfg["status_thresholds"]["elevated"],
             min_registrations_28d=cfg["min_registrations_28d"],
+            queue_trend_national_median_4w=rnd(
+                cfg["derived"].get("queue_trend_national_median_4w", {}).get("hospital_profile"), 2
+            ),
         ),
         national=area_kpis(national),
         regions=[area_kpis(r) for r in regions],
@@ -60,14 +65,16 @@ def region_detail(session: Session, region_code: str) -> RegionDetailResponse:
     area = session.get(MartAreaStatus, region_code)
     m = MartRegionProfileStatus
     profiles = session.scalars(
-        select(m).where(m.region_code == region_code)
+        select(m)
+        .where(m.region_code == region_code)
         .order_by(m.load_index.desc().nulls_last(), m.queue_now.desc(), m.profile_code)
     ).all()
     return RegionDetailResponse(region=area_kpis(area), profiles=[region_status(p) for p in profiles])
 
 
-def region_hospitals(session: Session, region_code: str, profile_code: str | None, limit: int,
-                     offset: int) -> Page[HospitalProfileStatus]:
+def region_hospitals(
+    session: Session, region_code: str, profile_code: str | None, limit: int, offset: int
+) -> Page[HospitalProfileStatus]:
     build_info(session)
     require_region(session, region_code)
     m = MartHospitalProfileStatus
@@ -77,8 +84,9 @@ def region_hospitals(session: Session, region_code: str, profile_code: str | Non
         where.append(m.profile_code == profile_code)
     total = session.scalar(select(func.count()).select_from(m).where(*where))
     rows = session.scalars(select(m).where(*where).order_by(*load_index_order()).limit(limit).offset(offset)).all()
-    return Page[HospitalProfileStatus](items=[hospital_status(r) for r in rows], total=total, limit=limit,
-                                       offset=offset)
+    return Page[HospitalProfileStatus](
+        items=[hospital_status(r) for r in rows], total=total, limit=limit, offset=offset
+    )
 
 
 _SERIES_SQL = text("""
@@ -123,23 +131,38 @@ _FACTORS_SQL = text("""
 """)
 
 
-def explanation_summary(session: Session, org_code: str, profile_code: str, test_start: dt.date,
-                        test_end: dt.date, top_k: int = 5) -> ExplanationSummary:
-    rows = session.execute(_FACTORS_SQL, {"org": org_code, "profile": profile_code, "test_start": test_start,
-                                          "test_end": test_end}).all()
+def explanation_summary(
+    session: Session, info: BuildInfo, org_code: str, profile_code: str, top_k: int = 5
+) -> ExplanationSummary:
+    rows = session.execute(
+        _FACTORS_SQL,
+        {
+            "org": org_code,
+            "profile": profile_code,
+            "test_start": info.date("test_start"),
+            "test_end": info.date("test_end"),
+        },
+    ).all()
+    formatter = ValueFormatter.for_build(info).load_names(session, ((r.feature, r.most_common_value) for r in rows))
     n_referrals = rows[0].n_referrals if rows else 0
     out: dict[str, list[ExplanationFactor]] = {"wait_time": [], "refusal_risk": []}
     for r in rows:
         if len(out[r.model]) >= top_k:
             continue
         scale, unit, digits = (1.0, "дн.", 2) if r.model == "wait_time" else (100.0, "п.п.", 2)
-        out[r.model].append(ExplanationFactor(
-            feature=r.feature, label=r.label,
-            mean_abs_effect=round(r.mean_abs_effect * scale, digits),
-            mean_effect=round(r.mean_effect * scale, digits),
-            unit=unit, direction="up" if r.mean_effect >= 0 else "down",
-            share_in_top5=round(r.share_in_top5, 4), most_common_value=r.most_common_value,
-        ))
+        out[r.model].append(
+            ExplanationFactor(
+                feature=r.feature,
+                label=r.label,
+                mean_abs_effect=round(r.mean_abs_effect * scale, digits),
+                mean_effect=round(r.mean_effect * scale, digits),
+                unit=unit,
+                direction="up" if r.mean_effect >= 0 else "down",
+                share_in_top5=round(r.share_in_top5, 4),
+                most_common_value=r.most_common_value,
+                most_common_value_display=formatter.format(r.feature, r.most_common_value),
+            )
+        )
     return ExplanationSummary(n_referrals=n_referrals, **out)
 
 
@@ -149,20 +172,37 @@ def hospital_card(session: Session, org_code: str, profile_code: str) -> Hospita
     row = hospital_row(session, org_code, profile_code)
     params = {"org": org_code, "profile": profile_code}
 
-    series = [DailyPoint(date=r.date, registrations=r.registrations, hospitalizations=r.hospitalizations,
-                         refusals=r.refusals, queue=r.queue_length)
-              for r in session.execute(_SERIES_SQL, {**params, "start": info.date("series_start"),
-                                                     "end": info.as_of_date}).all()]
-    fc_rows = session.execute(_FORECAST_SQL, {**params, "origin": info.as_of_date,
-                                              "horizon": cfg["forecast_horizon"]}).all()
+    series = [
+        DailyPoint(
+            date=r.date,
+            registrations=r.registrations,
+            hospitalizations=r.hospitalizations,
+            refusals=r.refusals,
+            queue=r.queue_length,
+        )
+        for r in session.execute(
+            _SERIES_SQL, {**params, "start": info.date("series_start"), "end": info.as_of_date}
+        ).all()
+    ]
+    fc_rows = session.execute(
+        _FORECAST_SQL, {**params, "origin": info.as_of_date, "horizon": cfg["forecast_horizon"]}
+    ).all()
     forecast = Forecast(
         origin_date=fc_rows[0].origin_date if fc_rows else None,
         model_version=fc_rows[0].model_version if fc_rows else None,
         method=fc_rows[0].method if fc_rows else None,
-        points=[ForecastPoint(date=r.target_date, horizon=r.horizon, registrations=round(r.pred_registrations, 2),
-                              hospitalizations=round(r.pred_hospitalizations, 2)) for r in fc_rows],
+        points=[
+            ForecastPoint(
+                date=r.target_date,
+                horizon=r.horizon,
+                registrations=round(r.pred_registrations, 2),
+                hospitalizations=round(r.pred_hospitalizations, 2),
+            )
+            for r in fc_rows
+        ],
         note=FORECAST_NOTE,
     )
-    factors = explanation_summary(session, org_code, profile_code, info.date("test_start"), info.date("test_end"))
-    return HospitalProfileCard(status=hospital_status(row), series=series, forecast=forecast,
-                               explanation_factors=factors)
+    factors = explanation_summary(session, info, org_code, profile_code)
+    return HospitalProfileCard(
+        status=hospital_status(row), series=series, forecast=forecast, explanation_factors=factors
+    )

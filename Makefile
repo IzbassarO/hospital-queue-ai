@@ -5,7 +5,7 @@ PY           ?= $(CURDIR)/.venv/bin/python
 ML_PATH      := $(CURDIR)/ml
 API_DEV_PORT ?= 8001
 
-.PHONY: up down migrate ingest baseline psql train predict marts api-dev test
+.PHONY: up down migrate ingest baseline psql train predict marts api-dev test lint fmt audit fixture fixture-load
 
 up:            ## build and start postgres + backend (http://localhost:8000/docs), wait until both are healthy
 	docker compose up -d --build --wait
@@ -40,3 +40,22 @@ api-dev:       ## run the API locally with auto-reload on http://localhost:$(API
 
 test:          ## API tests (pytest + httpx) against the running postgres; HQAI_API_BASE_URL=http://localhost:8000 to test a running server
 	cd backend && $(PY) -m pytest
+
+LINT_PATHS := backend ml tools
+
+lint:          ## ruff lint + format check (config: pyproject.toml)
+	$(PY) -m ruff check $(LINT_PATHS)
+	$(PY) -m ruff format --check $(LINT_PATHS)
+
+fmt:           ## ruff: apply safe lint fixes, then format
+	$(PY) -m ruff check --fix $(LINT_PATHS)
+	$(PY) -m ruff format $(LINT_PATHS)
+
+audit:         ## repository audit before every commit: layout, secrets, alembic check, ruff, pytest, docs/api.md vs routes
+	PYTHONPATH=$(ML_PATH) $(PY) tools/audit.py
+
+fixture:       ## rebuild the 2-region CI test fixture from the current database -> backend/tests/fixtures
+	PYTHONPATH=$(ML_PATH) $(PY) tools/test_fixture.py build
+
+fixture-load: migrate ## load the CI test fixture into an EMPTY database (CI); then run `make marts`
+	PYTHONPATH=$(ML_PATH) $(PY) tools/test_fixture.py load

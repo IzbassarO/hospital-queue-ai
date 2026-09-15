@@ -4,6 +4,7 @@ All tables are truncated and reloaded in ONE transaction: either the whole data 
 replaced, or nothing changes. Rows are streamed Parquet -> Arrow batches -> CSV -> COPY,
 so memory stays bounded regardless of table size.
 """
+
 import io
 import time
 from pathlib import Path

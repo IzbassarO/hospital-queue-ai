@@ -4,6 +4,7 @@ Every feature uses only information available at the START of the registration d
 aggregates are taken up to d-1 inclusive, and label-derived statistics use only referrals
 whose outcome happened strictly before d. Per-feature leakage notes: docs/model_card.md.
 """
+
 import datetime as dt
 
 import duckdb
@@ -12,8 +13,8 @@ import pandas as pd
 from hqai_ml.features.icd import icd3, icd_chapter
 
 CATEGORICAL = [
-    "region_code",           # patient's region of origin (hospitalization_code part 1)
-    "org_code",              # receiving hospital
+    "region_code",  # patient's region of origin (hospitalization_code part 1)
+    "org_code",  # receiving hospital
     "hospital_region_code",  # hospital's own region
     "profile_code",
     "icd_chapter",
@@ -116,8 +117,8 @@ def build_referral_features(con: duckdb.DuckDBPyConnection, window_start: dt.dat
     ).df()
 
     codes = pd.Series(df["icd10_code"].unique())
-    df["icd3"] = df["icd10_code"].map(dict(zip(codes, codes.map(icd3))))
-    df["icd_chapter"] = df["icd10_code"].map(dict(zip(codes, codes.map(icd_chapter))))
+    df["icd3"] = df["icd10_code"].map(dict(zip(codes, codes.map(icd3), strict=True)))
+    df["icd_chapter"] = df["icd10_code"].map(dict(zip(codes, codes.map(icd_chapter), strict=True)))
     df = df.drop(columns=["icd10_code"])
     df["registration_date"] = pd.to_datetime(df["registration_date"]).dt.date
     for c in CATEGORICAL:

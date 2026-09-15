@@ -1,4 +1,5 @@
 """Overview, region, hospital-profile status responses."""
+
 import datetime as dt
 
 from pydantic import BaseModel, Field
@@ -34,6 +35,10 @@ class Thresholds(BaseModel):
     load_index_high: float
     load_index_elevated: float
     min_registrations_28d: int
+    queue_trend_national_median_4w: float | None = Field(
+        description="national median raw trend of hospital × profile rows (% per week); "
+        "queue_trend_4w is relative to it"
+    )
 
 
 class OverviewResponse(BaseModel):
@@ -98,13 +103,19 @@ class Forecast(BaseModel):
 class ExplanationFactor(BaseModel):
     feature: str
     label: str
-    mean_abs_effect: float = Field(description="mean |effect| over the hospital × profile's test referrals "
-                                               "(referrals where the factor is not in the top 5 count as 0)")
+    mean_abs_effect: float = Field(
+        description="mean |effect| over the hospital × profile's test referrals "
+        "(referrals where the factor is not in the top 5 count as 0)"
+    )
     mean_effect: float
     unit: str = Field(description="дн. (wait time) | п.п. (refusal risk)")
     direction: str = Field(description="up | down: sign of mean_effect")
     share_in_top5: float = Field(description="share of referrals where the factor is among the top 5")
-    most_common_value: str | None
+    most_common_value: str | None = Field(description="raw value, as stored in the explanation")
+    most_common_value_display: str = Field(
+        description="display-ready value: rates in % (1 decimal), counts as "
+        "integers, days with 1 decimal, codes with dictionary names"
+    )
 
 
 class ExplanationSummary(BaseModel):

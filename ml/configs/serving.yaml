@@ -16,8 +16,10 @@ min_registrations_28d: 10
 # backlog_days = queue_now / (hospitalizations_28d / window_days) is NULL below this daily throughput.
 backlog_min_daily_throughput: 0.5
 
-# queue_trend_4w: slope of the weekly mean queue over the last `trend_weeks` full Monday–Sunday
+# queue_trend_raw_4w: slope of the weekly mean queue over the last `trend_weeks` full Monday–Sunday
 # weeks ending on or before as_of_date, in % of the mean weekly queue per week.
+# queue_trend_4w (used by load_index and alerts): raw trend minus the national median raw trend of the same mart
+# (rows with sufficient data), in percentage points per week — removes the common drift (docs/api.md §2, §7).
 trend_weeks: 4
 
 # A test-period referral is "high risk" when pred_refusal_prob >= this value (model B).
@@ -28,7 +30,7 @@ load_index:
   weights:
     backlog_rank: 0.60     # mid-rank percentile of backlog_days within the same profile nationally
     refusal_rate: 0.25     # refusal_rate_28d / refusal_rate_cap, clipped to [0, 1]
-    queue_trend: 0.15      # max(queue_trend_4w, 0) / queue_trend_cap_pct, clipped to [0, 1]
+    queue_trend: 0.15      # max(excess queue_trend_4w, 0) / queue_trend_cap_pct, clipped to [0, 1]
   refusal_rate_cap: 0.30   # ~3x the national refusal rate of planned referrals (10.9%)
   queue_trend_cap_pct: 20.0
 
@@ -40,7 +42,7 @@ status_thresholds:
 # GET /alerts
 alerts:
   load_index_min: 70
-  queue_trend_min_pct: 5.0   # only for rows with sufficient data (registrations_28d >= min_registrations_28d) …
+  queue_trend_min_pct: 5.0   # excess trend, p.p./week; only for rows with sufficient data (registrations_28d >= min_registrations_28d) …
   queue_trend_min_queue_now: 10  # … and a queue of at least this size: a % trend on a queue of 1–9 is noise
 
 # GET /hospitals/{org}/profiles/{profile}/recommendations (rule-based v1)

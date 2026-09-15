@@ -3,6 +3,7 @@
 Normalization runs in Python over the *distinct* raw values only (a few
 thousand), and the result is joined back in DuckDB via a mapping table.
 """
+
 import re
 import unicodedata
 
@@ -19,8 +20,8 @@ _CYRILLIC = re.compile(r"[А-Яа-яЁёӘәҒғҚқҢңӨөҰұҮүҺһІі]")
 _LATIN = re.compile(r"[A-Za-z]")
 _WORD = re.compile(r"[^\W\d_]+")
 _WHITESPACE = re.compile(r"\s+")  # Python's \s includes NBSP and other unicode spaces
-_DOUBLE_QUOTES = str.maketrans({c: '"' for c in "«»„“”‟″〝〞＂"})
-_SINGLE_QUOTES = str.maketrans({c: "'" for c in "‘’‚‛`´"})
+_DOUBLE_QUOTES = str.maketrans(dict.fromkeys("«»„“”‟″〝〞＂", '"'))
+_SINGLE_QUOTES = str.maketrans(dict.fromkeys("‘’‚‛`´", "'"))
 _NON_WORD = re.compile(r"[^\w]+")
 
 
@@ -71,14 +72,61 @@ def _strip_marks(value: str) -> str:
 # Legal-form and administrative boilerplate. It dominates long names and makes fuzzy
 # scores meaningless ("ТОО "Адалдент"" vs "ТОО "ТТи К"" scores 94), so fuzzy matching
 # compares only the remaining, distinctive tokens.
-LEGAL_FORM_STOPWORDS = frozenset(_strip_marks(w) for w in """
-    товарищество товарищества тоо ограниченной ответственностью
-    государственное государственного государственном коммунальное коммунального казенное казенного
-    предприятие предприятия гкп кгп гккп кгкп пхв ргп на праве хозяйственного ведения введения
-    при управления управлении управление здравоохранения общественного акимата области города г
-    учреждение учреждения республиканское акционерное общество ао филиал филиала некоммерческое нао
-    корпоративный фонд и с по
-""".split())
+LEGAL_FORM_STOPWORDS = frozenset(
+    _strip_marks(w)
+    for w in [
+        "товарищество",
+        "товарищества",
+        "тоо",
+        "ограниченной",
+        "ответственностью",
+        "государственное",
+        "государственного",
+        "государственном",
+        "коммунальное",
+        "коммунального",
+        "казенное",
+        "казенного",
+        "предприятие",
+        "предприятия",
+        "гкп",
+        "кгп",
+        "гккп",
+        "кгкп",
+        "пхв",
+        "ргп",
+        "на",
+        "праве",
+        "хозяйственного",
+        "ведения",
+        "введения",
+        "при",
+        "управления",
+        "управлении",
+        "управление",
+        "здравоохранения",
+        "общественного",
+        "акимата",
+        "области",
+        "города",
+        "г",
+        "учреждение",
+        "учреждения",
+        "республиканское",
+        "акционерное",
+        "общество",
+        "ао",
+        "филиал",
+        "филиала",
+        "некоммерческое",
+        "нао",
+        "корпоративный",
+        "фонд",
+        "и",
+        "с",
+        "по",
+    ]
+)
 _NUMBER = re.compile(r"\d+")
 
 
@@ -122,8 +170,13 @@ def short_org_name(name: str | None) -> str:
 def register_name_map(con: duckdb.DuckDBPyConnection, sql_distinct_values: str, table: str = "name_map") -> int:
     """Create `table(raw, name, key)` for every distinct value returned by the SQL."""
     raw = [r[0] for r in con.execute(sql_distinct_values).fetchall() if r[0] is not None]
-    df = pd.DataFrame({"raw": raw, "name": [normalize_name(v) for v in raw], "key": [name_key(v) for v in raw]}, dtype=object)
+    df = pd.DataFrame(
+        {"raw": raw, "name": [normalize_name(v) for v in raw], "key": [name_key(v) for v in raw]}, dtype=object
+    )
     con.register("_name_map_df", df)
-    con.execute(f"CREATE OR REPLACE TABLE {table} AS SELECT raw::VARCHAR AS raw, name::VARCHAR AS name, key::VARCHAR AS key FROM _name_map_df")
+    con.execute(
+        f"CREATE OR REPLACE TABLE {table} AS SELECT raw::VARCHAR AS raw, name::VARCHAR AS name, key::VARCHAR AS key "
+        "FROM _name_map_df"
+    )
     con.unregister("_name_map_df")
     return len(df)

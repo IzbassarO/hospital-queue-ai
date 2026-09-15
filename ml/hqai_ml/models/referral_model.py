@@ -1,4 +1,5 @@
 """A trained referral-level model (A: wait_time, B: refusal_risk) with everything needed to predict and explain."""
+
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -14,11 +15,11 @@ MODEL_FILE = "model.txt"
 
 @dataclass
 class ReferralModel:
-    name: str                  # "wait_time" or "refusal_risk"
+    name: str  # "wait_time" or "refusal_risk"
     booster: lgb.Booster
     features: list[str]
     categories: dict[str, list[str]]
-    display: dict = field(default_factory=dict)   # code -> readable name lookups (region, org, profile)
+    display: dict = field(default_factory=dict)  # code -> readable name lookups (region, org, profile)
     version: str | None = None
 
     @property
@@ -40,5 +41,11 @@ class ReferralModel:
     @classmethod
     def load(cls, artifacts_dir: Path, name: str, version: str | None = None) -> "ReferralModel":
         art = store.load(artifacts_dir, name, version)
-        return cls(name=name, booster=art["boosters"][MODEL_FILE], features=art["features"],
-                   categories=art["categories"], display=art.get("display", {}), version=art["version"])
+        return cls(
+            name=name,
+            booster=art["boosters"][MODEL_FILE],
+            features=art["features"],
+            categories=art["categories"],
+            display=art.get("display", {}),
+            version=art["version"],
+        )

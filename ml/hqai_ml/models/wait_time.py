@@ -2,6 +2,7 @@
 
 Target: wait_days, trained on log1p(wait_days) with L2 loss; evaluated in days.
 """
+
 import numpy as np
 import pandas as pd
 
@@ -24,8 +25,11 @@ def baselines(train: pd.DataFrame, test: pd.DataFrame) -> dict[str, np.ndarray]:
     g = float(train[TARGET].median())
     pr = train.groupby(["profile_code", "region_code"])[TARGET].median().rename("b2")
     hp = train.groupby(["org_code", "profile_code"])[TARGET].median().rename("b3")
-    t = test[["profile_code", "region_code", "org_code"]].join(pr, on=["profile_code", "region_code"]) \
-                                                     .join(hp, on=["org_code", "profile_code"])
+    t = (
+        test[["profile_code", "region_code", "org_code"]]
+        .join(pr, on=["profile_code", "region_code"])
+        .join(hp, on=["org_code", "profile_code"])
+    )
     b2 = t["b2"].fillna(g).to_numpy(float)
     b3 = t["b3"].fillna(pd.Series(b2, index=t.index)).to_numpy(float)
     return {
@@ -60,11 +64,20 @@ def train_and_evaluate(df: pd.DataFrame, cfg: ModelConfig, display: dict) -> dic
 
     def seg(sub):
         m, b = regression_metrics(sub["y"], sub["LightGBM"], within), regression_metrics(sub["y"], sub[b3], within)
-        return {"n": m["n"], "mae_model": m["mae"], "mae_b1": regression_metrics(sub["y"], sub["B1 global median"])["mae"],
-                "mae_b2": regression_metrics(sub["y"], sub["B2 median profile × patient region"])["mae"],
-                "mae_b3": b["mae"], "wape_model": m["wape"], "wape_b3": b["wape"],
-                f"within_{within}d_model": m[f"within_{within}d"], f"within_{within}d_b3": b[f"within_{within}d"],
-                "spearman_model": m["spearman"], "spearman_b3": b["spearman"], "median_actual": float(np.median(sub["y"]))}
+        return {
+            "n": m["n"],
+            "mae_model": m["mae"],
+            "mae_b1": regression_metrics(sub["y"], sub["B1 global median"])["mae"],
+            "mae_b2": regression_metrics(sub["y"], sub["B2 median profile × patient region"])["mae"],
+            "mae_b3": b["mae"],
+            "wape_model": m["wape"],
+            "wape_b3": b["wape"],
+            f"within_{within}d_model": m[f"within_{within}d"],
+            f"within_{within}d_b3": b[f"within_{within}d"],
+            "spearman_model": m["spearman"],
+            "spearman_b3": b["spearman"],
+            "median_actual": float(np.median(sub["y"])),
+        }
 
     regions, profiles = rt.region_and_profile_segments(test, cfg.wait_time.top_profiles)
     by_region = by_segment(ev, "region_code", seg, regions)
@@ -72,7 +85,11 @@ def train_and_evaluate(df: pd.DataFrame, cfg: ModelConfig, display: dict) -> dic
 
     # ablation: what the suspected-leak feature would add
     abl = _fit(train, test, FEATURES + SUSPECTED_LEAK, cfg, display)
-    planned_alone = np.clip(test["planned_lag_days"].fillna(pd.Series(base["B2 median profile × patient region"], index=test.index)), 0, None)
+    planned_alone = np.clip(
+        test["planned_lag_days"].fillna(pd.Series(base["B2 median profile × patient region"], index=test.index)),
+        0,
+        None,
+    )
     ablation = [
         {"model": "LightGBM (main, without planned_lag_days)", **regression_metrics(y, pred, within)},
         {"model": "LightGBM + planned_lag_days", **regression_metrics(y, abl.model.predict(test), within)},
@@ -83,9 +100,13 @@ def train_and_evaluate(df: pd.DataFrame, cfg: ModelConfig, display: dict) -> dic
         "model": model,
         "best_iteration": fit.best_iteration,
         "metrics": {
-            "population": {"definition": "hospitalized, same_day_registration = false",
-                           "train_rows": len(train), "test_rows": len(test),
-                           "train_median_wait": float(train[TARGET].median()), "test_median_wait": float(np.median(y))},
+            "population": {
+                "definition": "hospitalized, same_day_registration = false",
+                "train_rows": len(train),
+                "test_rows": len(test),
+                "train_median_wait": float(train[TARGET].median()),
+                "test_median_wait": float(np.median(y)),
+            },
             "best_iteration": fit.best_iteration,
             "overall": overall,
             "by_region": by_region,

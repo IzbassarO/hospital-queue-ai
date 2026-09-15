@@ -34,16 +34,24 @@ make train                # models A, B, C -> artifacts/models/, reports/02_mode
 make predict              # predictions -> pred_referral, pred_daily_forecast, model_registry (~2 min), then marts
 open http://localhost:8000/docs
 make test                 # API tests against the running postgres
+make audit                # repository audit: layout, secrets, alembic check, ruff, tests, docs/api.md vs routes
 ```
 
 Other targets: `make marts` (rebuild the serving marts after editing `ml/configs/serving.yaml`),
-`make api-dev` (local uvicorn with auto-reload on port 8001), `make train MODEL=load_forecast` (one model:
+`make api-dev` (local uvicorn with auto-reload on port 8001), `make lint` / `make fmt` (ruff check / fix + format on
+`backend/`, `ml/`, `tools/`; config in the root `pyproject.toml`), `make fixture` (rebuild the 2-region CI test
+fixture from the current database), `make fixture-load` (load it into an empty database), `make train MODEL=load_forecast` (one model:
 wait_time | refusal_risk | load_forecast), `make psql` (shell in the database), `make migrate`, `make down`.
 The step-1 inventory was a one-off and lives in scratch: `.venv/bin/python scratch/00_inventory.py` →
 `reports/00_inventory.md` (only if `scratch/` is present locally; it is not versioned).
 
 ## Development rules
 
+- **Run `make audit` before every commit** (Postgres up, marts built). It fails if a file that would be committed
+  sits outside the allowed top level (`backend ml frontend db docs tools .github` + root config files), if any such
+  file is a `.env` or contains something that looks like a secret, if `alembic check` sees drift between models and
+  migrations, if ruff or pytest fail, or if `docs/api.md` and the app's endpoints disagree. CI (GitHub Actions)
+  runs `make lint` and `make test` on every push and pull request.
 - **Never modify, move or delete anything under `data/raw/`.** Pipelines only read it.
 - **Scratch work goes to `scratch/` and nowhere else.** Any temporary, exploratory or
   self-verification file — scratch scripts, ad-hoc checks, test dumps, comparison outputs, logs of
@@ -52,15 +60,20 @@ The step-1 inventory was a one-off and lives in scratch: `.venv/bin/python scrat
 - Generated outputs have fixed homes: `data/processed/` (Parquet), `reports/` (reports),
   `artifacts/models/` (model versions) — all gitignored.
 - Schema changes only through Alembic migrations in `backend/alembic/versions/`.
+- Code style: ruff (`make fmt` to fix, `make lint` to check), line length 120.
+- Test fixtures (`backend/tests/fixtures/`) are small (< 5 MB), rebuilt with `make fixture`, and contain only rows
+  derived from the open data and model outputs — never copy anything else there.
 
 ## Layout
 
 ```
 backend/    FastAPI service (/api/v1: routers, schemas, services), SQLAlchemy models, Alembic migrations,
-            tests (pytest + httpx), Dockerfile
+            tests (pytest + httpx; fixtures/ = 2-region CI dataset), Dockerfile
 ml/         hqai_ml package (ingest, features, models, evaluation, explain, registry, serving implemented;
             causal is a placeholder), pipelines/ (ingest, baseline, train, predict, build_marts), configs/
 frontend/   placeholder
+tools/      audit.py (make audit), test_fixture.py (make fixture / fixture-load)
+.github/    workflows/ci.yml — lint + API tests on push and pull request
 db/         init.sql (pgvector, pg_trgm)
 docs/       architecture.md (structure + data flow), data.md (tables, columns, cleaning rules),
             model_card.md (models, evaluation, limitations, intended use), api.md (endpoints, load_index,
@@ -101,5 +114,7 @@ Details, cleaning rules and every derived column: [docs/data.md](docs/data.md).
 - [x] Step 4 — backend: serving marts (Alembic `0003`, `make marts`) with `load_index`, FastAPI `/api/v1`
       (overview, regions, hospital cards, referrals, rule-based recommendations, alerts, models, dictionaries),
       human-in-the-loop `decision_log`, docker `backend` service, API tests ([docs/api.md](docs/api.md))
+- [x] Step 4b — excess queue trend (Alembic `0004`), display-ready explanation values, ruff, `make audit`, CI with
+      a 2-region fixture
 - [ ] Frontend
 - [ ] Causal effect estimate for recommendations (replaces `historical_median`)

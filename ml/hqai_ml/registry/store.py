@@ -4,6 +4,7 @@ artifacts/models/<model_name>/<YYYYMMDD-HHMM>/   model files, features.json, cat
                                                    meta.json (training window, params), metrics.json
 artifacts/models/manifest.json                     {model_name: {"current": version, "path": ...}}
 """
+
 import datetime as dt
 import json
 from pathlib import Path
@@ -26,9 +27,18 @@ def read_manifest(artifacts_dir: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
 
 
-def save(artifacts_dir: Path, model_name: str, boosters: dict[str, lgb.Booster], *, features: list[str],
-         categories: dict, meta: dict, metrics: dict, extra: dict[str, object] | None = None,
-         make_current: bool = True) -> tuple[str, Path]:
+def save(
+    artifacts_dir: Path,
+    model_name: str,
+    boosters: dict[str, lgb.Booster],
+    *,
+    features: list[str],
+    categories: dict,
+    meta: dict,
+    metrics: dict,
+    extra: dict[str, object] | None = None,
+    make_current: bool = True,
+) -> tuple[str, Path]:
     """Write a new version directory; returns (version, path)."""
     now = dt.datetime.now()
     version = now.strftime("%Y%m%d-%H%M")
@@ -42,8 +52,16 @@ def save(artifacts_dir: Path, model_name: str, boosters: dict[str, lgb.Booster],
         booster.save_model(str(path / fname))
     _dump(path / "features.json", {"features": features, "categorical": list(categories)})
     _dump(path / "categories.json", categories)
-    _dump(path / "meta.json", {"model_name": model_name, "version": version, "trained_at": now.isoformat(timespec="seconds"),
-                               "model_files": list(boosters), **meta})
+    _dump(
+        path / "meta.json",
+        {
+            "model_name": model_name,
+            "version": version,
+            "trained_at": now.isoformat(timespec="seconds"),
+            "model_files": list(boosters),
+            **meta,
+        },
+    )
     _dump(path / "metrics.json", metrics)
     for fname, obj in (extra or {}).items():
         _dump(path / fname, obj)
@@ -54,8 +72,11 @@ def save(artifacts_dir: Path, model_name: str, boosters: dict[str, lgb.Booster],
 
 def set_current(artifacts_dir: Path, model_name: str, version: str) -> None:
     manifest = read_manifest(artifacts_dir)
-    manifest[model_name] = {"current": version, "path": f"models/{model_name}/{version}",
-                            "updated_at": dt.datetime.now().isoformat(timespec="seconds")}
+    manifest[model_name] = {
+        "current": version,
+        "path": f"models/{model_name}/{version}",
+        "updated_at": dt.datetime.now().isoformat(timespec="seconds"),
+    }
     _dump(_root(artifacts_dir) / MANIFEST, manifest)
 
 
