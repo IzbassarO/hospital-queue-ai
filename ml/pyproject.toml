@@ -11,6 +11,9 @@ dependencies = [
     "pyyaml==6.0.3",
     "pydantic-settings==2.15.0",
     "psycopg[binary]==3.3.5",
+    "lightgbm==4.7.0",  # macOS: needs `brew install libomp`
+    "scikit-learn==1.9.1",
+    "shap==0.52.0",
 ]
 
 [build-system]

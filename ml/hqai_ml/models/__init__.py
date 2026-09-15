@@ -1,1 +1,1 @@
-"""Forecasting models (not implemented yet)."""
+"""Models."""

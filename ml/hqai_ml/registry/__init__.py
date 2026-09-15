@@ -1,1 +1,1 @@
-"""Model registry (not implemented yet)."""
+"""Model registry."""

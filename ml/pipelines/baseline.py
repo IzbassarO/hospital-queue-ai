@@ -13,6 +13,7 @@ import sys
 import duckdb
 
 from hqai_ml.ingest.config import IngestSettings
+from hqai_ml.ingest.normalize import short_org_name
 from hqai_ml.ingest.load_postgres import LOAD_ORDER
 
 ASSUMED_ERSB_DAYS = 365  # ERSB snapshot has no period column; assumed to cover one year
@@ -43,30 +44,8 @@ def cut(s, n: int = 60) -> str:
     return (s[: n - 1] + "…" if len(s) > n else s).replace("|", "\\|")
 
 
-_LEGAL_FORMS = [
-    (r"Некоммерческое акционерное общество", "НАО"),
-    (r"Акционерное общество", "АО"),
-    (r"Товариществ[оа] с ограниченной ответственностью", "ТОО"),
-    (r"на праве хозяйственного ведения", "на ПХВ"),
-    (r"управлени[яе] здравоохранения", "УЗ"),
-    (r"Республиканское государственное предприятие на праве хозяйственного ведения", "РГП на ПХВ"),
-    (r"Государственное коммунальное предприятие на праве хозяйственного ведения", "ГКП на ПХВ"),
-    (r"Коммунальное государственное предприятие на праве хозяйственного ведения", "КГП на ПХВ"),
-    (r"Государственное коммунальное казенное предприятие", "ГККП"),
-    (r"Коммунальное государственное казенное предприятие", "КГКП"),
-    (r"Государственное коммунальное предприятие", "ГКП"),
-    (r"Коммунальное государственное предприятия?", "КГП"),
-    (r"Государственное учреждение", "ГУ"),
-    (r"Учреждение", "У"),
-]
-
-
 def short_org(name: str | None, n: int = 70) -> str:
-    """Report-only display name: standard abbreviations of legal forms."""
-    s = name or "—"
-    for pattern, abbr in _LEGAL_FORMS:
-        s = re.sub(pattern, abbr, s, flags=re.IGNORECASE)
-    return cut(s, n)
+    return cut(short_org_name(name), n)
 
 
 def table(header: list[str], rows: list[list]) -> list[str]:

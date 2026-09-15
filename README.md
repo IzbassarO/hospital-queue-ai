@@ -7,33 +7,69 @@ hospitals and regions are overloaded relative to their capacity.
 
 ## Quickstart
 
+With the database already loaded (the `pgdata` volume holds steps 2–3):
+
+```bash
+make up                   # postgres + backend (FastAPI), waits until both are healthy
+open http://localhost:8000/docs
+```
+
+The API is described in [docs/api.md](docs/api.md): overview, regions, hospital cards with series, forecast and
+explanations, referrals, rule-based recommendations, alerts, models, dictionaries, and `POST /decisions` for the
+human-in-the-loop record.
+
+### From scratch
+
 Prerequisites: Python ≥ 3.12, Docker, the raw datasets in `data/raw/` (see below).
+On macOS LightGBM also needs the OpenMP runtime: `brew install libomp`.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 cp .env.example .env      # set POSTGRES_PASSWORD
-make up                   # postgres (pgvector/pgvector:pg16) with a healthcheck
+make up                   # postgres (pgvector/pgvector:pg16) + backend; data endpoints answer 503 until marts exist
 make ingest               # migrations + raw CSV -> data/processed/*.parquet -> postgres (~2 min)
 make baseline             # reports/01_baseline.md
+make train                # models A, B, C -> artifacts/models/, reports/02_models.md (~5 min)
+make predict              # predictions -> pred_referral, pred_daily_forecast, model_registry (~2 min), then marts
+open http://localhost:8000/docs
+make test                 # API tests against the running postgres
 ```
 
-Other targets: `make psql` (shell in the database), `make migrate`, `make down`.
-Step 1 inventory of the raw files: `.venv/bin/python scripts/00_inventory.py` → `reports/00_inventory.md`.
+Other targets: `make marts` (rebuild the serving marts after editing `ml/configs/serving.yaml`),
+`make api-dev` (local uvicorn with auto-reload on port 8001), `make train MODEL=load_forecast` (one model:
+wait_time | refusal_risk | load_forecast), `make psql` (shell in the database), `make migrate`, `make down`.
+The step-1 inventory was a one-off and lives in scratch: `.venv/bin/python scratch/00_inventory.py` →
+`reports/00_inventory.md` (only if `scratch/` is present locally; it is not versioned).
+
+## Development rules
+
+- **Never modify, move or delete anything under `data/raw/`.** Pipelines only read it.
+- **Scratch work goes to `scratch/` and nowhere else.** Any temporary, exploratory or
+  self-verification file — scratch scripts, ad-hoc checks, test dumps, comparison outputs, logs of
+  one-off runs — is created under `scratch/` (gitignored). Everything outside `scratch/` must be
+  product code, configuration, migrations, docs or tests that a maintainer would keep.
+- Generated outputs have fixed homes: `data/processed/` (Parquet), `reports/` (reports),
+  `artifacts/models/` (model versions) — all gitignored.
+- Schema changes only through Alembic migrations in `backend/alembic/versions/`.
 
 ## Layout
 
 ```
-backend/    FastAPI app skeleton (/health), SQLAlchemy models, Alembic migrations
-ml/         hqai_ml package (ingest implemented; features, models, causal, evaluation,
-            explain, registry are placeholders), pipelines/, configs/
+backend/    FastAPI service (/api/v1: routers, schemas, services), SQLAlchemy models, Alembic migrations,
+            tests (pytest + httpx), Dockerfile
+ml/         hqai_ml package (ingest, features, models, evaluation, explain, registry, serving implemented;
+            causal is a placeholder), pipelines/ (ingest, baseline, train, predict, build_marts), configs/
 frontend/   placeholder
 db/         init.sql (pgvector, pg_trgm)
-docs/       architecture.md (structure + data flow), data.md (tables, columns, cleaning rules)
-scripts/    00_inventory.py
+docs/       architecture.md (structure + data flow), data.md (tables, columns, cleaning rules),
+            model_card.md (models, evaluation, limitations, intended use), api.md (endpoints, load_index,
+            recommendation rule)
 data/       raw/ input (read-only), processed/ Parquet          — gitignored
 reports/    generated reports                                   — gitignored
-notebooks/, artifacts/                                          — gitignored
+artifacts/  models/<name>/<version>/ + manifest.json            — gitignored
+notebooks/                                                      — gitignored
+scratch/    temporary / exploratory / verification files        — gitignored (see Development rules)
 ```
 
 ## Data
@@ -59,6 +95,11 @@ Details, cleaning rules and every derived column: [docs/data.md](docs/data.md).
 - [x] Step 2 — data layer: Postgres schema (Alembic), DuckDB ingest to Parquet and Postgres,
       dictionaries (`ml/configs/regions.yaml` to review), daily aggregates incl. queue reconstruction,
       descriptive baseline (`reports/01_baseline.md`)
-- [ ] Features and forecasting models
-- [ ] API endpoints
+- [x] Step 3 — models: wait time (A), refusal risk (B), 14-day load forecast (C) with temporal
+      evaluation against naive baselines, SHAP explanations in Russian, artifact registry, predictions in
+      Postgres (`reports/02_models.md`, [docs/model_card.md](docs/model_card.md))
+- [x] Step 4 — backend: serving marts (Alembic `0003`, `make marts`) with `load_index`, FastAPI `/api/v1`
+      (overview, regions, hospital cards, referrals, rule-based recommendations, alerts, models, dictionaries),
+      human-in-the-loop `decision_log`, docker `backend` service, API tests ([docs/api.md](docs/api.md))
 - [ ] Frontend
+- [ ] Causal effect estimate for recommendations (replaces `historical_median`)

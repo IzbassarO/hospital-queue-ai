@@ -8,6 +8,8 @@ data/
 reports/
 notebooks/
 artifacts/
+# agent/developer scratch work: temporary scripts, ad-hoc checks, dumps
+scratch/
 .venv/
 .env
 *.log

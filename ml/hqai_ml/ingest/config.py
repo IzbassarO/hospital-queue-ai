@@ -34,6 +34,7 @@ class IngestSettings(BaseSettings):
     processed_dir: Path = REPO_ROOT / "data" / "processed"
     reports_dir: Path = REPO_ROOT / "reports"
     configs_dir: Path = REPO_ROOT / "ml" / "configs"
+    artifacts_dir: Path = REPO_ROOT / "artifacts"
 
     @property
     def pg_conninfo(self) -> str:

@@ -1,4 +1,6 @@
-"""Data-layer tables. Filled by ml/pipelines/ingest.py; column semantics in docs/data.md.
+"""Database tables. Data layer: filled by ml/pipelines/ingest.py (docs/data.md).
+Predictions and model registry: filled by ml/pipelines/predict.py (docs/model_card.md).
+Serving marts: filled by ml/pipelines/build_marts.py (docs/api.md). decision_log: written by the API.
 
 Column names here must match the Parquet files written by hqai_ml.ingest
 (the loader COPYs by column name).
@@ -9,16 +11,20 @@ from decimal import Decimal
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     Date,
     Double,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     SmallInteger,
     String,
     Text,
     DateTime,
+    func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -187,3 +193,176 @@ class AggDailyAdmissionRefusals(Base):
     org_code: Mapped[str] = mapped_column(String(8), primary_key=True, index=True)
     region_code: Mapped[str | None] = mapped_column(String(4), index=True)
     refusals: Mapped[int] = mapped_column(Integer)
+
+
+# ------------------------------------------------------------------- predictions
+# Filled by ml/pipelines/predict.py (current model versions only; each run replaces the rows).
+# pred_referral has no FK to fact_referral on purpose: `make ingest` truncates the facts, and
+# referral_id is stable across ingests (deterministic ordering).
+class PredReferral(Base):
+    __tablename__ = "pred_referral"
+    # the API lists referrals of one hospital × profile
+    __table_args__ = (Index("ix_pred_referral_org_profile", "org_code", "profile_code"),)
+
+    referral_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    hospitalization_code: Mapped[str] = mapped_column(String(32), index=True)
+    registration_date: Mapped[dt.date] = mapped_column(Date, index=True)
+    org_code: Mapped[str] = mapped_column(String(8), index=True)
+    profile_code: Mapped[str] = mapped_column(String(8), index=True)
+    wait_model_version: Mapped[str] = mapped_column(String(32))
+    refusal_model_version: Mapped[str] = mapped_column(String(32))
+    pred_wait_days: Mapped[float] = mapped_column(Double)
+    pred_refusal_prob: Mapped[float] = mapped_column(Double)
+    explanation: Mapped[dict] = mapped_column(JSONB)  # {"wait_time": [top-5 factors], "refusal_risk": [top-5 factors]}
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class PredDailyForecast(Base):
+    __tablename__ = "pred_daily_forecast"
+
+    series_id: Mapped[str] = mapped_column(String(40), primary_key=True)  # hp:<org>:<profile> or rp:<region>:<profile>
+    origin_date: Mapped[dt.date] = mapped_column(Date, primary_key=True)  # last known day
+    horizon: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    target_date: Mapped[dt.date] = mapped_column(Date, index=True)
+    level: Mapped[str] = mapped_column(String(16))                        # hospital | region
+    org_code: Mapped[str | None] = mapped_column(String(8), index=True)
+    region_code: Mapped[str] = mapped_column(String(4), index=True)
+    profile_code: Mapped[str] = mapped_column(String(8), index=True)
+    method: Mapped[str] = mapped_column(String(32))                       # model | region_share_fallback
+    pred_registrations: Mapped[float] = mapped_column(Double)
+    pred_hospitalizations: Mapped[float] = mapped_column(Double)
+    pred_queue: Mapped[float] = mapped_column(Double)
+    model_version: Mapped[str] = mapped_column(String(32))
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class ModelRegistry(Base):
+    __tablename__ = "model_registry"
+
+    model_name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    version: Mapped[str] = mapped_column(String(32), primary_key=True)
+    trained_at: Mapped[dt.datetime] = mapped_column(DateTime)
+    train_window: Mapped[dict] = mapped_column(JSONB)
+    metrics: Mapped[dict] = mapped_column(JSONB)  # headline metrics; full tables in artifacts/models/.../metrics.json
+    is_current: Mapped[bool] = mapped_column(Boolean, index=True)
+    artifact_path: Mapped[str] = mapped_column(Text)
+    registered_at: Mapped[dt.datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+# ------------------------------------------------------------------ serving marts
+# Filled by ml/pipelines/build_marts.py (`make marts`, also at the end of `make predict`): one
+# transaction truncates and rebuilds all mart_* tables. No FKs to the data layer on purpose —
+# `make ingest` truncates the dictionaries and facts. Formulas: docs/api.md.
+class _StatusMetrics:
+    """Columns shared by the hospital × profile and region × profile marts."""
+
+    as_of_date: Mapped[dt.date] = mapped_column(Date)
+    queue_now: Mapped[int] = mapped_column(Integer)
+    registrations_28d: Mapped[int] = mapped_column(Integer)
+    hospitalizations_28d: Mapped[int] = mapped_column(Integer)
+    refusals_28d: Mapped[int] = mapped_column(Integer)
+    refusal_rate_28d: Mapped[float | None] = mapped_column(Double)
+    n_waits_28d: Mapped[int] = mapped_column(Integer)
+    median_wait_28d: Mapped[float | None] = mapped_column(Double)
+    daily_throughput_28d: Mapped[float] = mapped_column(Double)
+    backlog_days: Mapped[float | None] = mapped_column(Double)
+    forecast_registrations_14d: Mapped[float | None] = mapped_column(Double)
+    forecast_hospitalizations_14d: Mapped[float | None] = mapped_column(Double)
+    n_test_referrals: Mapped[int] = mapped_column(Integer)
+    high_risk_share: Mapped[float | None] = mapped_column(Double)
+    queue_trend_4w: Mapped[float | None] = mapped_column(Double)
+    has_sufficient_data: Mapped[bool] = mapped_column(Boolean)
+    backlog_score: Mapped[float | None] = mapped_column(Double)
+    refusal_score: Mapped[float | None] = mapped_column(Double)
+    trend_score: Mapped[float | None] = mapped_column(Double)
+    load_index: Mapped[float | None] = mapped_column(Double)
+    status: Mapped[str] = mapped_column(String(24))  # high | elevated | normal | insufficient_data
+
+
+class MartHospitalProfileStatus(_StatusMetrics, Base):
+    __tablename__ = "mart_hospital_profile_status"
+    __table_args__ = (Index("ix_mart_hps_region_profile", "region_code", "profile_code"),)
+
+    org_code: Mapped[str] = mapped_column(String(8), primary_key=True)
+    profile_code: Mapped[str] = mapped_column(String(8), primary_key=True)
+    region_code: Mapped[str] = mapped_column(String(4))
+    region_name: Mapped[str] = mapped_column(Text)
+    org_name: Mapped[str] = mapped_column(Text)
+    profile_name: Mapped[str] = mapped_column(Text)
+    forecast_method: Mapped[str | None] = mapped_column(String(32))
+    region_rank: Mapped[int | None] = mapped_column(Integer)      # rank of load_index within the region (1 = highest)
+    region_n_ranked: Mapped[int] = mapped_column(Integer)         # rows with a load_index in the region
+    in_region_top: Mapped[bool] = mapped_column(Boolean)          # region_rank <= ceil(region_top_fraction * region_n_ranked)
+
+
+class MartRegionProfileStatus(_StatusMetrics, Base):
+    __tablename__ = "mart_region_profile_status"
+
+    region_code: Mapped[str] = mapped_column(String(4), primary_key=True)
+    profile_code: Mapped[str] = mapped_column(String(8), primary_key=True)
+    region_name: Mapped[str] = mapped_column(Text)
+    profile_name: Mapped[str] = mapped_column(Text)
+    n_hospitals: Mapped[int] = mapped_column(Integer)
+    n_hospitals_high_load: Mapped[int] = mapped_column(Integer)
+    load_index_max_hospital: Mapped[float | None] = mapped_column(Double)
+
+
+class MartAreaStatus(Base):
+    """Totals over all profiles: one national row (area_code 'KZ') and one row per region."""
+
+    __tablename__ = "mart_area_status"
+
+    area_code: Mapped[str] = mapped_column(String(4), primary_key=True)
+    area_level: Mapped[str] = mapped_column(String(16))  # national | region
+    area_name: Mapped[str] = mapped_column(Text)
+    as_of_date: Mapped[dt.date] = mapped_column(Date)
+    queue_now: Mapped[int] = mapped_column(Integer)
+    registrations_28d: Mapped[int] = mapped_column(Integer)
+    hospitalizations_28d: Mapped[int] = mapped_column(Integer)
+    refusals_28d: Mapped[int] = mapped_column(Integer)
+    refusal_rate_28d: Mapped[float | None] = mapped_column(Double)
+    n_waits_28d: Mapped[int] = mapped_column(Integer)
+    median_wait_28d: Mapped[float | None] = mapped_column(Double)
+    forecast_registrations_14d: Mapped[float | None] = mapped_column(Double)
+    forecast_hospitalizations_14d: Mapped[float | None] = mapped_column(Double)
+    high_risk_share: Mapped[float | None] = mapped_column(Double)
+    n_hospitals: Mapped[int] = mapped_column(Integer)
+    n_hospital_profiles: Mapped[int] = mapped_column(Integer)
+    n_hospital_profiles_ranked: Mapped[int] = mapped_column(Integer)
+    load_index_max: Mapped[float | None] = mapped_column(Double)
+    n_hospitals_high_load: Mapped[int] = mapped_column(Integer)
+    n_hospital_profiles_high_load: Mapped[int] = mapped_column(Integer)
+
+
+class MartBuildInfo(Base):
+    """One row (id = 1): when the marts were built and with which ml/configs/serving.yaml."""
+
+    __tablename__ = "mart_build_info"
+
+    id: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    as_of_date: Mapped[dt.date] = mapped_column(Date)
+    built_at: Mapped[dt.datetime] = mapped_column(DateTime)
+    config: Mapped[dict] = mapped_column(JSONB)
+    row_counts: Mapped[dict] = mapped_column(JSONB)
+
+
+# ------------------------------------------------------------- human in the loop
+class DecisionLog(Base):
+    """Decisions of a person on a hospital × profile (and optionally a recommendation). Never
+    truncated by the pipelines."""
+
+    __tablename__ = "decision_log"
+    __table_args__ = (
+        CheckConstraint("action IN ('confirm', 'reject', 'defer')", name="ck_decision_log_action"),
+        Index("ix_decision_log_org_profile", "org_code", "profile_code"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    region_code: Mapped[str] = mapped_column(String(4))
+    org_code: Mapped[str] = mapped_column(String(8))
+    profile_code: Mapped[str] = mapped_column(String(8))
+    recommendation_id: Mapped[str | None] = mapped_column(String(128))
+    action: Mapped[str] = mapped_column(String(16))
+    comment: Mapped[str | None] = mapped_column(Text)
+    actor: Mapped[str] = mapped_column(Text)

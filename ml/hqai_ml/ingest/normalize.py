@@ -93,6 +93,32 @@ def number_tokens(value: str) -> frozenset[str]:
     return frozenset(_NUMBER.findall(value))
 
 
+_LEGAL_FORM_ABBREVIATIONS = [
+    (r"Некоммерческое акционерное общество", "НАО"),
+    (r"Акционерное общество", "АО"),
+    (r"Товариществ[оа] с ограниченной ответственностью", "ТОО"),
+    (r"на праве хозяйственного ведения", "на ПХВ"),
+    (r"управлени[яе] здравоохранения", "УЗ"),
+    (r"Республиканское государственное предприятие на праве хозяйственного ведения", "РГП на ПХВ"),
+    (r"Государственное коммунальное предприятие на праве хозяйственного ведения", "ГКП на ПХВ"),
+    (r"Коммунальное государственное предприятие на праве хозяйственного ведения", "КГП на ПХВ"),
+    (r"Государственное коммунальное казенное предприятие", "ГККП"),
+    (r"Коммунальное государственное казенное предприятие", "КГКП"),
+    (r"Государственное коммунальное предприятие", "ГКП"),
+    (r"Коммунальное государственное предприятия?", "КГП"),
+    (r"Государственное учреждение", "ГУ"),
+    (r"Учреждение", "У"),
+]
+
+
+def short_org_name(name: str | None) -> str:
+    """Display form: standard abbreviations of legal forms (ТОО, ГКП на ПХВ, …)."""
+    s = name or "—"
+    for pattern, abbr in _LEGAL_FORM_ABBREVIATIONS:
+        s = re.sub(pattern, abbr, s, flags=re.IGNORECASE)
+    return s
+
+
 def register_name_map(con: duckdb.DuckDBPyConnection, sql_distinct_values: str, table: str = "name_map") -> int:
     """Create `table(raw, name, key)` for every distinct value returned by the SQL."""
     raw = [r[0] for r in con.execute(sql_distinct_values).fetchall() if r[0] is not None]

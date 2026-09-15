@@ -4,37 +4,45 @@
 
 ```
 hospital-queue-ai/
-├── backend/            FastAPI app + database schema
+├── backend/            FastAPI service + database schema (docs/api.md)
 │   ├── app/
-│   │   ├── main.py         FastAPI app (only /health for now)
+│   │   ├── main.py         FastAPI app: /api/v1 router, CORS, error handlers
 │   │   ├── core/config.py  settings (pydantic-settings, reads .env)
+│   │   ├── api/            routers (routes.py) and dependencies (session, pagination)
+│   │   ├── schemas/        Pydantic request / response models
+│   │   ├── services/       status (overview, regions, hospital card), recommend (rule v1 + estimator
+│   │   │                   interface), activity (referrals, decisions, alerts), catalog (health, models, dictionaries)
 │   │   └── db/
 │   │       ├── session.py  SQLAlchemy engine / session dependency
-│   │       └── models.py   SQLAlchemy models of the data layer
-│   ├── alembic/            migrations (schema owner)
+│   │       └── models.py   SQLAlchemy models: data layer, predictions, model registry, serving marts, decision_log
+│   ├── alembic/            migrations (schema owner): 0001 data layer, 0002 predictions, 0003 marts + decision_log
+│   ├── tests/              API tests (pytest + httpx) against the running Postgres
+│   ├── Dockerfile          python:3.12-slim, non-root, alembic upgrade head + uvicorn
 │   ├── alembic.ini
 │   └── pyproject.toml
 ├── ml/                 data & ML code
 │   ├── hqai_ml/
-│   │   ├── ingest/         implemented: raw → Parquet → Postgres
-│   │   ├── features/       placeholder
-│   │   ├── models/         placeholder
+│   │   ├── ingest/         raw → Parquet → Postgres
+│   │   ├── features/       referral features (A, B), series panels and horizon rows (C)
+│   │   ├── models/         wait_time (A), refusal_risk (B), load_forecast (C)
 │   │   ├── causal/         placeholder
-│   │   ├── evaluation/     placeholder
-│   │   ├── explain/        placeholder
-│   │   └── registry/       placeholder
-│   ├── pipelines/          ingest.py, baseline.py
-│   └── configs/            ingest.yaml, regions.yaml
+│   │   ├── evaluation/     temporal split, metrics, backtest, report
+│   │   ├── explain/        SHAP explanations with Russian templates
+│   │   ├── registry/       artifacts/models/<name>/<version>/ + manifest.json
+│   │   └── serving/        serving marts for the API: config (serving.yaml) + mart SQL
+│   ├── pipelines/          ingest.py, baseline.py, train.py, predict.py, build_marts.py
+│   └── configs/            ingest.yaml, regions.yaml, org_matches.yaml, models.yaml, explain_templates.yaml,
+│                           serving.yaml (load_index weights, thresholds, recommendation rule)
 ├── frontend/           placeholder
 ├── db/init.sql         Postgres extensions (pgvector, pg_trgm)
-├── docs/               this file, data.md
-├── scripts/            00_inventory.py (step 1)
+├── docs/               this file, data.md, model_card.md, api.md
 ├── data/               raw/ (read-only input), processed/ (Parquet)   — gitignored
 ├── reports/            generated reports                               — gitignored
 ├── notebooks/          exploration                                     — gitignored
 ├── artifacts/          trained models etc.                             — gitignored
-├── docker-compose.yml  postgres (pgvector/pgvector:pg16)
-├── Makefile            up, down, migrate, ingest, baseline, psql
+├── scratch/            temporary / exploratory / verification files   — gitignored
+├── docker-compose.yml  postgres (pgvector/pgvector:pg16) + backend (FastAPI, port 8000)
+├── Makefile            up, down, migrate, ingest, baseline, psql, train, predict, marts, api-dev, test
 └── .env.example
 ```
 
@@ -45,10 +53,23 @@ hospital-queue-ai/
 - **Transformations** run in DuckDB inside `ml/hqai_ml/ingest`, reading CSV directly from
   `data/raw/`. The clean result is written to Parquet first (`data/processed/`), so analysis
   (`baseline.py`, notebooks) can run without a database and Postgres is a pure serving copy.
-- **Postgres** serves the API (next steps). Load = one transaction: truncate all tables, stream
+- **Models** train from Parquet only and are versioned on disk (`artifacts/models`); `predict.py` writes
+  the predictions of the current versions to Postgres and mirrors the versions into `model_registry`.
+- **Postgres** serves the API. Load = one transaction: truncate all tables, stream
   every Parquet file with `COPY`, verify row counts, commit.
+- **Serving marts** (`mart_*`) are derived inside Postgres by `ml/pipelines/build_marts.py` (`make marts`, also the
+  last step of `make predict`) from the aggregates, facts and prediction tables, in one transaction, with the
+  parameters of `ml/configs/serving.yaml` recorded in `mart_build_info`. Formulas: `docs/api.md`.
+- **The backend only reads tables** (plus writes `decision_log`, the human-in-the-loop record, which no pipeline
+  truncates). It has no ML dependencies; the image contains `backend/` only. Heavy per-row work (ranking, trends,
+  medians) happens at mart build time so every endpoint stays well under 500 ms.
+- **Scratch work** (project rule): every temporary, exploratory or self-verification file created by
+  an agent or developer — scratch scripts, ad-hoc checks, test dumps, comparison outputs — lives under
+  `scratch/` (gitignored) and nowhere else. Everything outside `scratch/` is product code, config,
+  migrations, docs or tests that a maintainer would keep. The step-1 inventory script
+  (`scratch/00_inventory.py`) is kept there as a one-off.
 - **Manual dictionaries** that need human review live in `ml/configs/` and are versioned in git
-  (`regions.yaml`); the pipeline regenerates them but preserves manual overrides.
+  (`regions.yaml`, `org_matches.yaml`); the pipeline regenerates `regions.yaml` but preserves manual overrides.
 
 ## Data flow
 
@@ -74,9 +95,13 @@ flowchart LR
     PQ["data/processed/*.parquet<br/>_manifest.json"]
     PG[("Postgres 16<br/>pgvector · pg_trgm")]
     ALB["Alembic migrations<br/>(backend)"]
-    API["FastAPI<br/>(backend, next)"]
-    ML["features · models · causal<br/>evaluation · explain (next)"]
-    REP["reports/<br/>01_baseline.md<br/>01_org_matching.csv"]
+    MARTS["build_marts.py<br/>serving.yaml"]
+    API["FastAPI /api/v1<br/>(backend container)"]
+    USER["specialist<br/>(UI, /docs)"]
+    TRAIN["train.py<br/>features → models A · B · C<br/>temporal evaluation · SHAP"]
+    ART["artifacts/models<br/>versions + manifest.json"]
+    PRED["predict.py"]
+    REP["reports/<br/>01_baseline.md · 01_org_matching.csv<br/>02_models.md"]
 
     D1 & D3 & D4 --> V --> N --> STG
     D2 -- "region codes" --> DIM
@@ -86,16 +111,54 @@ flowchart LR
     ALB --> PG
     PQ -- "COPY, one transaction" --> PG
     PQ --> REP
-    PG --> API
-    PQ --> ML
+    PQ --> TRAIN --> ART
+    TRAIN --> REP
+    ART --> PRED
+    PQ --> PRED
+    PRED -- "pred_referral · pred_daily_forecast<br/>model_registry" --> PG
+    PG -- "aggregates · facts · predictions" --> MARTS
+    MARTS -- "mart_hospital_profile_status<br/>mart_region_profile_status<br/>mart_area_status · mart_build_info" --> PG
+    PG -- "marts · series · predictions · registry" --> API
+    API -- "POST /decisions → decision_log" --> PG
+    API <--> USER
 ```
+
+## Serving and API
+
+```mermaid
+flowchart LR
+    subgraph backend["backend/app"]
+        R["api/routes.py<br/>/api/v1"]
+        S1["services/status.py<br/>overview · regions · hospital card"]
+        S2["services/recommend.py<br/>rule v1 · WaitEffectEstimator"]
+        S3["services/activity.py<br/>referrals · decisions · alerts"]
+        S4["services/catalog.py<br/>health · models · dictionaries"]
+        SC["schemas/*<br/>Pydantic"]
+    end
+    EST1["HistoricalMedianEstimator<br/>(v1)"]
+    EST2["causal estimator<br/>(later, same protocol)"]
+    PG[("Postgres")]
+
+    R --> S1 & S2 & S3 & S4
+    S1 & S2 & S3 & S4 --> SC
+    S2 --> EST1
+    EST2 -. "swap" .-> S2
+    S1 & S2 & S3 & S4 <--> PG
+```
+
+Endpoints, formulas and examples: [`docs/api.md`](api.md).
 
 ## Runtime
 
 | component | how it runs |
 |---|---|
 | Postgres | `docker compose` service `postgres`, image `pgvector/pgvector:pg16`, volume `pgdata`, healthcheck `pg_isready` |
-| migrations | `make migrate` (also part of `make ingest`) |
+| API | `docker compose` service `backend` (`make up`): image built from `backend/Dockerfile` (python:3.12-slim, non-root user), env from `.env` with `POSTGRES_HOST=postgres`, starts after the postgres healthcheck, runs `alembic upgrade head` then uvicorn on port 8000 (`API_PORT`), healthcheck `GET /health`. Docs at http://localhost:8000/docs |
+| API (development) | `make api-dev` — uvicorn with auto-reload on port 8001 against the same Postgres |
+| migrations | `make migrate` (also part of `make ingest`, `make predict`, `make marts`, and of the backend container start) |
 | ingest | `make ingest` — ~15 s to Parquet, ~1.5 min including the Postgres load on a laptop |
 | baseline | `make baseline` — reads Parquet only |
-| API | `cd backend && uvicorn app.main:app` (only `/health` so far) |
+| train | `make train` — reads Parquet only; writes `artifacts/models/` and `reports/02_models.md` (~5 min) |
+| predict | `make predict` — migrations, then current models → Postgres prediction tables (~2 min), then marts |
+| marts | `make marts` — serving marts from facts, aggregates and predictions (~3 s) |
+| tests | `make test` — API tests in-process against the running Postgres (`HQAI_API_BASE_URL=http://localhost:8000 make test` for the container) |

@@ -18,5 +18,21 @@ services:
       timeout: 5s
       retries: 20
 
+  backend:
+    build: ./backend
+    image: hqai-backend:latest
+    container_name: hqai-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # inside the compose network postgres is reached by service name on its container port
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-8000}:8000"
+
 volumes:
   pgdata:

@@ -1,0 +1,55 @@
+# Parameters of the serving layer: ml/pipelines/build_marts.py (make marts) and the API.
+# Formulas and semantics: docs/api.md. build_marts.py copies this file into mart_build_info.config,
+# so the API always uses the parameters the marts were actually built with (re-run `make marts`
+# after editing).
+
+# Last known day of the data. Every "now" / "28d" / "4w" metric is computed as of this date.
+as_of_date: 2025-03-31
+
+# Trailing window for registrations / hospitalizations / refusals / median wait (days, inclusive
+# of as_of_date): [as_of_date - window_days + 1, as_of_date].
+window_days: 28
+
+# Rows with fewer registrations in the window are shown but get no load_index ("insufficient data").
+min_registrations_28d: 10
+
+# backlog_days = queue_now / (hospitalizations_28d / window_days) is NULL below this daily throughput.
+backlog_min_daily_throughput: 0.5
+
+# queue_trend_4w: slope of the weekly mean queue over the last `trend_weeks` full Monday–Sunday
+# weeks ending on or before as_of_date, in % of the mean weekly queue per week.
+trend_weeks: 4
+
+# A test-period referral is "high risk" when pred_refusal_prob >= this value (model B).
+high_risk_threshold: 0.25
+
+# load_index = 100 * Σ weight_i * score_i / Σ weight_i  over the components that are defined (0–100).
+load_index:
+  weights:
+    backlog_rank: 0.60     # mid-rank percentile of backlog_days within the same profile nationally
+    refusal_rate: 0.25     # refusal_rate_28d / refusal_rate_cap, clipped to [0, 1]
+    queue_trend: 0.15      # max(queue_trend_4w, 0) / queue_trend_cap_pct, clipped to [0, 1]
+  refusal_rate_cap: 0.30   # ~3x the national refusal rate of planned referrals (10.9%)
+  queue_trend_cap_pct: 20.0
+
+# Status label of a row with a load_index.
+status_thresholds:
+  high: 70
+  elevated: 40
+
+# GET /alerts
+alerts:
+  load_index_min: 70
+  queue_trend_min_pct: 5.0   # only for rows with sufficient data (registrations_28d >= min_registrations_28d) …
+  queue_trend_min_queue_now: 10  # … and a queue of at least this size: a % trend on a queue of 1–9 is noise
+
+# GET /hospitals/{org}/profiles/{profile}/recommendations (rule-based v1)
+recommendations:
+  region_top_fraction: 0.20  # the hospital × profile load_index must be in the top 20% of its region
+  min_wait_delta_days: 3     # the alternative must be expected to wait at least this many days less
+  max_alternatives: 3
+  min_registrations_28d: 10  # an alternative needs at least this much recent volume
+
+# GET /hospitals/{org}/profiles/{profile}: daily series start (end = as_of_date)
+series_start: 2025-02-02
+forecast_horizon: 14
