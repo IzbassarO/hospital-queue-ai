@@ -1,6 +1,6 @@
 # ADR 0001: Modular monolith and dependency direction
 
-Status: Proposed
+Status: Accepted
 Date: 2026-09-15
 Owners: BizAI
 

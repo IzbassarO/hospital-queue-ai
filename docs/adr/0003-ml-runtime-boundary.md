@@ -1,6 +1,6 @@
 # ADR 0003: ML runtime boundary
 
-Status: Proposed
+Status: Accepted
 Date: 2026-09-15
 Owners: BizAI
 

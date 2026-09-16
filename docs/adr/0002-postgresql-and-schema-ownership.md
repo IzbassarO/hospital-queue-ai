@@ -1,6 +1,6 @@
 # ADR 0002: PostgreSQL and schema ownership
 
-Status: Proposed
+Status: Accepted
 Date: 2026-09-15
 Owners: BizAI
 

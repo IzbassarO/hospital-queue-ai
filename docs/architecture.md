@@ -6,8 +6,8 @@ boundaries already exist. Detailed endpoint, data, UI, model and security behavi
 [`api.md`](api.md), [`data.md`](data.md), [`frontend.md`](frontend.md),
 [`model_card.md`](model_card.md) and [`security.md`](security.md).
 
-The decisions behind the proposed direction are under [`adr/`](adr/). ADRs 0001–0004 remain
-**Proposed** until reviewed.
+The decisions behind the proposed direction are under [`adr/`](adr/). ADRs 0001–0004 are
+**Accepted**; the boundaries automated today are listed in section 13.
 
 ## 1. Architecture principles
 
@@ -297,22 +297,24 @@ benefit, operational ownership and a simpler alternative that was measured first
 Each step must be independently releasable. No step combines a directory rewrite with API, schema,
 frontend or ML behavior changes unless that behavior change is itself the reviewed objective.
 
-## 13. Architecture fitness functions planned for later steps
+## 13. Architecture fitness functions
 
-The existing `make audit`, tests, lint, Alembic drift check, API-doc route comparison and frontend
-build remain the baseline. Later atomic steps should add checks for:
+`tools/architecture_check.py` uses Python's AST and runs as the `architecture` step of `make audit`.
+It checks production Python paths, not comments, docstrings or ordinary string literals. Its source
+targets exclude current test, migration and generated-artifact locations.
 
-- forbidden backend imports and dependency direction between domain, application, API and
-  infrastructure packages after those packages exist;
-- raw SQL in API adapters and framework/database imports in domain code;
-- backend runtime imports from `hqai_ml` and ML imports from backend application packages;
-- frontend layer direction, page-to-page imports and slice public-API violations;
-- stable and unique OpenAPI operation IDs;
-- reproducible OpenAPI client generation and backward-incompatible contract changes;
-- ownership/documentation of shared PostgreSQL tables and schema changes only through Alembic;
-- prediction rows linked to registered immutable model identities and verified artifact checksums;
-- required lineage fields and freshness/drift/performance monitoring evidence as those capabilities
-  are implemented;
-- generated/transient artifacts appearing in the version-controlled product surface.
+| rule | status | protected boundary |
+|---|---|---|
+| ARCH001 | ENFORCED | `backend/app/**/*.py` must not import `hqai_ml` or ML pipeline implementation; persisted predictions, registry metadata and serving tables remain the integration boundary |
+| ARCH002 | ENFORCED | `ml/hqai_ml/**/*.py` and `ml/pipelines/**/*.py` must not import the backend's `app` implementation |
+| ARCH003 | ENFORCED | if present, `backend/app/domain/**/*.py` must not import FastAPI, SQLAlchemy/psycopg, backend API/application/infrastructure implementation or ML implementation |
+| ARCH004 | ENFORCED | if present, `backend/app/application/**/*.py` must not import FastAPI, SQLAlchemy/psycopg, concrete backend adapters/API/services or ML implementation; domain imports remain allowed |
+| ARCH005 | ENFORCED | `backend/app/api/**/*.py` must not construct raw SQL through `sqlalchemy.text` or pass a literal SQL statement to `execute`/`executemany` |
+| ARCH006 | DEFERRED | a repository-wide DDL-string rule would flag legitimate ephemeral DuckDB table creation in ML ingestion and cannot reliably identify the target database without connection/data-flow analysis; Alembic drift checking remains active but is not claimed as full static enforcement |
 
-Fitness functions should enforce implemented boundaries, not reserve empty future structure.
+ARCH003 and ARCH004 require no empty scaffolding: they have no targets today and activate
+automatically when the corresponding directories contain Python files.
+
+Still planned for later steps: frontend layer/public-API rules after physical slices exist; stable
+OpenAPI operation IDs and compatibility checks; explicit shared-table ownership checks; immutable
+model checksums, lineage and monitoring evidence; and generated-artifact policy enforcement.

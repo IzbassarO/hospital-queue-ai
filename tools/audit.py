@@ -8,6 +8,7 @@ Checks
              Slack / API tokens, hqai_ API keys, hard-coded passwords, tokens or keys in assignments or connection
              URLs);
              placeholders such as change-me and ${VAR} are allowed. scratch/ is ignored by .gitignore, so never scanned
+  architecture  AST-based backend/ML dependency boundaries and API raw-SQL guard (tools/architecture_check.py)
   alembic    `alembic check`: the SQLAlchemy models and the migrations agree (needs the database)
   ruff       `ruff check` and `ruff format --check` on backend/, ml/, tools/
   pytest     the API tests (needs the database with marts built)
@@ -228,6 +229,15 @@ def check_alembic() -> Result:
     )
 
 
+def check_architecture() -> Result:
+    return _run(
+        "architecture",
+        [sys.executable, str(ROOT / "tools" / "architecture_check.py"), "--root", str(ROOT)],
+        ROOT,
+        "ARCH001-ARCH005 pass; ARCH006 deferred",
+    )
+
+
 def check_ruff() -> Result:
     targets = ["backend", "ml", "tools"]
     lint = _run("ruff", [sys.executable, "-m", "ruff", "check", *targets], ROOT, "")
@@ -387,6 +397,7 @@ def main() -> int:
     results = [
         check_layout(files),
         check_secrets(files),
+        check_architecture(),
         check_alembic(),
         check_ruff(),
         check_pytest(),

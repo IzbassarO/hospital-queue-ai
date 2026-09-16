@@ -27,7 +27,7 @@ records belong under `docs/adr/`.
 
 | ADR | Status | Decision |
 |---|---|---|
-| [0001](0001-modular-monolith-and-dependency-direction.md) | Proposed | Modular monolith and dependency direction |
-| [0002](0002-postgresql-and-schema-ownership.md) | Proposed | PostgreSQL and schema ownership |
-| [0003](0003-ml-runtime-boundary.md) | Proposed | ML runtime boundary |
-| [0004](0004-openapi-transport-contract.md) | Proposed | OpenAPI transport contract |
+| [0001](0001-modular-monolith-and-dependency-direction.md) | Accepted | Modular monolith and dependency direction |
+| [0002](0002-postgresql-and-schema-ownership.md) | Accepted | PostgreSQL and schema ownership |
+| [0003](0003-ml-runtime-boundary.md) | Accepted | ML runtime boundary |
+| [0004](0004-openapi-transport-contract.md) | Accepted | OpenAPI transport contract |

@@ -1,6 +1,6 @@
 # ADR 0004: OpenAPI transport contract
 
-Status: Proposed
+Status: Accepted
 Date: 2026-09-15
 Owners: BizAI
 
