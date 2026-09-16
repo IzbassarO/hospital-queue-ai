@@ -32,7 +32,7 @@ On macOS LightGBM also needs the OpenMP runtime: `brew install libomp`.
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
-cp .env.example .env      # set POSTGRES_PASSWORD and DEMO_API_KEY (the specialist key the demo UI uses)
+cp .env.example .env      # set POSTGRES_PASSWORD and DEMO_API_KEY (the specialist key the UI's proxy adds server-side)
 make up                   # postgres (pgvector/pgvector:pg16) + backend; data endpoints answer 503 until marts exist
 make ingest               # migrations + raw CSV -> data/processed/*.parquet -> postgres (~2 min)
 make baseline             # reports/01_baseline.md

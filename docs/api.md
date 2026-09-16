@@ -835,5 +835,6 @@ without a key). `client_ip` is the TCP peer — behind the docker nginx that is 
   handful of referrals (`n_waits_28d` is returned for that reason).
 - **Associations, not causes** — recommendations and explanation factors (see §4 and `docs/model_card.md` §7).
 - **API keys, not user identity**: a key identifies a client, not a person; `actor` is still free text, and the
-  demo key is compiled into the UI bundle, so everyone who opens the demo UI acts as that specialist key. What this
-  protects and what a production deployment must add: [docs/security.md](security.md).
+  demo key is added to proxied requests by the UI's own proxy, so everyone who can reach the demo UI acts as that
+  specialist key (the key itself is not in the browser). What this protects and what a production deployment must
+  add: [docs/security.md](security.md).

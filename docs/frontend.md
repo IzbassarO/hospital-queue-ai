@@ -9,7 +9,10 @@ why, what are the alternatives, what did a person decide*. Built strictly agains
 - Language: Russian only; every UI string lives in `frontend/src/i18n/ru.ts` (the UI imports `t` from `src/i18n`, so
   another language is one more file with the same `Messages` shape). Domain texts (model cards, factor labels, data
   source, formula parameters) come from the API.
-- Access: the client sends `X-API-Key` from `VITE_API_KEY` (docker: `DEMO_API_KEY` from `.env`, role specialist).
+- Access: the browser holds **no** credentials. The proxy in front of the UI adds `X-API-Key` server-side — nginx in
+  docker, the Vite dev server for `make web-dev`, both from `DEMO_API_KEY` in the environment (role specialist).
+  `VITE_API_KEY` still exists for a build that must carry its own key, but it is empty in every supported setup and
+  `make audit` fails if a key ends up in the bundle.
 - Runs: `make up` → http://localhost:3000 (nginx serves the build and proxies `/api` to the backend);
   `make web-dev` → http://localhost:5173 (Vite, `/api` proxied to `localhost:8000`; `API_PROXY_TARGET` to change).
 
@@ -78,7 +81,7 @@ frontend/
 │   ├── routes.tsx    route table
 │   └── main.tsx      QueryClient + router
 ├── Dockerfile        node:22-alpine build → nginx:1.29-alpine
-├── nginx.conf        SPA fallback, /api proxy to backend:8000, asset caching, /healthz
+├── nginx.conf.template  SPA fallback, /api proxy to backend:8000 with server-side X-API-Key, caching, /healthz
 └── package.json      scripts: dev, build, lint, format, test
 ```
 
@@ -116,4 +119,5 @@ All gaps found while building the UI were closed in the API; the UI no longer du
 
 Also added in step 6: `high_load_share` on area rows (overview table, default sort descending; max index kept as a
 column), the role label «роль: …» in the header (`GET /me`), «Скачать отчёт» (XLSX / PDF) on the card, and the API key
-sent by the client (`VITE_API_KEY`, docker: `DEMO_API_KEY`; see docs/security.md for what that implies).
+added by the proxy server-side (`DEMO_API_KEY` in the nginx / dev-server environment; see docs/security.md for what
+that implies).

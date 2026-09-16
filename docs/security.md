@@ -26,15 +26,19 @@ for the organisation's identity and security infrastructure.
 | Key lifecycle | create (CLI, admin API), list (never shows key or hash), revoke (`revoked_at`; effective on the next request) | `app.cli`, `/admin/keys` |
 | Audit trail | one `access_log` row per `/api` request — timestamp, key label, role, method, path, status, latency, TCP peer, `X-Forwarded-For`; `401`s are logged without a label; decisions store `api_key_label` next to the free-text `actor` | `backend/app/core/access_log.py`, `decision_log` |
 | Integrity of decisions | validation of codes and hospital ↔ region ↔ alternative; client-supplied `idempotency_key` with a unique index — retries do not duplicate, reuse with other content → `409` | `backend/app/services/activity.py` |
-| Least exposure in the UI image | nginx serves static files and proxies only `/api/`; the backend container runs as a non-root user | `frontend/nginx.conf`, `backend/Dockerfile` |
+| Least exposure in the UI image | nginx serves static files and proxies only `/api/`; the backend container runs as a non-root user | `frontend/nginx.conf.template`, `backend/Dockerfile` |
+| Credentials stay server-side | the demo key is **not** in the JavaScript bundle: nginx (docker) and the Vite dev server (`make web-dev`) add `X-API-Key` to proxied `/api` requests from their own environment; a request that already carries a key keeps it, so an operator can use a personal viewer/admin key | `frontend/nginx.conf.template`, `frontend/vite.config.ts` |
+| No secret in the built bundle | `make audit` (`web-bundle`) scans `frontend/dist` after the production build and fails on any key-like string | `tools/audit.py` |
 | Secrets in the repository | `make audit` scans every file that would be committed for keys, passwords, tokens and `.env` files; `.env` and `backups/` are gitignored | `tools/audit.py` (`secrets`) |
 | Backups | `make backup` writes a `pg_dump` to `backups/` (gitignored); `make restore` asks for confirmation | `Makefile` |
 
 ## 3. What is NOT protected (be aware)
 
-1. **The demo key is public to anyone who opens the UI.** `DEMO_API_KEY` is compiled into the JavaScript bundle so the
-   demo works without login; anyone who can load http://localhost:3000 can read it and act as a *specialist* (read
-   everything, record decisions). This is acceptable only on a single demo machine or a closed network.
+1. **Reaching the UI port is enough to act as a specialist.** The key itself is no longer exposed (it lives in the
+   proxy's environment, not in the bundle), but the proxy adds it to every `/api` request it forwards, so anyone who
+   can open http://localhost:3000 — or send a request to it — reads all data and records decisions under the demo
+   key's label, without logging in. There is no per-person session: this is acceptable only on a single demo machine
+   or a closed network. A real deployment replaces the injection with an SSO session (§4).
 2. **API keys identify a client, not a person.** There is no login, no SSO, no personal accounts. `actor` in a
    decision is whatever the person typed. Several people sharing a key are indistinguishable in the audit trail.
 3. **No transport encryption.** The docker stack serves plain HTTP (`:3000` UI, `:8000` API, `:5432` Postgres, all
@@ -116,5 +120,6 @@ make restore FILE=backups/hqai_<timestamp>.dump                # asks for "yes"
 
 `DEMO_API_KEY` in `.env` (generate: `python3 -c 'import secrets; print("hqai_" + secrets.token_urlsafe(32))'`) is
 seeded as a specialist key each time the backend container starts; revoking it in the database wins over seeding
-(a revoked demo key is not re-activated). After changing `DEMO_API_KEY`, rebuild the frontend (`make up`), since the
-key is compiled into the bundle.
+(a revoked demo key is not re-activated). It is passed to the frontend container as an environment variable and
+injected by nginx at request time, so changing it needs only a restart (`make up`), not a rebuild, and it never
+reaches the browser. It is still readable by anyone who can run `docker inspect` or exec into the container.

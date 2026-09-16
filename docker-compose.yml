@@ -35,15 +35,14 @@ services:
       - "${API_PORT:-8000}:8000"
 
   frontend:
-    build:
-      context: ./frontend
-      args:
-        # baked into the static bundle so the demo UI works out of the box (role specialist, docs/security.md)
-        VITE_API_KEY: ${DEMO_API_KEY:-}
+    build: ./frontend
     image: hqai-frontend:latest
     container_name: hqai-frontend
     restart: unless-stopped
-    # nginx serves the built UI and proxies /api to backend:8000
+    # nginx serves the built UI and proxies /api to backend:8000, adding the demo API key server-side:
+    # it stays in the container environment and never reaches the browser (docs/security.md)
+    environment:
+      DEMO_API_KEY: ${DEMO_API_KEY:-}
     depends_on:
       backend:
         condition: service_healthy

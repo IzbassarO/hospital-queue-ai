@@ -1,4 +1,17 @@
 # Static SPA + reverse proxy to the API (docker compose service `backend`).
+#
+# Rendered at container start from this template by the nginx entrypoint (envsubst, NGINX_ENVSUBST_FILTER limits
+# substitution to DEMO_API_KEY, so nginx's own $variables stay untouched).
+#
+# The demo API key lives ONLY here, server-side: the browser never receives it and the bundle does not contain it.
+# A request that already carries X-API-Key (an operator using their own viewer/admin key) is passed through
+# unchanged; a request without one gets the demo key. Anyone who can reach this port still acts with the demo
+# key's role — see docs/security.md §3.
+map $http_x_api_key $hqai_api_key {
+    ""      "${DEMO_API_KEY}";
+    default $http_x_api_key;
+}
+
 server {
     listen 80;
     server_name _;
@@ -29,6 +42,8 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        # server-side credential injection (see the note above); never echoed back to the browser
+        proxy_set_header X-API-Key $hqai_api_key;
         proxy_connect_timeout 5s;
         proxy_read_timeout 30s;
     }

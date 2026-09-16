@@ -16,6 +16,8 @@ Checks
              (app.core.security.require_role, marked `__hqai_auth__`), directly or through a router include
   web-lint   when frontend/package.json exists: `npm run lint` (ESLint + Prettier check)
   web-build  when frontend/package.json exists: `npm run build` (TypeScript check + Vite production build)
+  web-bundle the built frontend (frontend/dist) contains no API key or other secret: credentials are added by the
+             proxy server-side, never compiled into the bundle the browser downloads (docs/security.md)
 
 Tracked candidates are found without git: the working tree minus what .gitignore matches (the patterns used in this
 repository: names, globs, trailing-slash directories, root-anchored paths, `!` negation).
@@ -61,7 +63,7 @@ SECRET_PATTERNS: dict[str, re.Pattern] = {
     "Google API key": re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b"),
     "credential assignment": re.compile(
         r"(?i)\b(?P<name>[\w.-]*(?:password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key)[\w.-]*)\b"
-        r"[\"']?\s*[:=]\s*[\"']?(?P<value>[^\s\"',;)}]{6,})"
+        r"[\"']?\s*[:=]\s*(?P<quote>[\"'])?(?P<value>[^\s\"',;)}]{6,})"
     ),
     "password in URL": re.compile(r"\b[a-z][a-z0-9+.-]*://[^\s:/@]+:(?P<value>[^\s@/]{3,})@"),
 }
@@ -71,6 +73,11 @@ PLACEHOLDER = re.compile(
     r"\$\{?\w+(?::?-[^}]*)?\}?|\$\(\w+\)|\{\{.*\}\}|%\(\w+\)s|settings\.\w+|self\.\w+|os\.environ.*|none|null|true|false|str|int|"
     r"bool|required|optional)$"
 )
+# in source files an unquoted value is an expression (apiKey, process.env.X), not a hard-coded secret; a real
+# secret in code would be a quoted literal. Config and env files have no quoting convention, so they keep the check.
+CODE_SUFFIXES = {".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".java", ".go", ".rb"}
+IDENTIFIER = re.compile(r"^[A-Za-z_$][\w$]*(?:\.[\w$]+)*$")
+
 # names that describe a credential rather than hold one: API_KEY_HEADER = "X-API-Key", api_key_label=..., key_prefix
 METADATA_NAME = re.compile(r"(?i)(?:_|-)(?:header|label|prefix|name|field|column|id|url|path|file|env|var)$")
 CODE_EXPRESSION = re.compile(r"^[\w.]+[(\[]|^\{")  # a call, subscript or f-string field, not a literal
@@ -175,6 +182,7 @@ def _read_text(path: Path) -> str | None:
 
 def scan_secrets(rel: str, text: str) -> list[str]:
     found = []
+    in_code = Path(rel).suffix in CODE_SUFFIXES
     for lineno, line in enumerate(text.splitlines(), 1):
         for label, pattern in SECRET_PATTERNS.items():
             for m in pattern.finditer(line):
@@ -182,6 +190,8 @@ def scan_secrets(rel: str, text: str) -> list[str]:
                 if value is not None and not looks_like_secret(value):
                     continue
                 if METADATA_NAME.search(m.groupdict().get("name") or ""):
+                    continue
+                if in_code and value is not None and not m.groupdict().get("quote") and IDENTIFIER.match(value):
                     continue
                 found.append(f"{rel}:{lineno}: {label}")
     return found
@@ -310,10 +320,30 @@ def check_frontend() -> list[Result]:
         m = re.search(r"built in [\d.]+\s*m?s", out)
         return f"tsc + vite {m.group(0)}" if m else "tsc + vite build ok"
 
-    return [
+    results = [
         _run("web-lint", [npm, "run", "--silent", "lint"], FRONTEND, "eslint + prettier clean"),
         _run("web-build", [npm, "run", "--silent", "build"], FRONTEND, "", parse=build_summary),
     ]
+    results.append(check_web_bundle())
+    return results
+
+
+def check_web_bundle() -> Result:
+    """No secret may be compiled into the bundle the browser downloads (the proxy adds the API key server-side)."""
+    dist = FRONTEND / "dist"
+    if not dist.is_dir():
+        return Result("web-bundle", False, "frontend/dist missing: run `make web-build`", [])
+    findings: list[str] = []
+    files = 0
+    for path in sorted(dist.rglob("*")):
+        if not path.is_file():
+            continue
+        text = _read_text(path)
+        if text is None:
+            continue
+        files += 1
+        findings.extend(scan_secrets(path.relative_to(ROOT).as_posix(), text))
+    return Result("web-bundle", not findings, f"{files} built files scanned, {len(findings)} findings", findings)
 
 
 # the OpenAPI schema lists every public route (the prefix-less liveness probe is excluded from it)
