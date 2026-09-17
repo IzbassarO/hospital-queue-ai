@@ -43,10 +43,13 @@ class TemporalProtocol:
             raise ValueError("origin_semantics must be last_observed_day or not_applicable")
         if self.backtest_origins and self.origin_semantics != "last_observed_day":
             raise ValueError("backtest origins must use last_observed_day semantics")
-        if any(origin <= self.train_end for origin in self.backtest_origins):
-            raise ValueError("every backtest origin must be after the training period")
-        if any(origin < self.test_start or origin > self.test_end for origin in self.backtest_origins):
-            raise ValueError("every backtest origin must be inside the test period")
+        if any(origin < self.train_end for origin in self.backtest_origins):
+            raise ValueError("every backtest origin must be on or after the training end")
+        if any(
+            origin + dt.timedelta(days=1) < self.test_start or origin > self.test_end
+            for origin in self.backtest_origins
+        ):
+            raise ValueError("every backtest origin must immediately precede or be inside the test period")
         if tuple(sorted(set(self.backtest_origins))) != self.backtest_origins:
             raise ValueError("backtest origins must be unique and ordered")
         if self.forecast_origin is not None:

@@ -9,6 +9,7 @@ import json
 import os
 import platform
 import re
+import socket
 import subprocess
 import warnings
 from dataclasses import asdict, dataclass
@@ -170,6 +171,39 @@ def utc_now() -> str:
     return dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
 
 
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _process_start_identity(pid: int) -> str | None:
+    """Best-effort local PID-reuse fence using procfs or the standard local ``ps`` command."""
+    proc_stat = Path(f"/proc/{pid}/stat")
+    try:
+        # Field 22 is the process start time in clock ticks. The command name may contain spaces.
+        fields_after_command = proc_stat.read_text(encoding="utf-8").rsplit(")", 1)[1].split()
+        return f"procfs:{fields_after_command[19]}"
+    except (IndexError, OSError):
+        pass
+    try:
+        result = subprocess.run(
+            ["ps", "-o", "lstart=", "-p", str(pid)],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    started = result.stdout.strip()
+    return f"ps:{started}" if result.returncode == 0 and started else None
+
+
 def execution_metadata(resources: ResourceConfig) -> dict:
     return {
         "resources": asdict(resources),
@@ -294,7 +328,13 @@ class RunLock:
     def acquire(cls, run_path: Path) -> RunLock:
         run_path.mkdir(parents=True, exist_ok=True)
         path = run_path / cls.FILENAME
-        metadata = {"lock_id": uuid4().hex, "pid": os.getpid(), "acquired_at": utc_now()}
+        metadata = {
+            "lock_id": uuid4().hex,
+            "pid": os.getpid(),
+            "hostname": socket.gethostname(),
+            "process_start": _process_start_identity(os.getpid()),
+            "acquired_at": utc_now(),
+        }
         try:
             descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         except FileExistsError as exc:
@@ -318,23 +358,71 @@ class RunLock:
             return {"diagnostic": f"unreadable lock: {exc}"}
 
     @classmethod
-    def recover(cls, run_path: Path) -> dict:
+    def recover(
+        cls,
+        run_path: Path,
+        *,
+        confirm_lock_id: str,
+        force_remote: bool = False,
+    ) -> dict:
+        """Remove a confirmed stale lock; never infer that a remote-host lock is stale."""
         path = run_path / cls.FILENAME
         if not path.exists():
             raise FileNotFoundError(f"no stale lock exists for {run_path.name!r}")
         diagnostic = cls.read(run_path)
+        recorded_id = diagnostic.get("lock_id")
+        if not recorded_id or confirm_lock_id != recorded_id:
+            raise RunLockedError("lock-id confirmation does not match the current on-disk lock")
+        recorded_host = diagnostic.get("hostname")
+        current_host = socket.gethostname()
+        if recorded_host != current_host:
+            if not force_remote:
+                raise RunLockedError(
+                    "lock belongs to another or unknown host; refuse ambiguous recovery unless "
+                    "--force-remote-lock-recovery is explicitly supplied"
+                )
+        else:
+            try:
+                pid = int(diagnostic["pid"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise RunLockedError("local lock has no usable PID; refusing ambiguous recovery") from exc
+            if _pid_alive(pid):
+                recorded_start = diagnostic.get("process_start")
+                current_start = _process_start_identity(pid)
+                if not recorded_start or not current_start or recorded_start == current_start:
+                    raise RunLockedError("refusing recovery: the recorded local lock owner is still alive")
+                # A different start identity means the PID was reused after the original owner exited.
+        current = cls.read(run_path)
+        if current.get("lock_id") != confirm_lock_id:
+            raise RunLockedError("lock ownership changed during recovery; refusing to remove the replacement")
         path.unlink()
-        return diagnostic
+        recovery = {
+            "recovered_lock": diagnostic,
+            "recovered_at": utc_now(),
+            "recovered_by": {"hostname": current_host, "pid": os.getpid()},
+            "forced_remote": force_remote,
+        }
+        audit_path = run_path / f"lock-recovery-{uuid4().hex}.json"
+        store.atomic_write_text(audit_path, store.canonical_json(recovery))
+        return recovery
+
+    def assert_owned(self) -> None:
+        """Fence a writer by comparing its token with the lock currently present on disk."""
+        if not self.held:
+            raise RunLockedError("run writer lock is not held")
+        try:
+            current = json.loads(self.path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            self.held = False
+            raise RunLockedError("run lock disappeared or became unreadable; writer is fenced") from exc
+        if current.get("lock_id") != self.metadata["lock_id"]:
+            self.held = False
+            raise RunLockedError("run lock ownership changed; writer is fenced")
 
     def release(self) -> None:
         if not self.held:
             return
-        try:
-            current = json.loads(self.path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            current = {}
-        if current.get("lock_id") != self.metadata["lock_id"]:
-            raise RunLockedError("run lock ownership changed; refusing to remove another writer's lock")
+        self.assert_owned()
         self.path.unlink()
         self.held = False
 
@@ -482,8 +570,13 @@ class ExperimentRun:
         self._write()
 
     def _require_lock(self) -> None:
-        if self.lock is None or not self.lock.held:
+        if self.lock is None:
             raise RunLockedError("run writer lock is not held")
+        self.lock.assert_owned()
+
+    def _write_checkpoint(self, key: CheckpointKey, checkpoint: dict) -> None:
+        self._require_lock()
+        store.atomic_write_text(self.checkpoint_path(key), store.canonical_json(checkpoint))
 
     def checkpoint_path(self, key: CheckpointKey) -> Path:
         return self.checkpoints_path / key.filename
@@ -552,7 +645,7 @@ class ExperimentRun:
             "failure": None,
         }
         assert_safe_metadata(checkpoint)
-        store.atomic_write_text(self.checkpoint_path(key), store.canonical_json(checkpoint))
+        self._write_checkpoint(key, checkpoint)
         self._refresh_checkpoint_summary()
         return checkpoint
 
@@ -599,7 +692,7 @@ class ExperimentRun:
             "failure": None,
         }
         assert_safe_metadata(checkpoint)
-        store.atomic_write_text(self.checkpoint_path(key), store.canonical_json(checkpoint))
+        self._write_checkpoint(key, checkpoint)
         self._refresh_checkpoint_summary()
         if key == CheckpointKey.model(key.model_name):
             changes = {}
@@ -627,7 +720,21 @@ class ExperimentRun:
             "ended_at": utc_now(),
             "failure": {"type": type(exc).__name__, "message": safe_failure_message(exc, root)},
         }
-        store.atomic_write_text(self.checkpoint_path(key), store.canonical_json(failed))
+        self._write_checkpoint(key, failed)
+        self._refresh_checkpoint_summary()
+
+    def interrupt_checkpoint(self, key: CheckpointKey) -> None:
+        self._require_lock()
+        current = self._read_checkpoint(key)
+        if not current or current.get("status") == "completed":
+            raise RuntimeError(f"checkpoint {key.to_dict()!r} cannot transition to interrupted")
+        interrupted = {
+            **current,
+            "status": "interrupted",
+            "ended_at": utc_now(),
+            "failure": None,
+        }
+        self._write_checkpoint(key, interrupted)
         self._refresh_checkpoint_summary()
 
     def _refresh_checkpoint_summary(self) -> None:

@@ -6,6 +6,9 @@ import os
 import random
 from dataclasses import dataclass
 
+MIB = 1024 * 1024
+GIB = 1024 * MIB
+
 
 @dataclass(frozen=True)
 class ResourceConfig:
@@ -15,6 +18,10 @@ class ResourceConfig:
     model_threads: int
     parallel_trials: int
     process_concurrency: int
+    detected_memory_bytes: int
+    memory_budget_bytes: int
+    duckdb_threads: int
+    duckdb_memory_limit: str
 
     @property
     def requested_cpu_slots(self) -> int:
@@ -28,6 +35,8 @@ def resource_config(
     model_threads: int | None = None,
     parallel_trials: int | None = None,
     process_concurrency: int | None = None,
+    memory_bytes: int | None = None,
+    duckdb_memory_mb: int | None = None,
 ) -> ResourceConfig:
     cpus = cpu_count if cpu_count is not None else os.cpu_count() or 1
     if cpus < 1:
@@ -58,7 +67,51 @@ def resource_config(
             "resource overrides oversubscribe the CPU budget: "
             f"{threads} threads × {trials} trials × {processes} processes = {requested} > {budget}"
         )
-    return ResourceConfig(profile_name, cpus, budget, threads, trials, processes)
+    detected_memory = memory_bytes if memory_bytes is not None else _physical_memory_bytes()
+    if detected_memory < MIB:
+        raise ValueError("detected memory must be at least 1 MiB")
+    if profile_name == "laptop":
+        memory_budget = min(detected_memory // 4, 2 * GIB)
+    else:
+        memory_budget = min(detected_memory // 2, 4 * GIB)
+    memory_budget = max(MIB, memory_budget)
+    workers = trials * processes
+    if duckdb_memory_mb is not None:
+        if duckdb_memory_mb < 1:
+            raise ValueError("DuckDB memory override must be positive")
+        duckdb_bytes = duckdb_memory_mb * MIB
+        if duckdb_bytes * workers > memory_budget:
+            raise ValueError(
+                "DuckDB memory override exceeds the profile memory budget across concurrent workers: "
+                f"{duckdb_memory_mb} MiB × {workers} > {memory_budget // MIB} MiB"
+            )
+    else:
+        duckdb_bytes = max(MIB, memory_budget // workers)
+    duckdb_mib = max(1, duckdb_bytes // MIB)
+    return ResourceConfig(
+        profile_name,
+        cpus,
+        budget,
+        threads,
+        trials,
+        processes,
+        detected_memory,
+        memory_budget,
+        threads,
+        f"{duckdb_mib}MiB",
+    )
+
+
+def _physical_memory_bytes() -> int:
+    """Portable best effort without a runtime dependency; the fallback remains conservative."""
+    try:
+        page_size = int(os.sysconf("SC_PAGE_SIZE"))
+        pages = int(os.sysconf("SC_PHYS_PAGES"))
+        if page_size > 0 and pages > 0:
+            return page_size * pages
+    except (AttributeError, OSError, TypeError, ValueError):
+        pass
+    return 4 * GIB
 
 
 def apply_resource_environment(resources: ResourceConfig) -> None:

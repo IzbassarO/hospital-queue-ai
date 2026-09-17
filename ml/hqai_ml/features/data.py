@@ -4,6 +4,8 @@ from pathlib import Path
 
 import duckdb
 
+from hqai_ml.registry.resources import ResourceConfig
+
 TABLES = [
     "dim_region",
     "dim_profile",
@@ -17,8 +19,10 @@ TABLES = [
 ]
 
 
-def connect(processed_dir: Path) -> duckdb.DuckDBPyConnection:
+def connect(processed_dir: Path, resources: ResourceConfig) -> duckdb.DuckDBPyConnection:
     con = duckdb.connect()
+    con.execute("SET threads = ?", [resources.duckdb_threads])
+    con.execute("SET memory_limit = ?", [resources.duckdb_memory_limit])
     for t in TABLES:
         path = processed_dir / f"{t}.parquet"
         if not path.exists():

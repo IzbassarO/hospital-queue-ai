@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Train and evaluate the models, save artifacts to the registry, write reports/02_models.md.
+"""Train and evaluate model candidates; explicitly promote them with ``--promote``.
 
 Run:  make train                                   (all three models)
       PYTHONPATH=ml .venv/bin/python ml/pipelines/train.py --model wait_time|refusal_risk|load_forecast
@@ -79,19 +79,36 @@ def main() -> int:
     ap.add_argument("--model-threads", type=int, help="override model/BLAS thread limit")
     ap.add_argument("--parallel-trials", type=int, help="override bounded future tournament concurrency")
     ap.add_argument("--process-concurrency", type=int, help="override bounded worker-process concurrency")
+    ap.add_argument("--duckdb-memory-mb", type=int, help="override per-session DuckDB memory within profile budget")
     ap.add_argument("--plan", action="store_true", help="show identities, output and checkpoint reuse without training")
+    ap.add_argument(
+        "--promote",
+        action="store_true",
+        help="explicitly publish the completed selected model set as current",
+    )
     ap.add_argument(
         "--recover-stale-lock",
         metavar="RUN_ID",
         help="explicitly remove a diagnosed stale local run lock, then exit",
     )
+    ap.add_argument("--confirm-lock-id", help="exact on-disk lock ID required for stale-lock recovery")
+    ap.add_argument(
+        "--force-remote-lock-recovery",
+        action="store_true",
+        help="explicitly recover a confirmed lock from another/unknown host",
+    )
     args = ap.parse_args()
+    if args.recover_stale_lock and not args.confirm_lock_id:
+        ap.error("--recover-stale-lock requires --confirm-lock-id")
+    if (args.confirm_lock_id or args.force_remote_lock_recovery) and not args.recover_stale_lock:
+        ap.error("lock recovery confirmation options require --recover-stale-lock")
     selected = list(MODEL_NAMES) if args.model == "all" else [args.model]
     resources = resource_config(
         args.resource_profile,
         model_threads=args.model_threads,
         parallel_trials=args.parallel_trials,
         process_concurrency=args.process_concurrency,
+        duckdb_memory_mb=args.duckdb_memory_mb,
     )
     apply_resource_environment(resources)
 
@@ -118,7 +135,11 @@ def main() -> int:
 
     settings = IngestSettings()
     if args.recover_stale_lock:
-        recovered = RunLock.recover(settings.artifacts_dir / "runs" / args.recover_stale_lock)
+        recovered = RunLock.recover(
+            settings.artifacts_dir / "runs" / args.recover_stale_lock,
+            confirm_lock_id=args.confirm_lock_id,
+            force_remote=args.force_remote_lock_recovery,
+        )
         print(f"removed stale lock for {args.recover_stale_lock!r}: {store.canonical_json(recovered)}", end="")
         return 0
     cards = store.load_cards(settings.configs_dir)
@@ -158,6 +179,7 @@ def main() -> int:
                     "checkpoint_root": f"artifacts/runs/{args.resume or '<run-id>'}/checkpoints",
                     "resume_run_id": args.resume,
                     "checkpoint_reuse": reuse,
+                    "promotion_requested": args.promote,
                     "execution": plan["execution"],
                 }
             ),
@@ -180,13 +202,18 @@ def main() -> int:
         if not pending:
             if run.manifest["status"] != "completed":
                 run.complete(list(keys.values()))
-            for name in selected:
-                store.set_current(settings.artifacts_dir, name, reusable[name]["artifact"]["version"])
-            report = write_report(settings, cfg)
-            log(f"report: {report}")
+            if args.promote:
+                store.set_current_many(
+                    settings.artifacts_dir,
+                    {name: reusable[name]["artifact"]["version"] for name in selected},
+                )
+                report = write_report(settings, cfg)
+                log(f"promoted current set; report: {report}")
+            else:
+                log("completed candidates retained without promotion (use --promote for explicit publication)")
             return 0
 
-        con = connect(settings.processed_dir)
+        con = connect(settings.processed_dir, resources)
         split = cfg.split.model_dump(mode="json")
         lineage = {
             "run_id": run.manifest["run_id"],
@@ -250,6 +277,9 @@ def main() -> int:
                         baseline_metrics=baselines,
                         evaluation_status="completed",
                     )
+                except KeyboardInterrupt:
+                    run.interrupt_checkpoint(key)
+                    raise
                 except BaseException as exc:
                     run.fail_checkpoint(key, exc, root)
                     raise
@@ -305,18 +335,26 @@ def main() -> int:
                     baseline_metrics=baselines,
                     evaluation_status="completed",
                 )
+            except KeyboardInterrupt:
+                run.interrupt_checkpoint(key)
+                raise
             except BaseException as exc:
                 run.fail_checkpoint(key, exc, root)
                 raise
             log(f"  saved {name} {version} -> {path.relative_to(settings.artifacts_dir.parent)}")
 
         run.complete(list(keys.values()))
+        promoted = {}
         for name in selected:
             checkpoint = run.reusable_checkpoint(keys[name])
             assert checkpoint is not None
-            store.set_current(settings.artifacts_dir, name, checkpoint["artifact"]["version"])
-        report = write_report(settings, cfg)
-        log(f"report: {report}")
+            promoted[name] = checkpoint["artifact"]["version"]
+        if args.promote:
+            store.set_current_many(settings.artifacts_dir, promoted)
+            report = write_report(settings, cfg)
+            log(f"promoted current set; report: {report}")
+        else:
+            log("completed candidates retained without promotion (use --promote for explicit publication)")
         return 0
     except KeyboardInterrupt:
         if run is not None:

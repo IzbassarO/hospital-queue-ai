@@ -83,8 +83,9 @@ Training reads Parquet and does not run in the API process. `ml/pipelines/predic
 disk artifacts, produces batch predictions and writes prediction and registry tables.
 `ml/pipelines/build_marts.py` builds the read-oriented `mart_*` tables consumed by the backend.
 The current registry is a checksummed filesystem artifact/run layout plus the PostgreSQL `model_registry` table.
-Complete data/config/code lineage is present in local manifests but does not yet have dedicated PostgreSQL columns;
-there is no general registry interface or production drift/outcome monitor yet.
+Verified artifact SHA256 and nullable run/data/config/code/evaluation lineage are mirrored into dedicated
+PostgreSQL columns; unavailable historical provenance remains `NULL`. There is no general registry interface or
+production drift/outcome monitor yet.
 
 The backend package has no ML dependency and does not import `hqai_ml`. The ML package does not
 import backend application code. Shared PostgreSQL tables are the implemented integration boundary.
@@ -191,13 +192,18 @@ Rules:
   and an atomic local lock permits only one writer per run.
 - Registration requires successful evaluation and complete artifact identity. Pre-6B.1 artifacts are checksummed
   on first load but remain explicitly `legacy_unattributed` rather than gaining invented provenance.
+- Evaluation completion does not imply approval. Training retains candidates by default, and an explicit operator
+  promotion atomically replaces the validated multi-model filesystem current set.
+- Only the coordinator writes experiment/checkpoint state. On-disk lock identities fence every mutation; stale-lock
+  recovery requires exact confirmation, refuses a same-host live owner and records an audit event.
 - Monitoring must eventually cover pipeline/data freshness, input and prediction distribution
   drift, and outcome-based model performance when labels become available.
 
-The current PostgreSQL registry remains in place. Its current columns store model/version, training window,
-metrics, current status, artifact path and card, but not artifact SHA256 or data/config/code/run identities. Complete
-lineage therefore remains in the deterministic run and artifact manifests until a later atomic schema migration can
-add those columns. This baseline does not introduce MLflow or a feature store.
+The current PostgreSQL registry remains in place. Alongside model/version, training window, metrics, current status,
+artifact path and card, it stores verified artifact SHA256 plus nullable data/config/code/run identities and
+evaluation status. The filesystem manifest is the atomic candidate-selection authority; PostgreSQL is the
+transactional serving snapshot. They are intentionally retryable rather than a distributed transaction. This
+baseline does not introduce MLflow or a feature store.
 
 ## 7. Frontend dependency direction
 
@@ -303,8 +309,8 @@ benefit, operational ownership and a simpler alternative that was measured first
    incrementally before removing duplicated transport definitions or runtime validation.
 5. Introduce frontend layers only as migrated code needs them; prevent page-to-page and reverse-layer
    dependencies.
-6. Extend the checksummed PostgreSQL/filesystem registry baseline with dedicated database lineage columns and a
-   registry interface when a focused migration is approved, without changing the serving boundary.
+6. Build on the checksummed PostgreSQL/filesystem registry baseline with a registry interface when justified,
+   without changing the serving boundary.
 7. Add automated dependency and contract checks after the physical boundaries exist.
 
 Each step must be independently releasable. No step combines a directory rewrite with API, schema,
@@ -334,5 +340,5 @@ ARCH003 and ARCH004 require no empty scaffolding: they have no targets today and
 automatically when the corresponding directories contain Python files.
 
 Still planned for later steps: frontend layer/public-API rules after physical slices exist; explicit
-backward-compatibility classification beyond freshness checks; explicit shared-table ownership checks; database
-lineage columns, model monitoring evidence; and generated-artifact policy enforcement.
+backward-compatibility classification beyond freshness checks; explicit shared-table ownership checks; model
+monitoring evidence; and generated-artifact policy enforcement.

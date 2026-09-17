@@ -6,11 +6,13 @@ import dataclasses
 import datetime as dt
 import hashlib
 import json
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
 
 from hqai_ml.evaluation.protocol import TemporalProtocol
+from hqai_ml.features import data as feature_data
 from hqai_ml.registry import experiment, store
 from hqai_ml.registry.experiment import (
     CheckpointIncompatibleError,
@@ -24,12 +26,23 @@ from hqai_ml.registry.experiment import (
     yaml_identity,
 )
 from hqai_ml.registry.resources import resource_config
+from pipelines.predict import registry_row, write_registry
 
 
 def artifact(directory: Path) -> dict:
     directory.mkdir(parents=True)
     (directory / "model.txt").write_text("tiny model", encoding="utf-8")
     return store.write_artifact_manifest(directory)
+
+
+def current_artifact(root: Path, model_name: str, version: str) -> Path:
+    path = root / "models" / model_name / version
+    path.mkdir(parents=True)
+    (path / "meta.json").write_text(
+        store.canonical_json({"model_name": model_name, "version": version, "model_files": []}), encoding="utf-8"
+    )
+    store.write_artifact_manifest(path)
+    return path
 
 
 def run_plan(profile: str = "laptop", identity: str = "plan-a", versions: dict | None = None) -> dict:
@@ -197,6 +210,34 @@ def test_resource_budget_derives_threads_and_rejects_oversubscription():
         resource_config("laptop", cpu_count=8, model_threads=4, parallel_trials=2, process_concurrency=1)
 
 
+def test_duckdb_session_applies_thread_and_memory_budget(tmp_path: Path, monkeypatch):
+    resources = resource_config(
+        "laptop",
+        cpu_count=8,
+        memory_bytes=8 * 1024**3,
+        duckdb_memory_mb=512,
+    )
+    monkeypatch.setattr(feature_data, "TABLES", [])
+    con = feature_data.connect(tmp_path, resources)
+    try:
+        threads, memory = con.execute("SELECT current_setting('threads'), current_setting('memory_limit')").fetchone()
+    finally:
+        con.close()
+    assert threads == resources.duckdb_threads == 4
+    assert memory == "512.0 MiB"
+
+
+def test_duckdb_memory_override_respects_global_profile_budget():
+    with pytest.raises(ValueError, match="memory budget"):
+        resource_config(
+            "laptop",
+            cpu_count=8,
+            memory_bytes=8 * 1024**3,
+            parallel_trials=2,
+            duckdb_memory_mb=1500,
+        )
+
+
 def test_artifact_sha256_and_corruption_rejection(tmp_path: Path):
     path = tmp_path / "artifact"
     manifest = artifact(path)
@@ -232,10 +273,47 @@ def test_load_rejects_model_name_mismatch(tmp_path: Path):
     (path / "meta.json").write_text(
         store.canonical_json({"model_name": "refusal_risk", "version": "v1", "model_files": []}), encoding="utf-8"
     )
-    store.write_artifact_manifest(path)
-    store.set_current(tmp_path, "wait_time", "v1")
+    sidecar = store.write_artifact_manifest(path)
+    store.atomic_write_text(
+        tmp_path / "models" / "manifest.json",
+        store.canonical_json(
+            {
+                "wait_time": {
+                    "current": "v1",
+                    "path": "models/wait_time/v1",
+                    "artifact_sha256": sidecar["content_sha256"],
+                }
+            }
+        ),
+    )
     with pytest.raises(store.ArtifactIntegrityError, match="model name mismatch"):
         store.load(tmp_path, "wait_time")
+
+
+def test_atomic_multi_model_current_publication(tmp_path: Path):
+    for name in ("wait_time", "refusal_risk"):
+        current_artifact(tmp_path, name, "v1")
+        current_artifact(tmp_path, name, "v2")
+    store.set_current_many(tmp_path, {"wait_time": "v1", "refusal_risk": "v1"})
+    store.set_current_many(tmp_path, {"wait_time": "v2", "refusal_risk": "v2"})
+    manifest = store.read_manifest(tmp_path)
+    assert {name: entry["current"] for name, entry in manifest.items()} == {
+        "wait_time": "v2",
+        "refusal_risk": "v2",
+    }
+    assert len({entry["updated_at"] for entry in manifest.values()}) == 1
+
+
+def test_current_set_validation_failure_keeps_previous_manifest(tmp_path: Path):
+    for name in ("wait_time", "refusal_risk"):
+        current_artifact(tmp_path, name, "v1")
+        current_artifact(tmp_path, name, "v2")
+    store.set_current_many(tmp_path, {"wait_time": "v1", "refusal_risk": "v1"})
+    before = (tmp_path / "models" / "manifest.json").read_bytes()
+    (tmp_path / "models" / "refusal_risk" / "v2" / "meta.json").write_text("tampered", encoding="utf-8")
+    with pytest.raises(store.ArtifactIntegrityError, match="checksum mismatch"):
+        store.set_current_many(tmp_path, {"wait_time": "v2", "refusal_risk": "v2"})
+    assert (tmp_path / "models" / "manifest.json").read_bytes() == before
 
 
 def registration_fixture(tmp_path: Path) -> dict:
@@ -248,9 +326,10 @@ def registration_fixture(tmp_path: Path) -> dict:
         "version": "v1",
         "artifact_sha256": checksum,
         "artifact_manifest": store.verify_artifact_manifest(model_path),
-        "metrics": {"overall": [{"mae": 1.0}]},
+        "metrics": {"population": {"rows": 10}, "overall": [{"model": "LightGBM", "mae": 1.0}]},
         "meta": {
             "model_name": "wait_time",
+            "trained_at": "2026-09-17T12:00:00+00:00",
             "training_window": {"train": ["2025-01-01", "2025-02-28"]},
             "run_id": "registration",
             "dataset_identity": "data-a",
@@ -266,6 +345,77 @@ def registration_fixture(tmp_path: Path) -> dict:
 
 def test_registration_accepts_completed_consistent_run(tmp_path: Path):
     assert store.registration_evidence(registration_fixture(tmp_path))["lineage"] == "complete"
+
+
+class RecordingCursor:
+    def __init__(self):
+        self.calls = []
+
+    def execute(self, statement, params):
+        self.calls.append((statement, params))
+        return self
+
+
+def attributed_registry_row(tmp_path: Path) -> dict:
+    loaded = registration_fixture(tmp_path)
+    return registry_row(
+        "wait_time",
+        loaded,
+        {
+            "path": "models/wait_time/v1",
+            "current": "v1",
+            "artifact_sha256": loaded["artifact_sha256"],
+        },
+        {},
+    )
+
+
+def test_attributed_registry_row_contains_verified_lineage(tmp_path: Path):
+    row = attributed_registry_row(tmp_path)
+    assert row["lineage"] == "complete"
+    assert row["run_id"] == "registration"
+    assert row["artifact_sha256"]
+    assert row["dataset_identity"] == "data-a"
+    assert row["config_identity"] == "config-a"
+    assert row["code_identity"] == "code-a"
+    assert row["evaluation_status"] == "completed"
+    assert not Path(row["artifact_path"]).is_absolute()
+    cursor = RecordingCursor()
+    write_registry(cursor, [row])
+    assert cursor.calls[1][1]["run_id"] == "registration"
+
+
+def test_registry_write_rejects_missing_attributed_lineage(tmp_path: Path):
+    row = attributed_registry_row(tmp_path)
+    row["dataset_identity"] = None
+    with pytest.raises(store.ArtifactIntegrityError, match="missing lineage"):
+        write_registry(RecordingCursor(), [row])
+
+
+def test_registry_write_rejects_missing_verified_checksum(tmp_path: Path):
+    row = attributed_registry_row(tmp_path)
+    row["artifact_sha256"] = None
+    with pytest.raises(store.ArtifactIntegrityError, match="no verified checksum"):
+        write_registry(RecordingCursor(), [row])
+
+
+def test_registry_write_keeps_legacy_lineage_nullable(tmp_path: Path):
+    row = attributed_registry_row(tmp_path)
+    for field in ("run_id", "dataset_identity", "config_identity", "code_identity", "evaluation_status"):
+        row[field] = None
+    row["lineage"] = "legacy_unattributed"
+    cursor = RecordingCursor()
+    write_registry(cursor, [row])
+    persisted = cursor.calls[1][1]
+    assert persisted["artifact_sha256"]
+    assert persisted["run_id"] is persisted["evaluation_status"] is None
+
+
+def test_registration_rejects_checkpoint_checksum_mismatch(tmp_path: Path):
+    loaded = registration_fixture(tmp_path)
+    loaded["artifact_sha256"] = "0" * 64
+    with pytest.raises(store.ArtifactIntegrityError, match="changed before registration"):
+        store.registration_evidence(loaded)
 
 
 @pytest.mark.parametrize(
@@ -304,6 +454,14 @@ def test_checkpoint_serialization_and_reuse_states(tmp_path: Path):
     run.fail_checkpoint(failed, RuntimeError("training stopped"), tmp_path)
     assert run.reusable_checkpoint(failed) is None
 
+    interrupted = CheckpointKey("wait_time", candidate_id="interrupted")
+    run.start_checkpoint(interrupted)
+    run.interrupt_checkpoint(interrupted)
+    interrupted_record = json.loads(run.checkpoint_path(interrupted).read_text(encoding="utf-8"))
+    assert interrupted_record["status"] == "interrupted"
+    assert interrupted_record["failure"] is None
+    assert run.reusable_checkpoint(interrupted) is None
+
     complete = CheckpointKey("wait_time", trial_id="complete", fold_id="fold-a")
     run.start_checkpoint(complete, parameters={"depth": 6})
     run.complete_checkpoint(
@@ -332,17 +490,70 @@ def test_run_lock_mutual_exclusion_and_normal_release(tmp_path: Path):
     resumed.release_lock()
 
 
-def test_stale_lock_has_diagnostic_and_requires_explicit_recovery(tmp_path: Path):
+def test_live_local_lock_cannot_be_recovered(tmp_path: Path):
     run_path = tmp_path / "runs" / "stale"
     lock = RunLock.acquire(run_path)
     diagnostic = RunLock.read(run_path)
-    assert diagnostic["pid"] > 0
-    with pytest.raises(RunLockedError, match="explicitly recover"):
-        RunLock.acquire(run_path)
-    assert RunLock.recover(run_path) == diagnostic
+    try:
+        with pytest.raises(RunLockedError, match="still alive"):
+            RunLock.recover(run_path, confirm_lock_id=diagnostic["lock_id"])
+    finally:
+        lock.release()
+
+
+def test_wrong_lock_id_confirmation_is_rejected(tmp_path: Path):
+    run_path = tmp_path / "runs" / "wrong-confirmation"
+    lock = RunLock.acquire(run_path)
+    try:
+        with pytest.raises(RunLockedError, match="does not match"):
+            RunLock.recover(run_path, confirm_lock_id="wrong-lock-id")
+    finally:
+        lock.release()
+
+
+def test_confirmed_stale_local_lock_recovery_is_audited(tmp_path: Path, monkeypatch):
+    run_path = tmp_path / "runs" / "stale"
+    lock = RunLock.acquire(run_path)
+    diagnostic = RunLock.read(run_path)
+    monkeypatch.setattr(experiment, "_pid_alive", lambda _pid: False)
+    recovery = RunLock.recover(run_path, confirm_lock_id=diagnostic["lock_id"])
+    assert recovery["recovered_lock"] == diagnostic
+    assert recovery["forced_remote"] is False
+    assert len(list(run_path.glob("lock-recovery-*.json"))) == 1
     lock.held = False
     replacement = RunLock.acquire(run_path)
     replacement.release()
+
+
+def test_lost_lock_ownership_fences_old_writer_before_mutation(tmp_path: Path):
+    run = ExperimentRun.start(tmp_path, run_plan(), run_id="fenced")
+    before = run.manifest_path.read_bytes()
+    run.lock.path.unlink()
+    replacement = RunLock.acquire(run.path)
+    try:
+        with pytest.raises(RunLockedError, match="fenced"):
+            run.start_checkpoint(CheckpointKey.model("wait_time"))
+        assert run.manifest_path.read_bytes() == before
+        assert not run.checkpoint_path(CheckpointKey.model("wait_time")).exists()
+    finally:
+        replacement.release()
+
+
+def test_concurrent_lock_acquisition_has_one_winner(tmp_path: Path):
+    run_path = tmp_path / "runs" / "race"
+
+    def acquire():
+        try:
+            return RunLock.acquire(run_path)
+        except RunLockedError as exc:
+            return exc
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _: acquire(), range(2)))
+    locks = [result for result in results if isinstance(result, RunLock)]
+    errors = [result for result in results if isinstance(result, RunLockedError)]
+    assert len(locks) == len(errors) == 1
+    locks[0].release()
 
 
 @pytest.mark.parametrize(
@@ -350,9 +561,12 @@ def test_stale_lock_has_diagnostic_and_requires_explicit_recovery(tmp_path: Path
     [
         ({"train_end": dt.date(2025, 3, 1)}, "training must end"),
         ({"backtest_origins": (dt.date(2025, 4, 1),)}, "inside the test period"),
+        ({"backtest_origins": (dt.date(2025, 2, 27),)}, "on or after the training end"),
         ({"prediction_horizon_days": 30}, "extends past the test period"),
         ({"forecast_origin": dt.date(2025, 4, 1)}, "must not exceed"),
         ({"origin_semantics": "first_forecast_day"}, "origin_semantics"),
+        ({"backtest_origins": (dt.date(2025, 3, 2), dt.date(2025, 3, 2))}, "unique and ordered"),
+        ({"backtest_origins": (dt.date(2025, 3, 16), dt.date(2025, 3, 2))}, "unique and ordered"),
     ],
 )
 def test_temporal_protocol_rejects_invalid_or_future_origins(changes: dict, message: str):
@@ -365,6 +579,12 @@ def test_temporal_protocol_accepts_last_observed_origin_semantics():
     protocol.validate()
     assert protocol.origin_semantics == "last_observed_day"
     assert protocol.backtest_origins[0] + dt.timedelta(days=1) == dt.date(2025, 3, 3)
+
+
+def test_temporal_protocol_accepts_earliest_origin_at_training_end():
+    protocol = dataclasses.replace(temporal_protocol(), backtest_origins=(dt.date(2025, 2, 28),))
+    protocol.validate()
+    assert protocol.backtest_origins[0] + dt.timedelta(days=1) == protocol.test_start
 
 
 def test_persisted_metadata_has_no_absolute_path_or_secret(tmp_path: Path):

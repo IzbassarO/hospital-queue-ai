@@ -169,19 +169,21 @@ but should not be shown to users until refusals (or the net outflow) are forecas
 ```bash
 make up && make ingest     # data layer
 make train ARGS="--plan"   # inspect identities, resources and checkpoint reuse without training
-make train                 # models A, B, C -> artifacts/models/, reports/02_models.md
-make train ARGS="--resume <run-id> --resource-profile overnight"
+make train                 # evaluated candidates only; current serving set is unchanged
+make train ARGS="--resume <run-id> --resource-profile overnight --promote"
 make predict               # -> pred_referral, pred_daily_forecast, model_registry
 ```
 
 Artifacts: `artifacts/models/<model>/<version>/` (model files, `features.json`, `categories.json`,
 `meta.json` with training/lineage parameters, `metrics.json`, and a deterministic SHA256
 `artifact-manifest.json`); current versions in `artifacts/models/manifest.json` and
-`model_registry.is_current`. The immutable scientific experiment identity and lifecycle are in
+`model_registry.is_current`. Promotion is an explicit human action after evaluation; its filesystem selection is
+published as one validated multi-model update. The immutable scientific experiment identity and lifecycle are in
 `artifacts/runs/<run-id>/run.json`; resumable unit records are under its `checkpoints/` directory.
 
 The run record distinguishes the processed-data/input-manifest identity, normalized YAML configuration, and ML
 source/Git identity, and records temporal availability rules, seeds and relevant dependency versions. Resource
 limits and platform are execution metadata, allowing compatible laptop-to-overnight resume. Checksums are verified
-before loading or publishing a model. This provides attributable experiment reruns; it is not a claim of
+before loading or publishing a model. PostgreSQL includes nullable run/data/config/code/evaluation lineage and the
+verified artifact SHA256; historical rows keep unavailable lineage `NULL`. This provides attributable experiment reruns; it is not a claim of
 bit-for-bit numerical equality across operating systems or architectures.

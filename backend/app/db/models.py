@@ -259,6 +259,13 @@ class ModelRegistry(Base):
     metrics: Mapped[dict] = mapped_column(JSONB)  # headline metrics; full tables in artifacts/models/.../metrics.json
     is_current: Mapped[bool] = mapped_column(Boolean, index=True)
     artifact_path: Mapped[str] = mapped_column(Text)
+    # Nullable for historical artifacts whose experiment provenance cannot be reconstructed.
+    run_id: Mapped[str | None] = mapped_column(String(128))
+    artifact_sha256: Mapped[str | None] = mapped_column(String(64))
+    dataset_identity: Mapped[str | None] = mapped_column(String(64))
+    config_identity: Mapped[str | None] = mapped_column(String(64))
+    code_identity: Mapped[str | None] = mapped_column(String(64))
+    evaluation_status: Mapped[str | None] = mapped_column(String(16))
     # title, intended_use, limitations, display names (artifact card.json <- ml/configs/model_cards.yaml)
     card: Mapped[dict | None] = mapped_column(JSONB)
     registered_at: Mapped[dt.datetime] = mapped_column(DateTime, server_default=func.now())

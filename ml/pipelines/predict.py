@@ -30,6 +30,7 @@ from hqai_ml.models import load_forecast
 from hqai_ml.models.config import load_model_config
 from hqai_ml.models.referral_model import ReferralModel
 from hqai_ml.registry import store
+from hqai_ml.registry.resources import resource_config
 
 T0 = time.time()
 BATCH = 20_000
@@ -49,64 +50,112 @@ def headline_metrics(name: str, metrics: dict) -> dict:
     }
 
 
-def registry_rows(settings: IngestSettings) -> list[tuple]:
-    """(name, version, trained_at, train_window, metrics, artifact path, card) of the current versions."""
+def registry_row(name: str, artifact: dict, manifest_entry: dict, card: dict | None) -> dict:
+    evidence = store.registration_evidence(artifact)
+    return {
+        "model_name": name,
+        "version": artifact["version"],
+        "trained_at": artifact["meta"]["trained_at"],
+        "train_window": json.dumps(artifact["meta"]["training_window"]),
+        "metrics": json.dumps(headline_metrics(name, artifact["metrics"]), ensure_ascii=False),
+        "artifact_path": manifest_entry["path"],
+        "card": json.dumps(card or {}, ensure_ascii=False),
+        "run_id": evidence["run_id"],
+        "artifact_sha256": evidence["artifact_sha256"],
+        "dataset_identity": evidence["dataset_identity"],
+        "config_identity": evidence["config_identity"],
+        "code_identity": evidence["code_identity"],
+        "evaluation_status": evidence["evaluation_status"],
+        "lineage": evidence["lineage"],
+    }
+
+
+def registry_rows(settings: IngestSettings) -> list[dict]:
+    """Verified database records for one atomic snapshot of the filesystem current set."""
     manifest = store.read_manifest(settings.artifacts_dir)
     cards = store.load_cards(settings.configs_dir)
     rows = []
     for name in ("wait_time", "refusal_risk", "load_forecast"):
-        a = store.load(settings.artifacts_dir, name)
-        evidence = store.registration_evidence(a)
-        if evidence["lineage"] == "legacy_unattributed":
+        if name not in manifest:
+            raise store.ArtifactIntegrityError(f"current-set manifest has no entry for {name!r}")
+        entry = manifest[name]
+        a = store.load(settings.artifacts_dir, name, entry["current"])
+        if entry.get("path") != a["path"].relative_to(settings.artifacts_dir).as_posix():
+            raise store.ArtifactIntegrityError(f"current-set path conflicts with artifact {name!r}")
+        if entry.get("artifact_sha256") != a["artifact_sha256"]:
+            raise store.ArtifactIntegrityError(f"current-set checksum conflicts with artifact {name!r}")
+        row = registry_row(name, a, entry, a.get("card") or cards.get(name))
+        if row["lineage"] == "legacy_unattributed":
             log(f"  {name} {a['version']}: legacy artifact has no run lineage; checksum adopted and verified")
-        card = a.get("card") or cards.get(name)
         if not a.get("card"):
             log(f"  {name} {a['version']}: no card.json in the artifact, using ml/configs/model_cards.yaml")
-        rows.append(
-            (
-                name,
-                a["version"],
-                a["meta"]["trained_at"],
-                json.dumps(a["meta"]["training_window"]),
-                json.dumps(headline_metrics(name, a["metrics"]), ensure_ascii=False),
-                manifest[name]["path"],
-                json.dumps(card or {}, ensure_ascii=False),
-            )
-        )
+        rows.append(row)
     return rows
 
 
-def write_registry(cur: psycopg.Cursor, rows: list[tuple]) -> None:
-    for name, version, trained_at, window, metrics, path, card in rows:
+def write_registry(cur: psycopg.Cursor, rows: list[dict]) -> None:
+    """Replace current flags and upsert the verified set inside the caller's transaction."""
+    for row in rows:
+        if not row["artifact_sha256"]:
+            raise store.ArtifactIntegrityError(f"registry row {row['model_name']!r} has no verified checksum")
+        lineage = [
+            row["run_id"],
+            row["dataset_identity"],
+            row["config_identity"],
+            row["code_identity"],
+            row["evaluation_status"],
+        ]
+        if any(value is not None for value in lineage) and not all(value is not None for value in lineage):
+            raise store.ArtifactIntegrityError(f"attributed registry row {row['model_name']!r} has missing lineage")
+        if row["run_id"] is not None and row["evaluation_status"] != "completed":
+            raise store.ArtifactIntegrityError(
+                f"attributed registry row {row['model_name']!r} has no completed evaluation"
+            )
+    names = [row["model_name"] for row in rows]
+    cur.execute("UPDATE model_registry SET is_current = false WHERE model_name = ANY(%s)", (names,))
+    for row in rows:
         cur.execute(
             """INSERT INTO model_registry (model_name, version, trained_at, train_window,
-                       metrics, is_current, artifact_path, card)
-                       VALUES (%s, %s, %s, %s, %s, true, %s, %s)
+                       metrics, is_current, artifact_path, card, run_id, artifact_sha256,
+                       dataset_identity, config_identity, code_identity, evaluation_status)
+                       VALUES (%(model_name)s, %(version)s, %(trained_at)s, %(train_window)s,
+                               %(metrics)s, true, %(artifact_path)s, %(card)s, %(run_id)s,
+                               %(artifact_sha256)s, %(dataset_identity)s, %(config_identity)s,
+                               %(code_identity)s, %(evaluation_status)s)
                        ON CONFLICT (model_name, version) DO UPDATE
                        SET metrics = EXCLUDED.metrics, train_window = EXCLUDED.train_window,
-                           card = EXCLUDED.card, is_current = true""",
-            (name, version, trained_at, window, metrics, path, card),
-        )
-        cur.execute(
-            "UPDATE model_registry SET is_current = false WHERE model_name = %s AND version <> %s", (name, version)
+                           artifact_path = EXCLUDED.artifact_path, card = EXCLUDED.card,
+                           run_id = EXCLUDED.run_id, artifact_sha256 = EXCLUDED.artifact_sha256,
+                           dataset_identity = EXCLUDED.dataset_identity,
+                           config_identity = EXCLUDED.config_identity, code_identity = EXCLUDED.code_identity,
+                           evaluation_status = EXCLUDED.evaluation_status, is_current = true""",
+            row,
         )
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--registry-only", action="store_true", help="only refresh model_registry (no predictions)")
+    ap.add_argument("--resource-profile", choices=("laptop", "overnight"), default="laptop")
+    ap.add_argument("--model-threads", type=int, help="override model/DuckDB thread limit")
+    ap.add_argument("--duckdb-memory-mb", type=int, help="override DuckDB memory within profile budget")
     args = ap.parse_args()
     warnings.filterwarnings("ignore", category=UserWarning)
     settings = IngestSettings()
+    resources = resource_config(
+        args.resource_profile,
+        model_threads=args.model_threads,
+        duckdb_memory_mb=args.duckdb_memory_mb,
+    )
     if args.registry_only:
         rows = registry_rows(settings)
         with psycopg.connect(settings.pg_conninfo) as pg, pg.cursor() as cur:
             write_registry(cur, rows)
             pg.commit()
-        log(f"model_registry: {[(r[0], r[1]) for r in rows]}")
+        log(f"model_registry: {[(r['model_name'], r['version']) for r in rows]}")
         return 0
     cfg = load_model_config(settings)
-    con = connect(settings.processed_dir)
+    con = connect(settings.processed_dir, resources)
 
     # ---- referral models
     wait = ReferralModel.load(settings.artifacts_dir, "wait_time")

@@ -147,7 +147,7 @@ def save(
     meta: dict,
     metrics: dict,
     extra: dict[str, object] | None = None,
-    make_current: bool = True,
+    make_current: bool = False,
 ) -> tuple[str, Path]:
     """Atomically publish a new immutable version directory; return ``(version, path)``."""
     now = dt.datetime.now(dt.UTC)
@@ -190,15 +190,32 @@ def save(
 
 
 def set_current(artifacts_dir: Path, model_name: str, version: str) -> None:
-    path = version_dir(artifacts_dir, model_name, version)
-    artifact = verify_artifact_manifest(path)
+    set_current_many(artifacts_dir, {model_name: version})
+
+
+def set_current_many(artifacts_dir: Path, versions: dict[str, str]) -> None:
+    """Validate every selected artifact, then publish the complete current-set update atomically."""
+    if not versions:
+        raise ValueError("at least one model version is required for current-set publication")
+    validated = {}
+    for model_name, version in sorted(versions.items()):
+        path = version_dir(artifacts_dir, model_name, version)
+        artifact = verify_artifact_manifest(path)
+        meta = load_json(path, "meta.json")
+        if meta.get("model_name") != model_name or meta.get("version") != version:
+            raise ArtifactIntegrityError(
+                f"artifact identity mismatch for current pointer {model_name!r} version {version!r}"
+            )
+        validated[model_name] = artifact
     manifest = read_manifest(artifacts_dir)
-    manifest[model_name] = {
-        "current": version,
-        "path": f"models/{model_name}/{version}",
-        "artifact_sha256": artifact["content_sha256"],
-        "updated_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
-    }
+    updated_at = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
+    for model_name, version in sorted(versions.items()):
+        manifest[model_name] = {
+            "current": version,
+            "path": f"models/{model_name}/{version}",
+            "artifact_sha256": validated[model_name]["content_sha256"],
+            "updated_at": updated_at,
+        }
     _dump(_root(artifacts_dir) / MANIFEST, manifest, atomic=True)
 
 
@@ -257,6 +274,11 @@ def load(artifacts_dir: Path, model_name: str, version: str | None = None) -> di
 def registration_evidence(artifact: dict) -> dict:
     """Return registration eligibility without pretending old artifacts have modern lineage."""
     meta, metrics = artifact["meta"], artifact["metrics"]
+    verified = verify_artifact_manifest(
+        artifact["path"], adopt_legacy=artifact["artifact_manifest"].get("adopted_legacy") is True
+    )
+    if verified["content_sha256"] != artifact["artifact_sha256"]:
+        raise ArtifactIntegrityError(f"artifact {artifact['version']!r} checksum changed before registration")
     evaluated = bool(metrics) and bool(meta.get("training_window"))
     lineage_fields = (
         "run_id",
@@ -315,8 +337,16 @@ def registration_evidence(artifact: dict) -> dict:
             ) from exc
         if not consistent:
             raise ArtifactIntegrityError(f"artifact {artifact['version']!r} conflicts with its run manifest")
-    return {
+    evidence = {
         "eligible": True,
         "lineage": "complete" if complete_lineage else "legacy_unattributed",
         "artifact_sha256": artifact["artifact_sha256"],
+        "run_id": None,
+        "dataset_identity": None,
+        "config_identity": None,
+        "code_identity": None,
+        "evaluation_status": None,
     }
+    if complete_lineage:
+        evidence.update({field: meta[field] for field in lineage_fields if field != "checkpoint_file"})
+    return evidence
