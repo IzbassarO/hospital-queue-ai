@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -24,7 +24,10 @@ let fetchMock: ReturnType<typeof mockApi>;
 beforeEach(() => {
   fetchMock = mockApi();
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe("routes render with real API responses", () => {
   it("/ — national KPIs, source note and the regions table", async () => {
@@ -200,19 +203,31 @@ describe("routes render with real API responses", () => {
   it("card — «Скачать отчёт» fetches the export with the API client", async () => {
     const user = userEvent.setup();
     const createObjectURL = vi.fn(() => "blob:report");
+    const clickDownload = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
     vi.stubGlobal(
       "URL",
-      Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }),
+      Object.assign(class extends URL {}, {
+        createObjectURL,
+        revokeObjectURL: vi.fn(),
+      }),
     );
     renderAt("/hospitals/ZIQ9/profiles/241");
     await user.click(await screen.findByRole("button", { name: "PDF" }));
-    const call = fetchMock.mock.calls.find(([u]) =>
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalledOnce());
+    const calls = fetchMock.mock.calls.filter(([u]) =>
       String(u).includes("/export"),
     );
-    expect(String(call?.[0])).toMatch(
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0]?.[0])).toMatch(
       /\/api\/v1\/hospitals\/ZIQ9\/profiles\/241\/export\?format=pdf$/,
     );
-    expect(createObjectURL).toHaveBeenCalled();
+    expect(clickDownload).toHaveBeenCalledOnce();
+    expect(clickDownload.mock.instances[0]).toMatchObject({
+      download: "hqai_card_ZIQ9_241_2025-03-31.pdf",
+      href: "blob:report",
+    });
   });
 
   it("/models — every model with its limitations", async () => {

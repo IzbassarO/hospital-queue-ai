@@ -172,9 +172,14 @@ describe("API client parses real responses (captured from the running API)", () 
   });
 
   it("downloads the card export with its file name", async () => {
-    mockApi();
+    const fetchMock = mockApi();
     const file = await api.exportCard("ZIQ9", "241", "pdf");
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(String(fetchMock.mock.calls[0]?.[0])).toMatch(
+      /\/api\/v1\/hospitals\/ZIQ9\/profiles\/241\/export\?format=pdf$/,
+    );
     expect(file.filename).toBe("hqai_card_ZIQ9_241_2025-03-31.pdf");
+    expect(file.blob.type).toBe("application/pdf");
     expect(file.blob.size).toBeGreaterThan(0);
   });
 

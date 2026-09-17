@@ -69,7 +69,9 @@ export function mockApi() {
       );
       if (/\/export$/.test(url.pathname)) {
         const format = url.searchParams.get("format") ?? "xlsx";
-        return new Response(new Blob(["%PDF-1.4 test"]), {
+        // Node 22's native Response cannot consume jsdom's cross-realm Blob (`object.stream is not a function`).
+        // A string is standards-compliant BodyInit in both environments; download() still exercises response.blob().
+        return new Response("%PDF-1.4 test", {
           status: 200,
           headers: {
             "Content-Type":
