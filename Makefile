@@ -76,7 +76,7 @@ fmt:           ## ruff: apply safe lint fixes, then format
 	$(PY) -m ruff check --fix $(LINT_PATHS)
 	$(PY) -m ruff format $(LINT_PATHS)
 
-audit:         ## repository audit before every commit: layout, secrets, alembic check, ruff, pytest, docs/api.md vs routes, auth on routes, frontend
+audit:         ## repository audit: architecture, OpenAPI/generated types, database, tests, docs/auth, frontend and secrets
 	PYTHONPATH=$(ML_PATH) $(PY) tools/audit.py
 
 fixture:       ## rebuild the 2-region CI test fixture from the current database -> backend/tests/fixtures

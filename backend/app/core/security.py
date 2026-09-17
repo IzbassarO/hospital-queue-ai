@@ -13,7 +13,8 @@ import secrets
 from dataclasses import dataclass
 from typing import Annotated, Literal
 
-from fastapi import Depends, Header, HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, Security, status
+from fastapi.security import APIKeyHeader
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -25,7 +26,14 @@ ROLES: tuple[Role, ...] = ("viewer", "specialist", "admin")
 ROLE_RANK = {role: rank for rank, role in enumerate(ROLES)}
 ROLE_LABELS = {"viewer": "наблюдатель", "specialist": "специалист", "admin": "администратор"}
 API_KEY_HEADER = "X-API-Key"
+API_KEY_SCHEME_NAME = "ApiKeyAuth"
 KEY_PREFIX = "hqai_"
+api_key_header = APIKeyHeader(
+    name=API_KEY_HEADER,
+    scheme_name=API_KEY_SCHEME_NAME,
+    description="API key issued by hospital-queue-ai",
+    auto_error=False,
+)
 
 
 @dataclass(frozen=True)
@@ -59,7 +67,7 @@ def require_role(minimum: Role):
     def dependency(
         request: Request,
         session: Annotated[Session, Depends(get_session)],
-        x_api_key: Annotated[str | None, Header(alias=API_KEY_HEADER, description="API key")] = None,
+        x_api_key: Annotated[str | None, Security(api_key_header)],
     ) -> Principal:
         principal = authenticate(session, x_api_key)
         if principal is None:

@@ -54,14 +54,21 @@ jobs:
           cache: pip
           cache-dependency-path: requirements.txt
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
       - name: Install requirements
         run: python -m pip install -r requirements.txt
 
+      - name: Install frontend dependencies for the repository audit
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+
       - name: Font with Cyrillic glyphs for the PDF export
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-dejavu-core
-
-      - name: Lint (ruff)
-        run: make lint
 
       - name: Database extensions (as docker compose does)
         run: psql -h localhost -U hqai -d hqai -v ON_ERROR_STOP=1 -f db/init.sql
@@ -72,11 +79,8 @@ jobs:
       - name: Build serving marts
         run: make marts
 
-      - name: Alembic drift check
-        run: cd backend && python -m alembic check
-
-      - name: API tests
-        run: make test
+      - name: Repository audit (architecture, OpenAPI contract, backend and frontend)
+        run: make audit
 
   frontend:
     runs-on: ubuntu-latest
@@ -96,11 +100,5 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Lint (ESLint + Prettier)
-        run: npm run lint
-
       - name: Tests (Vitest; also checks the client against docs/api.md examples)
         run: npm test
-
-      - name: Production build (tsc + Vite)
-        run: npm run build

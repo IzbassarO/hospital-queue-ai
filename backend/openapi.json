@@ -1,0 +1,4474 @@
+{
+  "components": {
+    "schemas": {
+      "AccessLogItem": {
+        "properties": {
+          "client_ip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Ip"
+          },
+          "forwarded_for": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forwarded For"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "key_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Label"
+          },
+          "latency_ms": {
+            "title": "Latency Ms",
+            "type": "number"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "status": {
+            "title": "Status",
+            "type": "integer"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ts",
+          "key_label",
+          "role",
+          "method",
+          "path",
+          "status",
+          "latency_ms",
+          "client_ip",
+          "forwarded_for"
+        ],
+        "title": "AccessLogItem",
+        "type": "object"
+      },
+      "AlertItem": {
+        "properties": {
+          "backlog_days": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backlog Days"
+          },
+          "load_index": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Load Index"
+          },
+          "org_code": {
+            "title": "Org Code",
+            "type": "string"
+          },
+          "org_name": {
+            "title": "Org Name",
+            "type": "string"
+          },
+          "profile_code": {
+            "title": "Profile Code",
+            "type": "string"
+          },
+          "profile_name": {
+            "title": "Profile Name",
+            "type": "string"
+          },
+          "queue_now": {
+            "title": "Queue Now",
+            "type": "integer"
+          },
+          "queue_trend_4w": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Trend 4W"
+          },
+          "queue_trend_raw_4w": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Trend Raw 4W"
+          },
+          "reasons": {
+            "description": "Russian reason strings",
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "refusal_rate_28d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal Rate 28D"
+          },
+          "region_code": {
+            "title": "Region Code",
+            "type": "string"
+          },
+          "region_n_ranked": {
+            "title": "Region N Ranked",
+            "type": "integer"
+          },
+          "region_name": {
+            "title": "Region Name",
+            "type": "string"
+          },
+          "region_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Rank"
+          },
+          "status": {
+            "enum": [
+              "high",
+              "elevated",
+              "normal",
+              "insufficient_data"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_code",
+          "region_name",
+          "org_code",
+          "org_name",
+          "profile_code",
+          "profile_name",
+          "load_index",
+          "status",
+          "status_label",
+          "region_rank",
+          "region_n_ranked",
+          "queue_now",
+          "backlog_days",
+          "queue_trend_raw_4w",
+          "queue_trend_4w",
+          "refusal_rate_28d",
+          "reasons"
+        ],
+        "title": "AlertItem",
+        "type": "object"
+      },
+      "AlertRuleConfig": {
+        "properties": {
+          "load_index_min": {
+            "title": "Load Index Min",
+            "type": "number"
+          },
+          "queue_trend_min_pct": {
+            "title": "Queue Trend Min Pct",
+            "type": "number"
+          },
+          "queue_trend_min_queue_now": {
+            "title": "Queue Trend Min Queue Now",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "load_index_min",
+          "queue_trend_min_pct",
+          "queue_trend_min_queue_now"
+        ],
+        "title": "AlertRuleConfig",
+        "type": "object"
+      },
+      "Alternative": {
+        "properties": {
+          "backlog_days_alternative": {
+            "title": "Backlog Days Alternative",
+            "type": "number"
+          },
+          "backlog_days_current": {
+            "title": "Backlog Days Current",
+            "type": "number"
+          },
+          "delta_days": {
+            "description": "expected_wait_current − expected_wait_alternative (> 0 = shorter)",
+            "title": "Delta Days",
+            "type": "number"
+          },
+          "expected_wait_alternative": {
+            "title": "Expected Wait Alternative",
+            "type": "number"
+          },
+          "expected_wait_current": {
+            "title": "Expected Wait Current",
+            "type": "number"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "load_index_alternative": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Load Index Alternative"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "org_code": {
+            "title": "Org Code",
+            "type": "string"
+          },
+          "org_name": {
+            "title": "Org Name",
+            "type": "string"
+          },
+          "profile_code": {
+            "title": "Profile Code",
+            "type": "string"
+          },
+          "recommendation_id": {
+            "description": "stable id, pass it to POST /decisions",
+            "title": "Recommendation Id",
+            "type": "string"
+          },
+          "refusal_rate_alternative": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal Rate Alternative"
+          },
+          "refusal_rate_current": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal Rate Current"
+          },
+          "region_code": {
+            "title": "Region Code",
+            "type": "string"
+          },
+          "registrations_28d_alternative": {
+            "title": "Registrations 28D Alternative",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "recommendation_id",
+          "org_code",
+          "org_name",
+          "region_code",
+          "profile_code",
+          "expected_wait_current",
+          "expected_wait_alternative",
+          "delta_days",
+          "refusal_rate_current",
+          "refusal_rate_alternative",
+          "backlog_days_current",
+          "backlog_days_alternative",
+          "load_index_alternative",
+          "registrations_28d_alternative",
+          "method",
+          "explanation"
+        ],
+        "title": "Alternative",
+        "type": "object"
+      },
+      "ApiKeyCreate": {
+        "properties": {
+          "label": {
+            "description": "who or what uses the key",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "viewer",
+              "specialist",
+              "admin"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "label"
+        ],
+        "title": "ApiKeyCreate",
+        "type": "object"
+      },
+      "ApiKeyCreated": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "key": {
+            "description": "the API key — shown only in this response",
+            "title": "Key",
+            "type": "string"
+          },
+          "key_prefix": {
+            "description": "first characters of the key, to recognise it; the key itself is never stored",
+            "title": "Key Prefix",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "key_prefix",
+          "role",
+          "label",
+          "created_at",
+          "revoked_at",
+          "key"
+        ],
+        "title": "ApiKeyCreated",
+        "type": "object"
+      },
+      "ApiKeyInfo": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "key_prefix": {
+            "description": "first characters of the key, to recognise it; the key itself is never stored",
+            "title": "Key Prefix",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "key_prefix",
+          "role",
+          "label",
+          "created_at",
+          "revoked_at"
+        ],
+        "title": "ApiKeyInfo",
+        "type": "object"
+      },
+      "AreaKpis": {
+        "description": "Totals over all profiles for the country or one region.",
+        "properties": {
+          "code": {
+            "description": "region code, or 'KZ' for the whole country",
+            "title": "Code",
+            "type": "string"
+          },
+          "forecast_hospitalizations_14d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forecast Hospitalizations 14D"
+          },
+          "forecast_registrations_14d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forecast Registrations 14D"
+          },
+          "high_load_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "n_hospital_profiles_high_load / n_hospital_profiles_ranked: share of ranked hospital × profile rows at load_index >= 70; NULL when none is ranked",
+            "title": "High Load Share"
+          },
+          "high_risk_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High Risk Share"
+          },
+          "hospitalizations_28d": {
+            "title": "Hospitalizations 28D",
+            "type": "integer"
+          },
+          "level": {
+            "description": "national | region",
+            "title": "Level",
+            "type": "string"
+          },
+          "load_index_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "highest hospital × profile load_index",
+            "title": "Load Index Max"
+          },
+          "median_wait_28d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Wait 28D"
+          },
+          "n_hospital_profiles": {
+            "title": "N Hospital Profiles",
+            "type": "integer"
+          },
+          "n_hospital_profiles_high_load": {
+            "title": "N Hospital Profiles High Load",
+            "type": "integer"
+          },
+          "n_hospital_profiles_ranked": {
+            "description": "hospital × profile rows with a load_index",
+            "title": "N Hospital Profiles Ranked",
+            "type": "integer"
+          },
+          "n_hospitals": {
+            "title": "N Hospitals",
+            "type": "integer"
+          },
+          "n_hospitals_high_load": {
+            "description": "hospitals with at least one profile at load_index >= 70",
+            "title": "N Hospitals High Load",
+            "type": "integer"
+          },
+          "n_waits_28d": {
+            "title": "N Waits 28D",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "queue_now": {
+            "title": "Queue Now",
+            "type": "integer"
+          },
+          "refusal_rate_28d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal Rate 28D"
+          },
+          "refusals_28d": {
+            "title": "Refusals 28D",
+            "type": "integer"
+          },
+          "registrations_28d": {
+            "title": "Registrations 28D",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "level",
+          "queue_now",
+          "registrations_28d",
+          "hospitalizations_28d",
+          "refusals_28d",
+          "refusal_rate_28d",
+          "median_wait_28d",
+          "n_waits_28d",
+          "forecast_registrations_14d",
+          "forecast_hospitalizations_14d",
+          "high_risk_share",
+          "n_hospitals",
+          "n_hospital_profiles",
+          "n_hospital_profiles_ranked",
+          "load_index_max",
+          "n_hospitals_high_load",
+          "n_hospital_profiles_high_load",
+          "high_load_share"
+        ],
+        "title": "AreaKpis",
+        "type": "object"
+      },
+      "ConfigResponse": {
+        "description": "Parameters the marts were built with (ml/configs/serving.yaml, copied at `make marts`).",
+        "properties": {
+          "alerts": {
+            "$ref": "#/components/schemas/AlertRuleConfig"
+          },
+          "as_of_date": {
+            "format": "date",
+            "title": "As Of Date",
+            "type": "string"
+          },
+          "backlog_min_daily_throughput": {
+            "title": "Backlog Min Daily Throughput",
+            "type": "number"
+          },
+          "built_at": {
+            "format": "date-time",
+            "title": "Built At",
+            "type": "string"
+          },
+          "data_source": {
+            "$ref": "#/components/schemas/DataSourceInfo"
+          },
+          "forecast_horizon": {
+            "title": "Forecast Horizon",
+            "type": "integer"
+          },
+          "high_risk_threshold": {
+            "title": "High Risk Threshold",
+            "type": "number"
+          },
+          "load_index": {
+            "$ref": "#/components/schemas/LoadIndexConfig"
+          },
+          "min_registrations_28d": {
+            "title": "Min Registrations 28D",
+            "type": "integer"
+          },
+          "queue_trend_national_median_4w": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Trend National Median 4W"
+          },
+          "recommendations": {
+            "$ref": "#/components/schemas/RecommendationRuleConfig"
+          },
+          "series_start": {
+            "format": "date",
+            "title": "Series Start",
+            "type": "string"
+          },
+          "status_thresholds": {
+            "$ref": "#/components/schemas/StatusThresholdsConfig"
+          },
+          "test_end": {
+            "format": "date",
+            "title": "Test End",
+            "type": "string"
+          },
+          "test_start": {
+            "format": "date",
+            "title": "Test Start",
+            "type": "string"
+          },
+          "trend_end": {
+            "format": "date",
+            "title": "Trend End",
+            "type": "string"
+          },
+          "trend_start": {
+            "format": "date",
+            "title": "Trend Start",
+            "type": "string"
+          },
+          "window_days": {
+            "title": "Window Days",
+            "type": "integer"
+          },
+          "window_start": {
+            "format": "date",
+            "title": "Window Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "as_of_date",
+          "built_at",
+          "window_days",
+          "window_start",
+          "trend_start",
+          "trend_end",
+          "test_start",
+          "test_end",
+          "series_start",
+          "forecast_horizon",
+          "min_registrations_28d",
+          "backlog_min_daily_throughput",
+          "high_risk_threshold",
+          "queue_trend_national_median_4w",
+          "load_index",
+          "status_thresholds",
+          "alerts",
+          "recommendations",
+          "data_source"
+        ],
+        "title": "ConfigResponse",
+        "type": "object"
+      },
+      "CurrentState": {
+        "properties": {
+          "backlog_days": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backlog Days"
+          },
+          "in_region_top": {
+            "title": "In Region Top",
+            "type": "boolean"
+          },
+          "load_index": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Load Index"
+          },
+          "median_wait_28d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Wait 28D"
+          },
+          "refusal_rate_28d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal Rate 28D"
+          },
+          "region_n_ranked": {
+            "title": "Region N Ranked",
+            "type": "integer"
+          },
+          "region_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Rank"
+          },
+          "registrations_28d": {
+            "title": "Registrations 28D",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "high",
+              "elevated",
+              "normal",
+              "insufficient_data"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "load_index",
+          "status",
+          "region_rank",
+          "region_n_ranked",
+          "in_region_top",
+          "backlog_days",
+          "median_wait_28d",
+          "refusal_rate_28d",
+          "registrations_28d"
+        ],
+        "title": "CurrentState",
+        "type": "object"
+      },
+      "DailyPoint": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "hospitalizations": {
+            "title": "Hospitalizations",
+            "type": "integer"
+          },
+          "queue": {
+            "title": "Queue",
+            "type": "integer"
+          },
+          "refusals": {
+            "title": "Refusals",
+            "type": "integer"
+          },
+          "registrations": {
+            "title": "Registrations",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "registrations",
+          "hospitalizations",
+          "refusals",
+          "queue"
+        ],
+        "title": "DailyPoint",
+        "type": "object"
+      },
+      "DataSourceInfo": {
+        "properties": {
+          "caveats": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Caveats",
+            "type": "array"
+          },
+          "datasets": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Datasets",
+            "type": "array"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          },
+          "publisher": {
+            "title": "Publisher",
+            "type": "string"
+          }
+        },
+        "required": [
+          "publisher",
+          "description",
+          "period",
+          "datasets",
+          "caveats"
+        ],
+        "title": "DataSourceInfo",
+        "type": "object"
+      },
+      "Decision": {
+        "properties": {
+          "action": {
+            "enum": [
+              "confirm",
+              "reject",
+              "defer"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "actor": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Actor",
+            "type": "string"
+          },
+          "alternative_org_code": {
+            "anyOf": [
+              {
+                "maxLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the recommended hospital; derived from recommendation_id when omitted",
+            "title": "Alternative Org Code"
+          },
+          "alternative_org_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alternative Org Name"
+          },
+          "api_key_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "label of the API key that submitted the decision",
+            "title": "Api Key Label"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 8,
+                "pattern": "^[A-Za-z0-9._:-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "client-generated (e.g. a UUID per form submission); resending the same key returns the stored row with 200 instead of creating a duplicate",
+            "title": "Idempotency Key"
+          },
+          "org_code": {
+            "maxLength": 8,
+            "minLength": 1,
+            "title": "Org Code",
+            "type": "string"
+          },
+          "profile_code": {
+            "maxLength": 8,
+            "minLength": 1,
+            "title": "Profile Code",
+            "type": "string"
+          },
+          "recommendation_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommendation Id"
+          },
+          "region_code": {
+            "maxLength": 4,
+            "minLength": 1,
+            "title": "Region Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_code",
+          "org_code",
+          "profile_code",
+          "action",
+          "actor",
+          "id",
+          "created_at",
+          "alternative_org_name",
+          "api_key_label"
+        ],
+        "title": "Decision",
+        "type": "object"
+      },
+      "DecisionCreate": {
+        "properties": {
+          "action": {
+            "enum": [
+              "confirm",
+              "reject",
+              "defer"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "actor": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Actor",
+            "type": "string"
+          },
+          "alternative_org_code": {
+            "anyOf": [
+              {
+                "maxLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the recommended hospital; derived from recommendation_id when omitted",
+            "title": "Alternative Org Code"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 8,
+                "pattern": "^[A-Za-z0-9._:-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "client-generated (e.g. a UUID per form submission); resending the same key returns the stored row with 200 instead of creating a duplicate",
+            "title": "Idempotency Key"
+          },
+          "org_code": {
+            "maxLength": 8,
+            "minLength": 1,
+            "title": "Org Code",
+            "type": "string"
+          },
+          "profile_code": {
+            "maxLength": 8,
+            "minLength": 1,
+            "title": "Profile Code",
+            "type": "string"
+          },
+          "recommendation_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommendation Id"
+          },
+          "region_code": {
+            "maxLength": 4,
+            "minLength": 1,
+            "title": "Region Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_code",
+          "org_code",
+          "profile_code",
+          "action",
+          "actor"
+        ],
+        "title": "DecisionCreate",
+        "type": "object"
+      },
+      "DictionariesResponse": {
+        "properties": {
+          "national_code": {
+            "title": "National Code",
+            "type": "string"
+          },
+          "profiles": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileItem"
+            },
+            "title": "Profiles",
+            "type": "array"
+          },
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/DictionaryItem"
+            },
+            "title": "Regions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "national_code",
+          "regions",
+          "profiles"
+        ],
+        "title": "DictionariesResponse",
+        "type": "object"
+      },
+      "DictionaryItem": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "DictionaryItem",
+        "type": "object"
+      },
+      "ExplanationFactor": {
+        "properties": {
+          "direction": {
+            "description": "up | down: sign of mean_effect",
+            "title": "Direction",
+            "type": "string"
+          },
+          "feature": {
+            "title": "Feature",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "mean_abs_effect": {
+            "description": "mean |effect| over the hospital × profile's test referrals (referrals where the factor is not in the top 5 count as 0)",
+            "title": "Mean Abs Effect",
+            "type": "number"
+          },
+          "mean_effect": {
+            "title": "Mean Effect",
+            "type": "number"
+          },
+          "most_common_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "raw value, as stored in the explanation",
+            "title": "Most Common Value"
+          },
+          "most_common_value_display": {
+            "description": "display-ready value: rates in % (1 decimal), counts as integers, days with 1 decimal, codes with dictionary names",
+            "title": "Most Common Value Display",
+            "type": "string"
+          },
+          "share_in_top5": {
+            "description": "share of referrals where the factor is among the top 5",
+            "title": "Share In Top5",
+            "type": "number"
+          },
+          "short_label": {
+            "description": "compact name for lists (ml/configs/explain_templates.yaml)",
+            "title": "Short Label",
+            "type": "string"
+          },
+          "unit": {
+            "description": "дн. (wait time) | п.п. (refusal risk)",
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "feature",
+          "label",
+          "short_label",
+          "mean_abs_effect",
+          "mean_effect",
+          "unit",
+          "direction",
+          "share_in_top5",
+          "most_common_value",
+          "most_common_value_display"
+        ],
+        "title": "ExplanationFactor",
+        "type": "object"
+      },
+      "ExplanationSummary": {
+        "properties": {
+          "n_referrals": {
+            "title": "N Referrals",
+            "type": "integer"
+          },
+          "refusal_risk": {
+            "items": {
+              "$ref": "#/components/schemas/ExplanationFactor"
+            },
+            "title": "Refusal Risk",
+            "type": "array"
+          },
+          "wait_time": {
+            "items": {
+              "$ref": "#/components/schemas/ExplanationFactor"
+            },
+            "title": "Wait Time",
+            "type": "array"
+          }
+        },
+        "required": [
+          "n_referrals",
+          "wait_time",
+          "refusal_risk"
+        ],
+        "title": "ExplanationSummary",
+        "type": "object"
+      },
+      "Forecast": {
+        "properties": {
+          "method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "origin_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin Date"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/ForecastPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          }
+        },
+        "required": [
+          "origin_date",
+          "model_version",
+          "method",
+          "points",
+          "note"
+        ],
+        "title": "Forecast",
+        "type": "object"
+      },
+      "ForecastPoint": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "horizon": {
+            "title": "Horizon",
+            "type": "integer"
+          },
+          "hospitalizations": {
+            "title": "Hospitalizations",
+            "type": "number"
+          },
+          "registrations": {
+            "title": "Registrations",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "horizon",
+          "registrations",
+          "hospitalizations"
+        ],
+        "title": "ForecastPoint",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "database": {
+            "description": "ok | unavailable",
+            "title": "Database",
+            "type": "string"
+          },
+          "marts_as_of_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marts As Of Date"
+          },
+          "marts_built_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marts Built At"
+          },
+          "status": {
+            "description": "ok | degraded",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "database",
+          "marts_as_of_date",
+          "marts_built_at"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "HospitalProfileCard": {
+        "properties": {
+          "explanation_factors": {
+            "$ref": "#/components/schemas/ExplanationSummary"
+          },
+          "forecast": {
+            "$ref": "#/components/schemas/Forecast"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/DailyPoint"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HospitalProfileStatus"
+          }
+        },
+        "required": [
+          "status",
+          "series",
+          "forecast",
+          "explanation_factors"
+        ],
+        "title": "HospitalProfileCard",
+        "type": "object"
+      },
+      "HospitalProfileStatus": {
+        "properties": {
+          "as_of_date": {
+            "format": "date",
+            "title": "As Of Date",
+            "type": "string"
+          },
+          "backlog_days": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "queue_now / daily throughput; NULL below 0.5 hospitalizations/day",
+            "title": "Backlog Days"
+          },
+          "components": {
+            "$ref": "#/components/schemas/LoadIndexComponents"
+          },
+          "daily_throughput_28d": {
+            "description": "hospitalizations_28d / 28",
+            "title": "Daily Throughput 28D",
+            "type": "number"
+          },
+          "forecast_hospitalizations_14d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forecast Hospitalizations 14D"
+          },
+          "forecast_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "model | region_share_fallback",
+            "title": "Forecast Method"
+          },
+          "forecast_registrations_14d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forecast Registrations 14D"
+          },
+          "has_sufficient_data": {
+            "description": "registrations_28d >= 10; otherwise no load_index",
+            "title": "Has Sufficient Data",
+            "type": "boolean"
+          },
+          "high_risk_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "share of test-period referrals with refusal probability >= 0.25",
+            "title": "High Risk Share"
+          },
+          "hospitalizations_28d": {
+            "title": "Hospitalizations 28D",
+            "type": "integer"
+          },
+          "in_region_top": {
+            "description": "load_index in the top 20% of the region (recommendation trigger)",
+            "title": "In Region Top",
+            "type": "boolean"
+          },
+          "load_index": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "0–100, see docs/api.md",
+            "title": "Load Index"
+          },
+          "median_wait_28d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "days, non-same-day hospitalizations in the window",
+            "title": "Median Wait 28D"
+          },
+          "n_test_referrals": {
+            "description": "referrals of the test period scored by model B",
+            "title": "N Test Referrals",
+            "type": "integer"
+          },
+          "n_waits_28d": {
+            "description": "non-same-day hospitalizations behind median_wait_28d",
+            "title": "N Waits 28D",
+            "type": "integer"
+          },
+          "org_code": {
+            "title": "Org Code",
+            "type": "string"
+          },
+          "org_name": {
+            "title": "Org Name",
+            "type": "string"
+          },
+          "profile_code": {
+            "title": "Profile Code",
+            "type": "string"
+          },
+          "profile_name": {
+            "title": "Profile Name",
+            "type": "string"
+          },
+          "queue_now": {
+            "description": "referrals waiting at the end of as_of_date",
+            "title": "Queue Now",
+            "type": "integer"
+          },
+          "queue_trend_4w": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "excess trend: queue_trend_raw_4w minus the national median raw trend of the same weeks (percentage points per week); used by alerts and load_index",
+            "title": "Queue Trend 4W"
+          },
+          "queue_trend_raw_4w": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "raw trend: % of the mean weekly queue per week, last 4 full weeks",
+            "title": "Queue Trend Raw 4W"
+          },
+          "refusal_rate_28d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "refusals / (hospitalizations + refusals) in the window",
+            "title": "Refusal Rate 28D"
+          },
+          "refusals_28d": {
+            "title": "Refusals 28D",
+            "type": "integer"
+          },
+          "region_code": {
+            "title": "Region Code",
+            "type": "string"
+          },
+          "region_n_ranked": {
+            "title": "Region N Ranked",
+            "type": "integer"
+          },
+          "region_name": {
+            "title": "Region Name",
+            "type": "string"
+          },
+          "region_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "rank of load_index among the region's hospital × profile rows",
+            "title": "Region Rank"
+          },
+          "registrations_28d": {
+            "title": "Registrations 28D",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "high",
+              "elevated",
+              "normal",
+              "insufficient_data"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "as_of_date",
+          "queue_now",
+          "registrations_28d",
+          "hospitalizations_28d",
+          "refusals_28d",
+          "refusal_rate_28d",
+          "n_waits_28d",
+          "median_wait_28d",
+          "daily_throughput_28d",
+          "backlog_days",
+          "forecast_registrations_14d",
+          "forecast_hospitalizations_14d",
+          "n_test_referrals",
+          "high_risk_share",
+          "queue_trend_raw_4w",
+          "queue_trend_4w",
+          "has_sufficient_data",
+          "load_index",
+          "status",
+          "status_label",
+          "components",
+          "region_code",
+          "region_name",
+          "org_code",
+          "org_name",
+          "profile_code",
+          "profile_name",
+          "forecast_method",
+          "region_rank",
+          "region_n_ranked",
+          "in_region_top"
+        ],
+        "title": "HospitalProfileStatus",
+        "type": "object"
+      },
+      "LoadIndexComponents": {
+        "description": "Scores behind load_index, each in [0, 1] (NULL when the component is undefined).",
+        "properties": {
+          "backlog_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "mid-rank percentile of backlog within the profile nationally",
+            "title": "Backlog Score"
+          },
+          "refusal_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "refusal_rate_28d / refusal_rate_cap, clipped to [0, 1]",
+            "title": "Refusal Score"
+          },
+          "trend_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "max(queue_trend_4w, 0) / queue_trend_cap_pct, clipped to [0, 1] (excess trend, floored at 0)",
+            "title": "Trend Score"
+          }
+        },
+        "required": [
+          "backlog_score",
+          "refusal_score",
+          "trend_score"
+        ],
+        "title": "LoadIndexComponents",
+        "type": "object"
+      },
+      "LoadIndexConfig": {
+        "properties": {
+          "queue_trend_cap_pct": {
+            "description": "trend_score = min(max(queue_trend_4w, 0) / cap, 1)",
+            "title": "Queue Trend Cap Pct",
+            "type": "number"
+          },
+          "refusal_rate_cap": {
+            "description": "refusal_score = min(refusal_rate_28d / cap, 1)",
+            "title": "Refusal Rate Cap",
+            "type": "number"
+          },
+          "weights": {
+            "$ref": "#/components/schemas/LoadIndexWeights"
+          }
+        },
+        "required": [
+          "weights",
+          "refusal_rate_cap",
+          "queue_trend_cap_pct"
+        ],
+        "title": "LoadIndexConfig",
+        "type": "object"
+      },
+      "LoadIndexWeights": {
+        "properties": {
+          "backlog_rank": {
+            "title": "Backlog Rank",
+            "type": "number"
+          },
+          "queue_trend": {
+            "title": "Queue Trend",
+            "type": "number"
+          },
+          "refusal_rate": {
+            "title": "Refusal Rate",
+            "type": "number"
+          }
+        },
+        "required": [
+          "backlog_rank",
+          "refusal_rate",
+          "queue_trend"
+        ],
+        "title": "LoadIndexWeights",
+        "type": "object"
+      },
+      "MeResponse": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Permissions",
+            "type": "array"
+          },
+          "role": {
+            "description": "viewer | specialist | admin",
+            "title": "Role",
+            "type": "string"
+          },
+          "role_label": {
+            "description": "Russian name of the role",
+            "title": "Role Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "role",
+          "role_label",
+          "permissions"
+        ],
+        "title": "MeResponse",
+        "type": "object"
+      },
+      "Message": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "Message",
+        "type": "object"
+      },
+      "ModelInfo": {
+        "properties": {
+          "baselines": {
+            "description": "naive baselines evaluated on the same rows",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Baselines",
+            "type": "array"
+          },
+          "beats_baselines": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "load_forecast: beats seasonal naive everywhere; NULL for A/B",
+            "title": "Beats Baselines"
+          },
+          "display_names": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "labels for metric keys, baseline / method names, series levels and targets in headline/baselines",
+            "title": "Display Names",
+            "type": "object"
+          },
+          "headline": {
+            "description": "the model's own metrics (per target × series level for load_forecast)",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Headline",
+            "type": "array"
+          },
+          "intended_use": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intended Use"
+          },
+          "limitations": {
+            "description": "model card, ml/configs/model_cards.yaml via the artifact's card.json",
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "population": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Population"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "train_window": {
+            "additionalProperties": true,
+            "title": "Train Window",
+            "type": "object"
+          },
+          "trained_at": {
+            "format": "date-time",
+            "title": "Trained At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model_name",
+          "title",
+          "intended_use",
+          "limitations",
+          "display_names",
+          "version",
+          "trained_at",
+          "train_window",
+          "population",
+          "headline",
+          "baselines",
+          "beats_baselines"
+        ],
+        "title": "ModelInfo",
+        "type": "object"
+      },
+      "OverviewResponse": {
+        "properties": {
+          "as_of_date": {
+            "format": "date",
+            "title": "As Of Date",
+            "type": "string"
+          },
+          "built_at": {
+            "format": "date-time",
+            "title": "Built At",
+            "type": "string"
+          },
+          "national": {
+            "$ref": "#/components/schemas/AreaKpis"
+          },
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/AreaKpis"
+            },
+            "title": "Regions",
+            "type": "array"
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/Thresholds"
+          }
+        },
+        "required": [
+          "as_of_date",
+          "built_at",
+          "thresholds",
+          "national",
+          "regions"
+        ],
+        "title": "OverviewResponse",
+        "type": "object"
+      },
+      "Page_AccessLogItem_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AccessLogItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "description": "rows matching the filters, before limit/offset",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[AccessLogItem]",
+        "type": "object"
+      },
+      "Page_AlertItem_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AlertItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "description": "rows matching the filters, before limit/offset",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[AlertItem]",
+        "type": "object"
+      },
+      "Page_Decision_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Decision"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "description": "rows matching the filters, before limit/offset",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[Decision]",
+        "type": "object"
+      },
+      "Page_HospitalProfileStatus_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HospitalProfileStatus"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "description": "rows matching the filters, before limit/offset",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[HospitalProfileStatus]",
+        "type": "object"
+      },
+      "Page_ReferralItem_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReferralItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "description": "rows matching the filters, before limit/offset",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[ReferralItem]",
+        "type": "object"
+      },
+      "ProfileItem": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "is_day_hospital": {
+            "title": "Is Day Hospital",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "is_day_hospital"
+        ],
+        "title": "ProfileItem",
+        "type": "object"
+      },
+      "RecommendationResponse": {
+        "properties": {
+          "alternatives": {
+            "items": {
+              "$ref": "#/components/schemas/Alternative"
+            },
+            "title": "Alternatives",
+            "type": "array"
+          },
+          "as_of_date": {
+            "format": "date",
+            "title": "As Of Date",
+            "type": "string"
+          },
+          "current": {
+            "$ref": "#/components/schemas/CurrentState"
+          },
+          "disclaimer": {
+            "title": "Disclaimer",
+            "type": "string"
+          },
+          "eligible": {
+            "description": "the hospital × profile triggers the rule (top of its region by load_index)",
+            "title": "Eligible",
+            "type": "boolean"
+          },
+          "method": {
+            "description": "how the wait effect is estimated; v1: historical_median",
+            "title": "Method",
+            "type": "string"
+          },
+          "org_code": {
+            "title": "Org Code",
+            "type": "string"
+          },
+          "org_name": {
+            "title": "Org Name",
+            "type": "string"
+          },
+          "profile_code": {
+            "title": "Profile Code",
+            "type": "string"
+          },
+          "profile_name": {
+            "title": "Profile Name",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "why there are no alternatives, in Russian",
+            "title": "Reason"
+          },
+          "region_code": {
+            "title": "Region Code",
+            "type": "string"
+          },
+          "region_name": {
+            "title": "Region Name",
+            "type": "string"
+          },
+          "rule": {
+            "$ref": "#/components/schemas/RecommendationRule"
+          }
+        },
+        "required": [
+          "as_of_date",
+          "region_code",
+          "region_name",
+          "org_code",
+          "org_name",
+          "profile_code",
+          "profile_name",
+          "method",
+          "eligible",
+          "reason",
+          "current",
+          "rule",
+          "alternatives",
+          "disclaimer"
+        ],
+        "title": "RecommendationResponse",
+        "type": "object"
+      },
+      "RecommendationRule": {
+        "properties": {
+          "max_alternatives": {
+            "title": "Max Alternatives",
+            "type": "integer"
+          },
+          "min_registrations_28d": {
+            "title": "Min Registrations 28D",
+            "type": "integer"
+          },
+          "min_wait_delta_days": {
+            "title": "Min Wait Delta Days",
+            "type": "number"
+          },
+          "region_top_fraction": {
+            "title": "Region Top Fraction",
+            "type": "number"
+          }
+        },
+        "required": [
+          "region_top_fraction",
+          "min_wait_delta_days",
+          "max_alternatives",
+          "min_registrations_28d"
+        ],
+        "title": "RecommendationRule",
+        "type": "object"
+      },
+      "RecommendationRuleConfig": {
+        "properties": {
+          "max_alternatives": {
+            "title": "Max Alternatives",
+            "type": "integer"
+          },
+          "min_registrations_28d": {
+            "title": "Min Registrations 28D",
+            "type": "integer"
+          },
+          "min_wait_delta_days": {
+            "title": "Min Wait Delta Days",
+            "type": "number"
+          },
+          "region_top_fraction": {
+            "title": "Region Top Fraction",
+            "type": "number"
+          }
+        },
+        "required": [
+          "region_top_fraction",
+          "min_wait_delta_days",
+          "max_alternatives",
+          "min_registrations_28d"
+        ],
+        "title": "RecommendationRuleConfig",
+        "type": "object"
+      },
+      "ReferralItem": {
+        "description": "One test-period referral with model outputs. No patient identifiers beyond hospitalization_code.",
+        "properties": {
+          "diagnosis_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "name of icd10_code from dim_icd (source systems' spelling)",
+            "title": "Diagnosis Name"
+          },
+          "explanation": {
+            "additionalProperties": true,
+            "description": "{\"wait_time\": [top-5 factors], \"refusal_risk\": [top-5 factors]}; each factor has the raw `value`, a display-ready `value_display` (rates in %, counts as integers, days with 1 decimal, codes with dictionary names), `short_label`, `effect` in model units (days / probability) and `effect_in_unit` with `unit` (дн. / п.п.)",
+            "title": "Explanation",
+            "type": "object"
+          },
+          "hospitalization_code": {
+            "title": "Hospitalization Code",
+            "type": "string"
+          },
+          "icd10_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icd10 Code"
+          },
+          "is_high_risk": {
+            "description": "pred_refusal_prob >= high_risk_threshold (0.25)",
+            "title": "Is High Risk",
+            "type": "boolean"
+          },
+          "pred_refusal_prob": {
+            "title": "Pred Refusal Prob",
+            "type": "number"
+          },
+          "pred_wait_days": {
+            "title": "Pred Wait Days",
+            "type": "number"
+          },
+          "referral_purpose": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referral Purpose"
+          },
+          "registration_date": {
+            "format": "date",
+            "title": "Registration Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hospitalization_code",
+          "registration_date",
+          "icd10_code",
+          "diagnosis_name",
+          "referral_purpose",
+          "pred_wait_days",
+          "pred_refusal_prob",
+          "is_high_risk",
+          "explanation"
+        ],
+        "title": "ReferralItem",
+        "type": "object"
+      },
+      "RegionDetailResponse": {
+        "properties": {
+          "profiles": {
+            "description": "all profiles of the region, highest load_index first",
+            "items": {
+              "$ref": "#/components/schemas/RegionProfileStatus"
+            },
+            "title": "Profiles",
+            "type": "array"
+          },
+          "region": {
+            "$ref": "#/components/schemas/AreaKpis"
+          }
+        },
+        "required": [
+          "region",
+          "profiles"
+        ],
+        "title": "RegionDetailResponse",
+        "type": "object"
+      },
+      "RegionProfileStatus": {
+        "properties": {
+          "as_of_date": {
+            "format": "date",
+            "title": "As Of Date",
+            "type": "string"
+          },
+          "backlog_days": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "queue_now / daily throughput; NULL below 0.5 hospitalizations/day",
+            "title": "Backlog Days"
+          },
+          "components": {
+            "$ref": "#/components/schemas/LoadIndexComponents"
+          },
+          "daily_throughput_28d": {
+            "description": "hospitalizations_28d / 28",
+            "title": "Daily Throughput 28D",
+            "type": "number"
+          },
+          "forecast_hospitalizations_14d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forecast Hospitalizations 14D"
+          },
+          "forecast_registrations_14d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forecast Registrations 14D"
+          },
+          "has_sufficient_data": {
+            "description": "registrations_28d >= 10; otherwise no load_index",
+            "title": "Has Sufficient Data",
+            "type": "boolean"
+          },
+          "high_risk_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "share of test-period referrals with refusal probability >= 0.25",
+            "title": "High Risk Share"
+          },
+          "hospitalizations_28d": {
+            "title": "Hospitalizations 28D",
+            "type": "integer"
+          },
+          "load_index": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "0–100, see docs/api.md",
+            "title": "Load Index"
+          },
+          "load_index_max_hospital": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Load Index Max Hospital"
+          },
+          "median_wait_28d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "days, non-same-day hospitalizations in the window",
+            "title": "Median Wait 28D"
+          },
+          "n_hospitals": {
+            "title": "N Hospitals",
+            "type": "integer"
+          },
+          "n_hospitals_high_load": {
+            "title": "N Hospitals High Load",
+            "type": "integer"
+          },
+          "n_test_referrals": {
+            "description": "referrals of the test period scored by model B",
+            "title": "N Test Referrals",
+            "type": "integer"
+          },
+          "n_waits_28d": {
+            "description": "non-same-day hospitalizations behind median_wait_28d",
+            "title": "N Waits 28D",
+            "type": "integer"
+          },
+          "profile_code": {
+            "title": "Profile Code",
+            "type": "string"
+          },
+          "profile_name": {
+            "title": "Profile Name",
+            "type": "string"
+          },
+          "queue_now": {
+            "description": "referrals waiting at the end of as_of_date",
+            "title": "Queue Now",
+            "type": "integer"
+          },
+          "queue_trend_4w": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "excess trend: queue_trend_raw_4w minus the national median raw trend of the same weeks (percentage points per week); used by alerts and load_index",
+            "title": "Queue Trend 4W"
+          },
+          "queue_trend_raw_4w": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "raw trend: % of the mean weekly queue per week, last 4 full weeks",
+            "title": "Queue Trend Raw 4W"
+          },
+          "refusal_rate_28d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "refusals / (hospitalizations + refusals) in the window",
+            "title": "Refusal Rate 28D"
+          },
+          "refusals_28d": {
+            "title": "Refusals 28D",
+            "type": "integer"
+          },
+          "region_code": {
+            "title": "Region Code",
+            "type": "string"
+          },
+          "region_name": {
+            "title": "Region Name",
+            "type": "string"
+          },
+          "registrations_28d": {
+            "title": "Registrations 28D",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "high",
+              "elevated",
+              "normal",
+              "insufficient_data"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "status_label": {
+            "title": "Status Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "as_of_date",
+          "queue_now",
+          "registrations_28d",
+          "hospitalizations_28d",
+          "refusals_28d",
+          "refusal_rate_28d",
+          "n_waits_28d",
+          "median_wait_28d",
+          "daily_throughput_28d",
+          "backlog_days",
+          "forecast_registrations_14d",
+          "forecast_hospitalizations_14d",
+          "n_test_referrals",
+          "high_risk_share",
+          "queue_trend_raw_4w",
+          "queue_trend_4w",
+          "has_sufficient_data",
+          "load_index",
+          "status",
+          "status_label",
+          "components",
+          "region_code",
+          "region_name",
+          "profile_code",
+          "profile_name",
+          "n_hospitals",
+          "n_hospitals_high_load",
+          "load_index_max_hospital"
+        ],
+        "title": "RegionProfileStatus",
+        "type": "object"
+      },
+      "StatusThresholdsConfig": {
+        "properties": {
+          "elevated": {
+            "title": "Elevated",
+            "type": "number"
+          },
+          "high": {
+            "title": "High",
+            "type": "number"
+          }
+        },
+        "required": [
+          "high",
+          "elevated"
+        ],
+        "title": "StatusThresholdsConfig",
+        "type": "object"
+      },
+      "Thresholds": {
+        "properties": {
+          "load_index_elevated": {
+            "title": "Load Index Elevated",
+            "type": "number"
+          },
+          "load_index_high": {
+            "title": "Load Index High",
+            "type": "number"
+          },
+          "min_registrations_28d": {
+            "title": "Min Registrations 28D",
+            "type": "integer"
+          },
+          "queue_trend_national_median_4w": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "national median raw trend of hospital × profile rows (% per week); queue_trend_4w is relative to it",
+            "title": "Queue Trend National Median 4W"
+          }
+        },
+        "required": [
+          "load_index_high",
+          "load_index_elevated",
+          "min_registrations_28d",
+          "queue_trend_national_median_4w"
+        ],
+        "title": "Thresholds",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "description": "API key issued by hospital-queue-ai",
+        "in": "header",
+        "name": "X-API-Key",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "description": "Monitoring of planned-hospitalization queues and hospital load (GovTech Camp 2026, Case 1). Read-only except POST /decisions (human-in-the-loop record) and key management. Every endpoint except /health needs an API key in the X-API-Key header (docs/security.md). Formulas and examples: docs/api.md.",
+    "title": "hospital-queue-ai",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/admin/access-log": {
+      "get": {
+        "description": "Requests under /api, newest first.",
+        "operationId": "admin_access_log_list",
+        "parameters": [
+          {
+            "description": "only requests made with this key label",
+            "in": "query",
+            "name": "key_label",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "only requests made with this key label",
+              "title": "Key Label"
+            }
+          },
+          {
+            "description": "HTTP status",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 599,
+                  "minimum": 100,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "HTTP status",
+              "title": "Status"
+            }
+          },
+          {
+            "description": "page size",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "page size",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AccessLogItem_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Access Log",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/keys": {
+      "get": {
+        "description": "All API keys (prefix, role, label, created, revoked) — never the keys themselves.",
+        "operationId": "admin_keys_list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ApiKeyInfo"
+                  },
+                  "title": "Response Admin Keys List",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Keys",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "description": "Create a key; the response is the only place the key is ever shown.",
+        "operationId": "admin_key_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiKeyCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Post Key",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/keys/{key_id}/revoke": {
+      "post": {
+        "description": "Revoke a key (idempotent). Revoked keys get 401 from then on.",
+        "operationId": "admin_key_revoke",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "title": "Key Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Post Revoke Key",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/alerts": {
+      "get": {
+        "description": "Hospital × profile rows with load_index ≥ 70 or an excess queue trend ≥ 5 p.p. per week.",
+        "operationId": "alerts_list",
+        "parameters": [
+          {
+            "description": "region code; all regions if omitted",
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "region code; all regions if omitted",
+              "title": "Region"
+            }
+          },
+          {
+            "description": "profile code; all profiles if omitted",
+            "in": "query",
+            "name": "profile",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "profile code; all profiles if omitted",
+              "title": "Profile"
+            }
+          },
+          {
+            "description": "load status of the row",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "high",
+                    "elevated",
+                    "normal",
+                    "insufficient_data"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "load status of the row",
+              "title": "Status"
+            }
+          },
+          {
+            "description": "page size",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "page size",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AlertItem_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "serving marts are not built (run `make marts`)"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Alerts",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/config": {
+      "get": {
+        "description": "load_index weights and caps, thresholds, rules, windows and the data-source description the marts use.",
+        "operationId": "config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "serving marts are not built (run `make marts`)"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Config",
+        "tags": [
+          "service"
+        ]
+      }
+    },
+    "/api/v1/decisions": {
+      "get": {
+        "description": "Decisions, newest first.",
+        "operationId": "decisions_list",
+        "parameters": [
+          {
+            "description": "hospital code",
+            "in": "query",
+            "name": "org",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "hospital code",
+              "title": "Org"
+            }
+          },
+          {
+            "description": "profile code",
+            "in": "query",
+            "name": "profile",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "profile code",
+              "title": "Profile"
+            }
+          },
+          {
+            "description": "page size",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "page size",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_Decision_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Decisions",
+        "tags": [
+          "decisions"
+        ]
+      },
+      "post": {
+        "description": "Record a person's decision (confirm / reject / defer) on a hospital × profile or a recommendation.",
+        "operationId": "decision_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Decision"
+                }
+              }
+            },
+            "description": "idempotent replay: this idempotency_key was already stored"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Decision"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "idempotency_key reused with a different decision"
+          },
+          "422": {
+            "description": "invalid decision"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Post Decision",
+        "tags": [
+          "decisions"
+        ]
+      }
+    },
+    "/api/v1/dictionaries": {
+      "get": {
+        "description": "Regions and profiles for UI dropdowns.",
+        "operationId": "dictionaries_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictionariesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "serving marts are not built (run `make marts`)"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Dictionaries",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "description": "Open (no API key): database reachability and mart freshness.",
+        "operationId": "health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Health",
+        "tags": [
+          "service"
+        ]
+      }
+    },
+    "/api/v1/hospitals/{org_code}/profiles/{profile_code}": {
+      "get": {
+        "description": "Status card, daily series, 14-day forecast and aggregated explanation factors.",
+        "operationId": "hospital_profile_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_code",
+            "required": true,
+            "schema": {
+              "title": "Org Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "profile_code",
+            "required": true,
+            "schema": {
+              "title": "Profile Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HospitalProfileCard"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "serving marts are not built (run `make marts`)"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Hospital Profile",
+        "tags": [
+          "hospital"
+        ]
+      }
+    },
+    "/api/v1/hospitals/{org_code}/profiles/{profile_code}/export": {
+      "get": {
+        "description": "The hospital × profile card (status, KPIs, series, forecast, factors, recommendations, decisions) as a file.",
+        "operationId": "hospital_export_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_code",
+            "required": true,
+            "schema": {
+              "title": "Org Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "profile_code",
+            "required": true,
+            "schema": {
+              "title": "Profile Code",
+              "type": "string"
+            }
+          },
+          {
+            "description": "file format",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "xlsx",
+              "description": "file format",
+              "enum": [
+                "xlsx",
+                "pdf"
+              ],
+              "title": "Format",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {},
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
+            },
+            "description": "the card as a file (Content-Disposition: attachment)"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "serving marts are not built (run `make marts`)"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Hospital Export",
+        "tags": [
+          "hospital"
+        ]
+      }
+    },
+    "/api/v1/hospitals/{org_code}/profiles/{profile_code}/recommendations": {
+      "get": {
+        "description": "Rule-based v1: up to 3 alternative hospitals in the same region and profile.",
+        "operationId": "hospital_recommendations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_code",
+            "required": true,
+            "schema": {
+              "title": "Org Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "profile_code",
+            "required": true,
+            "schema": {
+              "title": "Profile Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "serving marts are not built (run `make marts`)"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Recommendations",
+        "tags": [
+          "hospital"
+        ]
+      }
+    },
+    "/api/v1/hospitals/{org_code}/profiles/{profile_code}/referrals": {
+      "get": {
+        "description": "Test-period referrals with model predictions and explanations.",
+        "operationId": "hospital_referrals_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_code",
+            "required": true,
+            "schema": {
+              "title": "Org Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "profile_code",
+            "required": true,
+            "schema": {
+              "title": "Profile Code",
+              "type": "string"
+            }
+          },
+          {
+            "description": "risk: refusal probability; wait: predicted wait",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "risk",
+              "description": "risk: refusal probability; wait: predicted wait",
+              "enum": [
+                "risk",
+                "wait"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "description": "page size",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "page size",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ReferralItem_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "serving marts are not built (run `make marts`)"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Hospital Referrals",
+        "tags": [
+          "hospital"
+        ]
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "description": "Label, role and permissions of the calling API key.",
+        "operationId": "caller_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Me",
+        "tags": [
+          "service"
+        ]
+      }
+    },
+    "/api/v1/models": {
+      "get": {
+        "description": "Current model versions with model cards, headline metrics and baselines.",
+        "operationId": "models_list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ModelInfo"
+                  },
+                  "title": "Response Models List",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Models",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/overview": {
+      "get": {
+        "description": "National KPIs and a table of regions.",
+        "operationId": "overview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "serving marts are not built (run `make marts`)"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Overview",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/regions/{region_code}": {
+      "get": {
+        "description": "Region KPIs and every profile of the region with its status.",
+        "operationId": "region_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "region_code",
+            "required": true,
+            "schema": {
+              "title": "Region Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "serving marts are not built (run `make marts`)"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Region",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/regions/{region_code}/hospitals": {
+      "get": {
+        "description": "Hospital × profile rows of the region, highest load_index first.",
+        "operationId": "region_hospitals_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "region_code",
+            "required": true,
+            "schema": {
+              "title": "Region Code",
+              "type": "string"
+            }
+          },
+          {
+            "description": "profile code, e.g. 031; all profiles if omitted",
+            "in": "query",
+            "name": "profile",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "profile code, e.g. 031; all profiles if omitted",
+              "title": "Profile"
+            }
+          },
+          {
+            "description": "page size",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "page size",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_HospitalProfileStatus_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "serving marts are not built (run `make marts`)"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Region Hospitals",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    }
+  }
+}

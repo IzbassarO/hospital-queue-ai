@@ -63,7 +63,7 @@ def _not_built(_: Request, exc: MartsNotBuiltError) -> JSONResponse:
     return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content={"detail": str(exc)})
 
 
-@app.get("/health", include_in_schema=False)
+@app.get("/health", include_in_schema=False, operation_id="liveness_get")
 def liveness() -> dict[str, str]:
     """Process liveness without touching the database (container healthcheck)."""
     return {"status": "ok"}

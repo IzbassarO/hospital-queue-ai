@@ -29,7 +29,7 @@ AUTH = {
 
 
 # ------------------------------------------------------------------------------------------ service
-@router.get("/health", response_model=HealthResponse, tags=["service"])
+@router.get("/health", response_model=HealthResponse, operation_id="health_get", tags=["service"])
 def get_health(session: SessionDep, response: Response) -> HealthResponse:
     """Open (no API key): database reachability and mart freshness."""
     result = catalog.health(session)
@@ -38,20 +38,32 @@ def get_health(session: SessionDep, response: Response) -> HealthResponse:
     return result
 
 
-@router.get("/me", response_model=MeResponse, responses=AUTH, tags=["service"])
+@router.get("/me", response_model=MeResponse, responses=AUTH, operation_id="caller_get", tags=["service"])
 def get_me(principal: ViewerDep) -> MeResponse:
     """Label, role and permissions of the calling API key."""
     return catalog.me(principal)
 
 
-@router.get("/config", response_model=ConfigResponse, responses={**AUTH, **NOT_BUILT}, tags=["service"])
+@router.get(
+    "/config",
+    response_model=ConfigResponse,
+    responses={**AUTH, **NOT_BUILT},
+    operation_id="config_get",
+    tags=["service"],
+)
 def get_config(session: SessionDep, _: ViewerDep) -> ConfigResponse:
     """load_index weights and caps, thresholds, rules, windows and the data-source description the marts use."""
     return catalog.config(session)
 
 
 # ------------------------------------------------------------------------------------------ monitoring
-@router.get("/overview", response_model=OverviewResponse, responses={**AUTH, **NOT_BUILT}, tags=["monitoring"])
+@router.get(
+    "/overview",
+    response_model=OverviewResponse,
+    responses={**AUTH, **NOT_BUILT},
+    operation_id="overview_get",
+    tags=["monitoring"],
+)
 def get_overview(session: SessionDep, _: ViewerDep) -> OverviewResponse:
     """National KPIs and a table of regions."""
     return status_service.overview(session)
@@ -61,6 +73,7 @@ def get_overview(session: SessionDep, _: ViewerDep) -> OverviewResponse:
     "/regions/{region_code}",
     response_model=RegionDetailResponse,
     responses={**AUTH, **NOT_FOUND, **NOT_BUILT},
+    operation_id="region_get",
     tags=["monitoring"],
 )
 def get_region(region_code: str, session: SessionDep, _: ViewerDep) -> RegionDetailResponse:
@@ -72,6 +85,7 @@ def get_region(region_code: str, session: SessionDep, _: ViewerDep) -> RegionDet
     "/regions/{region_code}/hospitals",
     response_model=Page[HospitalProfileStatus],
     responses={**AUTH, **NOT_FOUND, **NOT_BUILT},
+    operation_id="region_hospitals_list",
     tags=["monitoring"],
 )
 def get_region_hospitals(
@@ -86,7 +100,11 @@ def get_region_hospitals(
 
 
 @router.get(
-    "/alerts", response_model=Page[AlertItem], responses={**AUTH, **NOT_FOUND, **NOT_BUILT}, tags=["monitoring"]
+    "/alerts",
+    response_model=Page[AlertItem],
+    responses={**AUTH, **NOT_FOUND, **NOT_BUILT},
+    operation_id="alerts_list",
+    tags=["monitoring"],
 )
 def get_alerts(
     session: SessionDep,
@@ -105,6 +123,7 @@ def get_alerts(
     "/hospitals/{org_code}/profiles/{profile_code}",
     response_model=HospitalProfileCard,
     responses={**AUTH, **NOT_FOUND, **NOT_BUILT},
+    operation_id="hospital_profile_get",
     tags=["hospital"],
 )
 def get_hospital_profile(org_code: str, profile_code: str, session: SessionDep, _: ViewerDep) -> HospitalProfileCard:
@@ -116,6 +135,7 @@ def get_hospital_profile(org_code: str, profile_code: str, session: SessionDep, 
     "/hospitals/{org_code}/profiles/{profile_code}/referrals",
     response_model=Page[ReferralItem],
     responses={**AUTH, **NOT_FOUND, **NOT_BUILT},
+    operation_id="hospital_referrals_list",
     tags=["hospital"],
 )
 def get_hospital_referrals(
@@ -136,6 +156,7 @@ def get_hospital_referrals(
     "/hospitals/{org_code}/profiles/{profile_code}/recommendations",
     response_model=RecommendationResponse,
     responses={**AUTH, **NOT_FOUND, **NOT_BUILT},
+    operation_id="hospital_recommendations_get",
     tags=["hospital"],
 )
 def get_recommendations(org_code: str, profile_code: str, session: SessionDep, _: ViewerDep) -> RecommendationResponse:
@@ -155,6 +176,7 @@ def get_recommendations(org_code: str, profile_code: str, session: SessionDep, _
             "description": "the card as a file (Content-Disposition: attachment)",
         },
     },
+    operation_id="hospital_export_get",
     tags=["hospital"],
 )
 def get_hospital_export(
@@ -187,6 +209,7 @@ def get_hospital_export(
         409: {"model": Message, "description": "idempotency_key reused with a different decision"},
         422: {"description": "invalid decision"},
     },
+    operation_id="decision_create",
     tags=["decisions"],
 )
 def post_decision(
@@ -199,7 +222,13 @@ def post_decision(
     return decision
 
 
-@router.get("/decisions", response_model=Page[Decision], responses=AUTH, tags=["decisions"])
+@router.get(
+    "/decisions",
+    response_model=Page[Decision],
+    responses=AUTH,
+    operation_id="decisions_list",
+    tags=["decisions"],
+)
 def get_decisions(
     session: SessionDep,
     page: PaginationDep,
@@ -212,20 +241,32 @@ def get_decisions(
 
 
 # ------------------------------------------------------------------------------------------ catalog
-@router.get("/models", response_model=list[ModelInfo], responses=AUTH, tags=["catalog"])
+@router.get("/models", response_model=list[ModelInfo], responses=AUTH, operation_id="models_list", tags=["catalog"])
 def get_models(session: SessionDep, _: ViewerDep) -> list[ModelInfo]:
     """Current model versions with model cards, headline metrics and baselines."""
     return catalog.models(session)
 
 
-@router.get("/dictionaries", response_model=DictionariesResponse, responses={**AUTH, **NOT_BUILT}, tags=["catalog"])
+@router.get(
+    "/dictionaries",
+    response_model=DictionariesResponse,
+    responses={**AUTH, **NOT_BUILT},
+    operation_id="dictionaries_get",
+    tags=["catalog"],
+)
 def get_dictionaries(session: SessionDep, _: ViewerDep) -> DictionariesResponse:
     """Regions and profiles for UI dropdowns."""
     return catalog.dictionaries(session)
 
 
 # ------------------------------------------------------------------------------------------ admin
-@router.get("/admin/keys", response_model=list[ApiKeyInfo], responses=AUTH, tags=["admin"])
+@router.get(
+    "/admin/keys",
+    response_model=list[ApiKeyInfo],
+    responses=AUTH,
+    operation_id="admin_keys_list",
+    tags=["admin"],
+)
 def get_keys(session: SessionDep, _: AdminDep) -> list[ApiKeyInfo]:
     """All API keys (prefix, role, label, created, revoked) — never the keys themselves."""
     return admin.list_keys(session)
@@ -236,6 +277,7 @@ def get_keys(session: SessionDep, _: AdminDep) -> list[ApiKeyInfo]:
     response_model=ApiKeyCreated,
     status_code=status.HTTP_201_CREATED,
     responses=AUTH,
+    operation_id="admin_key_create",
     tags=["admin"],
 )
 def post_key(payload: ApiKeyCreate, session: SessionDep, _: AdminDep) -> ApiKeyCreated:
@@ -243,13 +285,25 @@ def post_key(payload: ApiKeyCreate, session: SessionDep, _: AdminDep) -> ApiKeyC
     return admin.create_key(session, payload.role, payload.label)
 
 
-@router.post("/admin/keys/{key_id}/revoke", response_model=ApiKeyInfo, responses={**AUTH, **NOT_FOUND}, tags=["admin"])
+@router.post(
+    "/admin/keys/{key_id}/revoke",
+    response_model=ApiKeyInfo,
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="admin_key_revoke",
+    tags=["admin"],
+)
 def post_revoke_key(key_id: int, session: SessionDep, _: AdminDep) -> ApiKeyInfo:
     """Revoke a key (idempotent). Revoked keys get 401 from then on."""
     return admin.revoke_key(session, key_id)
 
 
-@router.get("/admin/access-log", response_model=Page[AccessLogItem], responses=AUTH, tags=["admin"])
+@router.get(
+    "/admin/access-log",
+    response_model=Page[AccessLogItem],
+    responses=AUTH,
+    operation_id="admin_access_log_list",
+    tags=["admin"],
+)
 def get_access_log(
     session: SessionDep,
     page: PaginationDep,

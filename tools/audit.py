@@ -9,6 +9,7 @@ Checks
              URLs);
              placeholders such as change-me and ${VAR} are allowed. scratch/ is ignored by .gitignore, so never scanned
   architecture  AST-based backend/ML dependency boundaries and API raw-SQL guard (tools/architecture_check.py)
+  openapi    stable operation IDs and a current deterministic backend/openapi.json snapshot
   alembic    `alembic check`: the SQLAlchemy models and the migrations agree (needs the database)
   ruff       `ruff check` and `ruff format --check` on backend/, ml/, tools/
   pytest     the API tests (needs the database with marts built)
@@ -16,6 +17,7 @@ Checks
   api-auth   every FastAPI route except the health checks (/health, /api/v1/health) depends on an auth dependency
              (app.core.security.require_role, marked `__hqai_auth__`), directly or through a router include
   web-lint   when frontend/package.json exists: `npm run lint` (ESLint + Prettier check)
+  web-contract when frontend/package.json exists: generated TypeScript transport types match backend/openapi.json
   web-build  when frontend/package.json exists: `npm run build` (TypeScript check + Vite production build)
   web-bundle the built frontend (frontend/dist) contains no API key or other secret: credentials are added by the
              proxy server-side, never compiled into the bundle the browser downloads (docs/security.md)
@@ -238,6 +240,15 @@ def check_architecture() -> Result:
     )
 
 
+def check_openapi_contract() -> Result:
+    return _run(
+        "openapi",
+        [sys.executable, str(ROOT / "tools" / "openapi_contract.py"), "check"],
+        ROOT,
+        "stable operation IDs; backend/openapi.json current",
+    )
+
+
 def check_ruff() -> Result:
     targets = ["backend", "ml", "tools"]
     lint = _run("ruff", [sys.executable, "-m", "ruff", "check", *targets], ROOT, "")
@@ -318,12 +329,13 @@ def check_frontend() -> list[Result]:
     npm = shutil.which("npm")
     if npm is None:
         return [
-            Result(name, False, "npm not found (install Node.js >= 22.12)", []) for name in ("web-lint", "web-build")
+            Result(name, False, "npm not found (install Node.js >= 22.18.0)", [])
+            for name in ("web-contract", "web-lint", "web-build")
         ]
     if not (FRONTEND / "node_modules").is_dir():
         return [
             Result(name, False, "frontend/node_modules missing: run `make web-install`", [])
-            for name in ("web-lint", "web-build")
+            for name in ("web-contract", "web-lint", "web-build")
         ]
 
     def build_summary(out: str) -> str:
@@ -331,6 +343,12 @@ def check_frontend() -> list[Result]:
         return f"tsc + vite {m.group(0)}" if m else "tsc + vite build ok"
 
     results = [
+        _run(
+            "web-contract",
+            [npm, "run", "--silent", "api:check"],
+            FRONTEND,
+            "generated TypeScript transport types current",
+        ),
         _run("web-lint", [npm, "run", "--silent", "lint"], FRONTEND, "eslint + prettier clean"),
         _run("web-build", [npm, "run", "--silent", "build"], FRONTEND, "", parse=build_summary),
     ]
@@ -398,6 +416,7 @@ def main() -> int:
         check_layout(files),
         check_secrets(files),
         check_architecture(),
+        check_openapi_contract(),
         check_alembic(),
         check_ruff(),
         check_pytest(),

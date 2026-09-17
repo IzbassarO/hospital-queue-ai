@@ -25,6 +25,37 @@ it reads facts, aggregates, predictions and the serving marts.
 - **Latency**: every endpoint answers in < 70 ms on the current data (worst of 5 requests over HTTP against the
   docker backend, including 500-row pages); `tests/test_api.py::test_every_endpoint_under_500_ms` guards the 500 ms budget.
 
+## Contract maintenance
+
+FastAPI/Pydantic OpenAPI is the canonical machine-readable HTTP transport contract; this document remains the
+curated guide to semantics and examples. Every schema operation has an intentionally stable `operationId`, and
+`backend/openapi.json` is its deterministic committed snapshot. The prefix-less container liveness route
+`GET /health` remains intentionally excluded from OpenAPI; the public `GET /api/v1/health` operation is included.
+Protected operations reference the `ApiKeyAuth` OpenAPI security scheme (`type: apiKey`, `in: header`,
+`name: X-API-Key`); the public health operation has no security requirement. Credential values are never part of
+the schema.
+
+From the repository root, regenerate and check the backend snapshot with:
+
+```bash
+python tools/openapi_contract.py generate
+python tools/openapi_contract.py check
+```
+
+After intentionally regenerating the snapshot, regenerate or check the type-only frontend transport artifacts:
+
+```bash
+cd frontend
+npm run api:generate
+npm run api:check
+```
+
+The machine-generated files live under `frontend/src/api/generated/` and must not be edited by hand. They provide
+compile-time transport types only. The handwritten schemas in `frontend/src/api/schema.ts` and
+`frontend/src/api/types.ts` continue to validate untrusted responses at runtime; their duplicated transport shapes
+will be retired incrementally as frontend adapters migrate. `make audit` checks both generated layers, and GitHub CI
+runs that same audit so stale snapshots, changed operation IDs and stale TypeScript output fail continuously.
+
 Contents: [1 Serving layer](#1-serving-layer) · [2 Metrics](#2-metrics) · [3 load_index](#3-load_index) ·
 [4 Recommendation rule](#4-recommendation-rule-v1) · [5 Alerts](#5-alerts) · [6 Endpoints](#6-endpoints) ·
 [7 Limitations](#7-limitations)

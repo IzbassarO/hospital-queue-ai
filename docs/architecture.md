@@ -95,10 +95,10 @@ The frontend currently uses technical folders: `api/`, `components/`, `pages/`, 
 and `test/`. Pages compose shared components and TanStack Query hooks. There are no page-to-page
 imports. `routes.tsx` imports pages and assembles the route tree.
 
-HTTP request functions, handwritten transport schemas and inferred TypeScript types live under
-`src/api/`. Runtime validation is valuable, but the HTTP transport contract is manually mirrored
-from backend Pydantic schemas. This is **not currently Feature-Sliced Design**, and the transport
-client is not generated from OpenAPI.
+HTTP request functions, handwritten runtime schemas and inferred view-facing TypeScript types live under
+`src/api/`. Generated OpenAPI transport types now live under `src/api/generated/`, while the existing client keeps
+runtime validation of untrusted responses. The current adapters still duplicate some transport shapes and will be
+migrated incrementally. This is **not currently Feature-Sliced Design**.
 
 ## 3. Target architecture
 
@@ -231,7 +231,7 @@ selected and protected by tests.
 
 ## 9. API contract ownership
 
-FastAPI OpenAPI is the proposed canonical HTTP transport contract:
+FastAPI OpenAPI is the implemented canonical HTTP transport contract:
 
 ```text
 Pydantic request/response models
@@ -240,19 +240,23 @@ Pydantic request/response models
 FastAPI OpenAPI
         |
         v
-generated TypeScript transport client
+generated TypeScript transport types
         |
         v
 frontend query/view adapters
 ```
 
-Today the frontend transport schemas are handwritten and FastAPI uses generated default operation
-identifiers. Before client generation becomes a CI contract, every operation must receive a stable,
-unique `operationId`. Generation must then be reproducible and API compatibility checked in CI.
+Every public schema operation has a stable, explicit, unique `operationId`. `tools/openapi_contract.py` generates
+the deterministic committed `backend/openapi.json` snapshot and checks it directly against the current application.
+`@hey-api/openapi-ts` generates type-only artifacts under `frontend/src/api/generated/`; `npm run api:check`
+regenerates into a temporary directory and byte-compares the result. `make audit` runs both checks, and GitHub CI
+runs the same audit after Python, Node and PostgreSQL fixture setup.
 
 Generated transport DTOs describe wire data; they must not become UI view models by default.
 Frontend adapters may combine, format or narrow them for screens. Existing handwritten UI types may
-remain, but duplicate handwritten HTTP request/response contracts should eventually be removed.
+remain. The existing handwritten schemas also retain runtime response validation, which generated TypeScript types
+do not provide. Duplicate handwritten HTTP request/response contracts should be removed incrementally as adapters
+migrate, not by weakening runtime validation.
 
 ## 10. Documentation and generated-artifact policy
 
@@ -286,8 +290,8 @@ benefit, operational ownership and a simpler alternative that was measured first
 2. Record and review architectural decisions before structural work; accept or revise ADRs 0001–0004.
 3. Select one backend capability and separate an application query or command behind a port while
    preserving routes and behavior. Move policy inward only when tests demonstrate the seam.
-4. Establish stable OpenAPI operation IDs, then generate a TypeScript transport client and adapt one
-   frontend flow before removing duplicated transport definitions.
+4. Maintain stable OpenAPI operation IDs and deterministic generated transport types; migrate frontend adapters
+   incrementally before removing duplicated transport definitions or runtime validation.
 5. Introduce frontend layers only as migrated code needs them; prevent page-to-page and reverse-layer
    dependencies.
 6. Define a registry contract around the current PostgreSQL/filesystem implementation, then add
@@ -303,6 +307,11 @@ frontend or ML behavior changes unless that behavior change is itself the review
 It checks production Python paths, not comments, docstrings or ordinary string literals. Its source
 targets exclude current test, migration and generated-artifact locations.
 
+The `openapi` audit step validates the stable operation inventory and current `backend/openapi.json`; the
+`web-contract` step regenerates the frontend TypeScript artifacts in a temporary directory and compares bytes.
+GitHub Actions runs the complete `make audit`, so these contract checks and ARCH001–ARCH005 are continuous on every
+push and pull request.
+
 | rule | status | protected boundary |
 |---|---|---|
 | ARCH001 | ENFORCED | `backend/app/**/*.py` must not import `hqai_ml` or ML pipeline implementation; persisted predictions, registry metadata and serving tables remain the integration boundary |
@@ -315,6 +324,6 @@ targets exclude current test, migration and generated-artifact locations.
 ARCH003 and ARCH004 require no empty scaffolding: they have no targets today and activate
 automatically when the corresponding directories contain Python files.
 
-Still planned for later steps: frontend layer/public-API rules after physical slices exist; stable
-OpenAPI operation IDs and compatibility checks; explicit shared-table ownership checks; immutable
+Still planned for later steps: frontend layer/public-API rules after physical slices exist; explicit
+backward-compatibility classification beyond freshness checks; explicit shared-table ownership checks; immutable
 model checksums, lineage and monitoring evidence; and generated-artifact policy enforcement.

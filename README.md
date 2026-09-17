@@ -25,7 +25,7 @@ human-in-the-loop record.
 
 ### From scratch
 
-Prerequisites: Python ≥ 3.12, Docker, Node.js ≥ 22.12 (frontend development only), the raw datasets in
+Prerequisites: Python ≥ 3.12, Docker, Node.js ≥ 22.18.0 (frontend development only), the raw datasets in
 `data/raw/` (see below).
 On macOS LightGBM also needs the OpenMP runtime: `brew install libomp`.
 
