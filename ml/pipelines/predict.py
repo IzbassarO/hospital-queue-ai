@@ -56,6 +56,9 @@ def registry_rows(settings: IngestSettings) -> list[tuple]:
     rows = []
     for name in ("wait_time", "refusal_risk", "load_forecast"):
         a = store.load(settings.artifacts_dir, name)
+        evidence = store.registration_evidence(a)
+        if evidence["lineage"] == "legacy_unattributed":
+            log(f"  {name} {a['version']}: legacy artifact has no run lineage; checksum adopted and verified")
         card = a.get("card") or cards.get(name)
         if not a.get("card"):
             log(f"  {name} {a['version']}: no card.json in the artifact, using ml/configs/model_cards.yaml")

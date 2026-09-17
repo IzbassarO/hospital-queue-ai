@@ -36,7 +36,7 @@ by `make train` (the report is not committed; the numbers below come from the ve
   2025-03-01 … 2025-03-31. No random splits.
 - A, B: number of boosting rounds chosen by early stopping on the last 14 days of the train
   period (temporal), then refit on the whole train period. Fixed LightGBM defaults
-  (`ml/configs/models.yaml`), no hyperparameter search. Training is deterministic.
+  (`ml/configs/models.yaml`), no hyperparameter search. Python, NumPy and LightGBM seeds are fixed and recorded.
 - C: rolling-origin backtest, forecast origins 2025-03-03, 03-10, 03-17 (the model sees only days
   before the origin), 14 days each; the production model is refit on all days up to 2025-03-31.
 - Every model is compared with naive baselines on the same test rows:
@@ -167,10 +167,20 @@ but should not be shown to users until refusals (or the net outflow) are forecas
 
 ```bash
 make up && make ingest     # data layer
+make train ARGS="--plan"   # inspect identities, resources and checkpoint reuse without training
 make train                 # models A, B, C -> artifacts/models/, reports/02_models.md
+make train ARGS="--resume <run-id> --resource-profile overnight"
 make predict               # -> pred_referral, pred_daily_forecast, model_registry
 ```
 
 Artifacts: `artifacts/models/<model>/<version>/` (model files, `features.json`, `categories.json`,
-`meta.json` with training window and parameters, `metrics.json`); current versions in
-`artifacts/models/manifest.json` and `model_registry.is_current`.
+`meta.json` with training/lineage parameters, `metrics.json`, and a deterministic SHA256
+`artifact-manifest.json`); current versions in `artifacts/models/manifest.json` and
+`model_registry.is_current`. The immutable experiment identity and resumable checkpoints are in
+`artifacts/runs/<run-id>/run.json`.
+
+The run record distinguishes the processed-data/input-manifest identity, normalized YAML configuration, and ML
+source/Git identity, and records temporal availability rules, seeds, dependency versions and effective resource
+limits. Checksums are verified before loading or publishing a model. This provides attributable experiment reruns;
+it is not a claim of bit-for-bit numerical equality across different CPUs, thread counts, operating systems or
+library versions.

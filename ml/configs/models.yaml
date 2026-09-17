@@ -28,6 +28,9 @@ lightgbm:
   min_data_per_group: 50
   max_cat_threshold: 64
   seed: 42
+  bagging_seed: 42
+  feature_fraction_seed: 42
+  data_random_seed: 42
   deterministic: true
   verbose: -1
 

@@ -26,8 +26,8 @@ baseline:      ## descriptive baseline report from data/processed -> reports/01_
 psql:          ## interactive psql inside the container
 	docker compose exec postgres psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)
 
-train:         ## train + evaluate models A, B, C -> artifacts/models, reports/02_models.md (MODEL=<name> for one)
-	PYTHONPATH=$(ML_PATH) $(PY) ml/pipelines/train.py $(if $(MODEL),--model $(MODEL),)
+train:         ## train + evaluate models A, B, C -> artifacts/models, reports/02_models.md (MODEL=<name>, ARGS="...")
+	PYTHONPATH=$(ML_PATH) $(PY) ml/pipelines/train.py $(if $(MODEL),--model $(MODEL),) $(ARGS)
 
 predict: migrate ## predictions of the current models -> postgres (pred_referral, pred_daily_forecast, model_registry), then marts
 	PYTHONPATH=$(ML_PATH) $(PY) ml/pipelines/predict.py

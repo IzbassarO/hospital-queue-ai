@@ -1,24 +1,75 @@
-"""Model artifact registry on disk.
+"""Checksummed, atomic filesystem model-artifact registry."""
 
-artifacts/models/<model_name>/<YYYYMMDD-HHMM>/   model files, features.json, categories.json,
-                                                   meta.json (training window, params), metrics.json,
-                                                   card.json (model card copied from ml/configs/model_cards.yaml)
-artifacts/models/manifest.json                     {model_name: {"current": version, "path": ...}}
-"""
+from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
+import os
+import shutil
+import tempfile
 from pathlib import Path
 
 import lightgbm as lgb
 import yaml
 
 MANIFEST = "manifest.json"
-CARDS_CONFIG = "model_cards.yaml"  # in ml/configs
+ARTIFACT_MANIFEST = "artifact-manifest.json"
+CARDS_CONFIG = "model_cards.yaml"
+
+
+class ArtifactIntegrityError(RuntimeError):
+    """A registered artifact is missing, incomplete, or no longer matches its recorded digest."""
+
+
+def canonical_json(obj: object) -> str:
+    return json.dumps(obj, ensure_ascii=False, indent=2, sort_keys=True, default=str) + "\n"
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _fsync_directory(path: Path) -> None:
+    try:
+        descriptor = os.open(path, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def atomic_write_text(path: Path, text: str) -> None:
+    """Write text completely before atomically replacing the destination."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(text)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+        _fsync_directory(path.parent)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _dump(path: Path, obj: object, *, atomic: bool = False) -> None:
+    text = canonical_json(obj)
+    if atomic:
+        atomic_write_text(path, text)
+    else:
+        path.write_text(text, encoding="utf-8")
 
 
 def load_cards(configs_dir: Path) -> dict:
-    """Model cards (title, intended use, limitations, display names) from ml/configs/model_cards.yaml."""
     path = configs_dir / CARDS_CONFIG
     return yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else {}
 
@@ -27,13 +78,49 @@ def _root(artifacts_dir: Path) -> Path:
     return artifacts_dir / "models"
 
 
-def _dump(path: Path, obj) -> None:
-    path.write_text(json.dumps(obj, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-
-
 def read_manifest(artifacts_dir: Path) -> dict:
     path = _root(artifacts_dir) / MANIFEST
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def artifact_files(path: Path) -> list[dict[str, str | int]]:
+    return [
+        {"path": file.relative_to(path).as_posix(), "bytes": file.stat().st_size, "sha256": sha256_file(file)}
+        for file in sorted(path.rglob("*"))
+        if file.is_file() and file.name != ARTIFACT_MANIFEST
+    ]
+
+
+def write_artifact_manifest(path: Path, *, adopted_legacy: bool = False) -> dict:
+    files = artifact_files(path)
+    content_sha256 = hashlib.sha256(canonical_json({"files": files}).encode()).hexdigest()
+    manifest = {
+        "schema_version": 1,
+        "content_sha256": content_sha256,
+        "adopted_legacy": adopted_legacy,
+        "files": files,
+    }
+    _dump(path / ARTIFACT_MANIFEST, manifest, atomic=True)
+    return manifest
+
+
+def verify_artifact_manifest(path: Path, *, adopt_legacy: bool = True) -> dict:
+    manifest_path = path / ARTIFACT_MANIFEST
+    if not manifest_path.exists():
+        if not adopt_legacy:
+            raise ArtifactIntegrityError(f"artifact manifest missing for {path.name!r}")
+        write_artifact_manifest(path, adopted_legacy=True)
+    try:
+        recorded = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ArtifactIntegrityError(f"cannot read artifact manifest for {path.name!r}: {exc}") from exc
+    actual_files = artifact_files(path)
+    actual_sha256 = hashlib.sha256(canonical_json({"files": actual_files}).encode()).hexdigest()
+    if recorded.get("files") != actual_files or recorded.get("content_sha256") != actual_sha256:
+        raise ArtifactIntegrityError(
+            f"artifact checksum mismatch for {path.name!r}; the registered files were replaced or corrupted"
+        )
+    return recorded
 
 
 def save(
@@ -48,45 +135,57 @@ def save(
     extra: dict[str, object] | None = None,
     make_current: bool = True,
 ) -> tuple[str, Path]:
-    """Write a new version directory; returns (version, path)."""
-    now = dt.datetime.now()
-    version = now.strftime("%Y%m%d-%H%M")
+    """Atomically publish a new immutable version directory; return ``(version, path)``."""
+    now = dt.datetime.now(dt.UTC)
+    version = now.strftime("%Y%m%d-%H%M%S")
     base = _root(artifacts_dir) / model_name
-    path, i = base / version, 2
-    while path.exists():  # two runs within the same minute
-        version = f"{now:%Y%m%d-%H%M}-{i}"
-        path, i = base / version, i + 1
-    path.mkdir(parents=True)
-    for fname, booster in boosters.items():
-        booster.save_model(str(path / fname))
-    _dump(path / "features.json", {"features": features, "categorical": list(categories)})
-    _dump(path / "categories.json", categories)
-    _dump(
-        path / "meta.json",
-        {
-            "model_name": model_name,
-            "version": version,
-            "trained_at": now.isoformat(timespec="seconds"),
-            "model_files": list(boosters),
-            **meta,
-        },
-    )
-    _dump(path / "metrics.json", metrics)
-    for fname, obj in (extra or {}).items():
-        _dump(path / fname, obj)
+    base.mkdir(parents=True, exist_ok=True)
+    path, suffix = base / version, 2
+    while path.exists():
+        version = f"{now:%Y%m%d-%H%M%S}-{suffix}"
+        path, suffix = base / version, suffix + 1
+    temporary = base / f".{version}.partial-{os.getpid()}"
+    temporary.mkdir()
+    try:
+        for filename, booster in boosters.items():
+            booster.save_model(str(temporary / filename))
+        _dump(temporary / "features.json", {"features": features, "categorical": list(categories)})
+        _dump(temporary / "categories.json", categories)
+        _dump(
+            temporary / "meta.json",
+            {
+                "model_name": model_name,
+                "version": version,
+                "trained_at": now.isoformat(timespec="seconds"),
+                "model_files": sorted(boosters),
+                **meta,
+            },
+        )
+        _dump(temporary / "metrics.json", metrics)
+        for filename, obj in sorted((extra or {}).items()):
+            _dump(temporary / filename, obj)
+        write_artifact_manifest(temporary)
+        os.replace(temporary, path)
+        _fsync_directory(base)
+    except Exception:
+        shutil.rmtree(temporary, ignore_errors=True)
+        raise
     if make_current:
         set_current(artifacts_dir, model_name, version)
     return version, path
 
 
 def set_current(artifacts_dir: Path, model_name: str, version: str) -> None:
+    path = version_dir(artifacts_dir, model_name, version)
+    artifact = verify_artifact_manifest(path)
     manifest = read_manifest(artifacts_dir)
     manifest[model_name] = {
         "current": version,
         "path": f"models/{model_name}/{version}",
-        "updated_at": dt.datetime.now().isoformat(timespec="seconds"),
+        "artifact_sha256": artifact["content_sha256"],
+        "updated_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
     }
-    _dump(_root(artifacts_dir) / MANIFEST, manifest)
+    _dump(_root(artifacts_dir) / MANIFEST, manifest, atomic=True)
 
 
 def version_dir(artifacts_dir: Path, model_name: str, version: str | None = None) -> Path:
@@ -106,19 +205,79 @@ def load_json(path: Path, name: str):
 
 
 def load(artifacts_dir: Path, model_name: str, version: str | None = None) -> dict:
-    """Everything in a version directory: boosters, features, categories, meta, metrics, extras."""
+    """Load a model only after every registered file passes SHA256 verification."""
+    current_entry = None
+    if version is None:
+        current_entry = read_manifest(artifacts_dir).get(model_name)
     path = version_dir(artifacts_dir, model_name, version)
+    artifact_manifest = verify_artifact_manifest(path)
+    expected_sha256 = current_entry.get("artifact_sha256") if current_entry else None
+    if expected_sha256 and expected_sha256 != artifact_manifest["content_sha256"]:
+        raise ArtifactIntegrityError(
+            f"current pointer checksum mismatch for {model_name!r}; the version identity was replaced"
+        )
+    if current_entry is not None and not expected_sha256:
+        set_current(artifacts_dir, model_name, current_entry["current"])
     meta = load_json(path, "meta.json")
     out = {
         "path": path,
         "meta": meta,
         "version": meta["version"],
-        "boosters": {f: lgb.Booster(model_file=str(path / f)) for f in meta["model_files"]},
+        "artifact_manifest": artifact_manifest,
+        "artifact_sha256": artifact_manifest["content_sha256"],
+        "boosters": {filename: lgb.Booster(model_file=str(path / filename)) for filename in meta["model_files"]},
         "features": load_json(path, "features.json")["features"],
         "categories": load_json(path, "categories.json"),
         "metrics": load_json(path, "metrics.json"),
     }
     for extra in path.glob("*.json"):
-        if extra.name not in {"meta.json", "features.json", "categories.json", "metrics.json"}:
+        if extra.name not in {ARTIFACT_MANIFEST, "meta.json", "features.json", "categories.json", "metrics.json"}:
             out[extra.stem] = load_json(path, extra.name)
     return out
+
+
+def registration_evidence(artifact: dict) -> dict:
+    """Return registration eligibility without pretending old artifacts have modern lineage."""
+    meta, metrics = artifact["meta"], artifact["metrics"]
+    evaluated = bool(metrics) and bool(meta.get("training_window"))
+    lineage_fields = ("run_id", "dataset_identity", "config_identity", "code_identity", "evaluation_status")
+    has_lineage = any(meta.get(field) for field in lineage_fields)
+    complete_lineage = (
+        all(meta.get(field) for field in lineage_fields)
+        and bool(meta.get("model_family"))
+        and bool(meta.get("target") or meta.get("targets"))
+    )
+    adopted_legacy = artifact["artifact_manifest"].get("adopted_legacy") is True
+    if not evaluated:
+        raise ArtifactIntegrityError(f"artifact {artifact['version']!r} has no successful evaluation evidence")
+    if has_lineage and not complete_lineage:
+        raise ArtifactIntegrityError(f"artifact {artifact['version']!r} has incomplete lineage evidence")
+    if complete_lineage and meta["evaluation_status"] != "passed":
+        raise ArtifactIntegrityError(f"artifact {artifact['version']!r} did not pass evaluation")
+    if not complete_lineage and not adopted_legacy:
+        raise ArtifactIntegrityError(f"artifact {artifact['version']!r} has no attributable training run")
+    if complete_lineage:
+        run_path = artifact["path"].parents[2] / "runs" / meta["run_id"] / "run.json"
+        try:
+            run = json.loads(run_path.read_text(encoding="utf-8"))
+            checkpoint = run["checkpoints"][meta["model_name"]]
+            consistent = (
+                run["status"] == "completed"
+                and run["evaluation"]["status"] == "passed"
+                and run["dataset"]["identity_sha256"] == meta["dataset_identity"]
+                and run["configuration"]["sha256"] == meta["config_identity"]
+                and run["code"]["source"]["sha256"] == meta["code_identity"]
+                and checkpoint["evaluation_status"] == "passed"
+                and checkpoint["artifact"]["sha256"] == artifact["artifact_sha256"]
+            )
+        except (KeyError, OSError, json.JSONDecodeError) as exc:
+            raise ArtifactIntegrityError(
+                f"artifact {artifact['version']!r} cannot be linked to a completed run manifest"
+            ) from exc
+        if not consistent:
+            raise ArtifactIntegrityError(f"artifact {artifact['version']!r} conflicts with its run manifest")
+    return {
+        "eligible": True,
+        "lineage": "complete" if complete_lineage else "legacy_unattributed",
+        "artifact_sha256": artifact["artifact_sha256"],
+    }
