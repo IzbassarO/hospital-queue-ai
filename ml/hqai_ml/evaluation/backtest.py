@@ -10,7 +10,7 @@ from hqai_ml.evaluation.metrics import wape
 
 
 def rolling_origin(origins: list[dt.date], fit_predict: Callable[[dt.date], pd.DataFrame], log=print) -> pd.DataFrame:
-    """Run fit_predict(origin) for each forecast origin (model sees only data before it); concatenate results."""
+    """Run each canonical origin (last observed day; predictions start at origin + 1)."""
     frames = []
     for origin in origins:
         log(f"  backtest origin {origin} …")

@@ -32,6 +32,7 @@ lightgbm:
   feature_fraction_seed: 42
   data_random_seed: 42
   deterministic: true
+  force_row_wise: true
   verbose: -1
 
 wait_time:
@@ -46,8 +47,8 @@ load_forecast:
   horizon: 14
   lags: [1, 2, 3, 7, 14]
   rolling: [7, 14, 28]
-  # first forecast day of each backtest; the model sees data up to the day before
-  backtest_origins: [2025-03-03, 2025-03-10, 2025-03-17]
+  # canonical origin = last observed day; horizons 1..14 predict origin+1 through origin+14
+  backtest_origins: [2025-03-02, 2025-03-09, 2025-03-16]
   # last known day for the production forecast written to Postgres
   forecast_origin: 2025-03-31
   min_series_mean: 1.0

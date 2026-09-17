@@ -185,9 +185,10 @@ Rules:
 - New model artifacts are atomically published with deterministic per-file and aggregate SHA256 manifests.
   Loading and registration reject checksum mismatches.
 - Each training invocation owns an atomic `artifacts/runs/<run_id>/run.json` record. It separates semantic dataset,
-  normalized configuration and ML source/Git identities; records temporal availability rules, seeds, effective
-  resources, implementation versions, metrics and baselines; and exposes compatible model-level checkpoints for
-  explicit resume.
+  normalized configuration and ML source/Git identities; records temporal availability rules, seeds, relevant
+  implementation versions, metrics and baselines. Execution resources/platform are recorded separately from the
+  scientific identity. Independently atomic per-unit checkpoint files support candidate/trial/fold/origin resume,
+  and an atomic local lock permits only one writer per run.
 - Registration requires successful evaluation and complete artifact identity. Pre-6B.1 artifacts are checksummed
   on first load but remain explicitly `legacy_unattributed` rather than gaining invented provenance.
 - Monitoring must eventually cover pipeline/data freshness, input and prediction distribution

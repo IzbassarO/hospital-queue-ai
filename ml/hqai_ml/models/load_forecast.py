@@ -159,7 +159,7 @@ def train_and_evaluate(hospital: Panel, region: Panel, cfg: ModelConfig, log=pri
     queue_by_series = {}
 
     def one_origin(origin: dt.date) -> pd.DataFrame:
-        last = panel.index_of(origin) - 1
+        last = panel.index_of(origin)
         boosters = {tgt: fit_target(panel, tgt, last, categories, cfg) for tgt in TARGETS}
         fc = forecast_rows(panel, boosters, last, categories, cfg)
         fb = add_fallback(fc[fc["level"] == "region"], small_h, setup["fallback_shares"], last, cfg)

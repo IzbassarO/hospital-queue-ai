@@ -5,7 +5,7 @@ PY           ?= $(CURDIR)/.venv/bin/python
 ML_PATH      := $(CURDIR)/ml
 API_DEV_PORT ?= 8001
 
-.PHONY: up down migrate ingest baseline psql train predict registry marts create-key backup restore api-dev test \
+.PHONY: up down migrate ingest baseline psql train predict registry marts create-key backup restore api-dev test ml-test \
         lint fmt audit fixture fixture-load web-install web-dev web-lint web-test web-build
 
 up:            ## build and start postgres + backend + frontend (UI http://localhost:3000, API docs http://localhost:8000/docs)
@@ -65,6 +65,9 @@ api-dev:       ## run the API locally with auto-reload on http://localhost:$(API
 
 test:          ## API tests (pytest + httpx) against the running postgres; HQAI_API_BASE_URL=http://localhost:8000 to test a running server
 	cd backend && $(PY) -m pytest
+
+ml-test:       ## deterministic ML experiment/registry contract tests (no model fitting or database)
+	cd ml && $(PY) -m pytest
 
 LINT_PATHS := backend ml tools
 

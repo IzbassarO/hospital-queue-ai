@@ -17,12 +17,14 @@ class TemporalProtocol:
     test_start: dt.date
     test_end: dt.date
     forecast_origin: dt.date | None
+    origin_semantics: str
     prediction_horizon_days: int | None
     backtest_origins: tuple[dt.date, ...]
     label_availability_rule: str
     feature_availability_cutoff: str
     leakage_exclusions: tuple[str, ...]
     warm_up_period: tuple[dt.date, dt.date] | None
+    warm_up_note: str
 
     def validate(self) -> None:
         if self.train_start > self.train_end:
@@ -37,21 +39,29 @@ class TemporalProtocol:
             assert self.validation_end is not None
             if not (self.train_start <= self.validation_start <= self.validation_end <= self.train_end):
                 raise ValueError("validation must be a temporally ordered subset of the training period")
+        if self.origin_semantics not in {"last_observed_day", "not_applicable"}:
+            raise ValueError("origin_semantics must be last_observed_day or not_applicable")
+        if self.backtest_origins and self.origin_semantics != "last_observed_day":
+            raise ValueError("backtest origins must use last_observed_day semantics")
         if any(origin <= self.train_end for origin in self.backtest_origins):
             raise ValueError("every backtest origin must be after the training period")
         if any(origin < self.test_start or origin > self.test_end for origin in self.backtest_origins):
             raise ValueError("every backtest origin must be inside the test period")
         if tuple(sorted(set(self.backtest_origins))) != self.backtest_origins:
             raise ValueError("backtest origins must be unique and ordered")
-        if self.forecast_origin is not None and self.forecast_origin < self.train_end:
-            raise ValueError("forecast origin must not precede the training end")
+        if self.forecast_origin is not None:
+            if self.origin_semantics != "last_observed_day":
+                raise ValueError("forecast origin must use last_observed_day semantics")
+            if self.forecast_origin < self.train_end:
+                raise ValueError("forecast origin must not precede the training end")
+            if self.forecast_origin > self.test_end:
+                raise ValueError("forecast origin must not exceed the declared available period")
         if self.prediction_horizon_days is not None and self.prediction_horizon_days < 1:
             raise ValueError("prediction horizon must be positive")
         if self.backtest_origins and self.prediction_horizon_days is None:
             raise ValueError("backtest origins require a prediction horizon")
         if self.prediction_horizon_days is not None and any(
-            origin + dt.timedelta(days=self.prediction_horizon_days - 1) > self.test_end
-            for origin in self.backtest_origins
+            origin + dt.timedelta(days=self.prediction_horizon_days) > self.test_end for origin in self.backtest_origins
         ):
             raise ValueError("a backtest horizon extends past the test period")
 
@@ -71,6 +81,7 @@ def referral_protocol(cfg: ModelConfig) -> TemporalProtocol:
         test_start=split.test_start,
         test_end=split.test_end,
         forecast_origin=None,
+        origin_semantics="not_applicable",
         prediction_horizon_days=None,
         backtest_origins=(),
         label_availability_rule=(
@@ -82,7 +93,8 @@ def referral_protocol(cfg: ModelConfig) -> TemporalProtocol:
             "statistics require resolution strictly before d"
         ),
         leakage_exclusions=("planned_dt", "planned_lag_days"),
-        warm_up_period=(split.train_start, split.train_start + dt.timedelta(days=30)),
+        warm_up_period=None,
+        warm_up_note="No warm-up rows are excluded; day_of_window represents early-window feature maturity.",
     )
     protocol.validate()
     return protocol
@@ -98,16 +110,16 @@ def forecast_protocol(cfg: ModelConfig) -> TemporalProtocol:
         test_start=split.test_start,
         test_end=split.test_end,
         forecast_origin=forecast.forecast_origin,
+        origin_semantics="last_observed_day",
         prediction_horizon_days=forecast.horizon,
         backtest_origins=tuple(forecast.backtest_origins),
-        label_availability_rule=(
-            "each rolling-origin score uses observed daily counts only for target dates available after its origin"
-        ),
+        label_availability_rule=("origin is the last observed day; horizons 1..h predict origin+1 through origin+h"),
         feature_availability_cutoff=(
             "for origin t, every lag, rolling statistic, queue, and calendar feature uses t or earlier"
         ),
         leakage_exclusions=("future target values", "future queue values", "post-origin aggregates"),
-        warm_up_period=(split.train_start, split.train_start + dt.timedelta(days=30)),
+        warm_up_period=None,
+        warm_up_note="No warm-up rows are excluded; unavailable early lags remain missing model inputs.",
     )
     protocol.validate()
     return protocol

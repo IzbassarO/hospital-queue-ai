@@ -13,6 +13,7 @@ Checks
   alembic    `alembic check`: the SQLAlchemy models and the migrations agree (needs the database)
   ruff       `ruff check` and `ruff format --check` on backend/, ml/, tools/
   pytest     the API tests (needs the database with marts built)
+  ml-pytest  deterministic ML experiment/registry contract tests (no model fitting or database)
   api-docs   the endpoints documented in docs/api.md (### `METHOD /path` headings) are exactly the app's /api/v1 routes
   api-auth   every FastAPI route except the health checks (/health, /api/v1/health) depends on an auth dependency
              (app.core.security.require_role, marked `__hqai_auth__`), directly or through a router include
@@ -41,6 +42,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 FRONTEND = ROOT / "frontend"
+ML = ROOT / "ml"
 
 ALLOWED_DIRS = {"backend", "ml", "frontend", "db", "docs", "tools", ".github"}
 ALLOWED_ROOT_FILES = {
@@ -276,6 +278,14 @@ def check_pytest() -> Result:
     return _run("pytest", [sys.executable, "-m", "pytest"], BACKEND, "passed", parse=summary)
 
 
+def check_ml_pytest() -> Result:
+    def summary(out: str) -> str:
+        m = re.search(r"\d+ passed.*", out)
+        return m.group(0) if m else "passed"
+
+    return _run("ml-pytest", [sys.executable, "-m", "pytest"], ML, "passed", parse=summary)
+
+
 # every APIRoute of the app, with the auth role its dependency tree requires (None = no auth dependency)
 _AUTH_SCRIPT = """
 import json
@@ -420,6 +430,7 @@ def main() -> int:
         check_alembic(),
         check_ruff(),
         check_pytest(),
+        check_ml_pytest(),
         check_api_docs(),
         check_api_auth(),
         *check_frontend(),

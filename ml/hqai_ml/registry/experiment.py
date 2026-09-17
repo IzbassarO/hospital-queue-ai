@@ -1,4 +1,4 @@
-"""Reproducible experiment identity, resource policy, manifests, and resumable model checkpoints."""
+"""Scientific experiment identity, execution records, locks, and atomic unit checkpoints."""
 
 from __future__ import annotations
 
@@ -6,38 +6,35 @@ import datetime as dt
 import hashlib
 import importlib.metadata
 import json
+import os
 import platform
 import re
 import subprocess
-from dataclasses import asdict
+import warnings
+from dataclasses import asdict, dataclass
 from pathlib import Path
+from uuid import uuid4
 
 import yaml
 
 from hqai_ml.registry import store
 from hqai_ml.registry.resources import ResourceConfig
 
-RUN_SCHEMA_VERSION = 1
+RUN_SCHEMA_VERSION = 2
+CHECKPOINT_SCHEMA_VERSION = 1
 RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+KEY_PART = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 SENSITIVE_KEY = re.compile(r"(?:password|passwd|secret|token|api[_-]?key|credential)", re.I)
 WINDOWS_PATH = re.compile(r"^[A-Za-z]:[\\/]")
-LIBRARIES = ("python", "numpy", "pandas", "pyarrow", "duckdb", "lightgbm", "scikit-learn", "shap")
-PREDICTION_TARGETS = {
-    "wait_time": ["wait_days"],
-    "refusal_risk": ["outcome_refused"],
-    "load_forecast": ["registrations", "hospitalizations"],
-}
-MODEL_FAMILIES = {
-    "wait_time": "gradient_boosted_regression",
-    "refusal_risk": "gradient_boosted_binary_classification",
-    "load_forecast": "global_gradient_boosted_count_forecast",
-}
+SCIENTIFIC_LIBRARIES = ("python", "lightgbm", "numpy", "pandas", "scikit-learn", "duckdb", "shap")
+EXECUTION_HYPERPARAMETERS = {"num_threads", "num_thread", "n_jobs"}
 MUTABLE_RUN_FIELDS = {
     "artifacts",
     "baseline_metrics",
-    "checkpoints",
+    "checkpoint_summary",
     "ended_at",
     "evaluation",
+    "executions",
     "failure",
     "metrics",
     "status",
@@ -45,7 +42,11 @@ MUTABLE_RUN_FIELDS = {
 
 
 class CheckpointIncompatibleError(RuntimeError):
-    """A requested checkpoint belongs to different code, data, configuration, or resources."""
+    """A checkpoint or run belongs to different scientific inputs."""
+
+
+class RunLockedError(RuntimeError):
+    """Another writer owns the run directory lock."""
 
 
 def _hash_object(obj: object) -> str:
@@ -118,14 +119,21 @@ def code_identity(root: Path) -> dict:
     }
 
 
-def library_versions() -> dict[str, str]:
+def implementation_versions() -> dict[str, str]:
     versions = {"python": platform.python_version()}
-    for package in LIBRARIES[1:]:
+    for package in SCIENTIFIC_LIBRARIES[1:]:
         try:
             versions[package] = importlib.metadata.version(package)
         except importlib.metadata.PackageNotFoundError:
             versions[package] = "not-installed"
     return versions
+
+
+def scientific_hyperparameters(hyperparameters: dict) -> dict:
+    normalized = json.loads(store.canonical_json(hyperparameters))
+    lightgbm = normalized.get("lightgbm", {})
+    normalized["lightgbm"] = {key: value for key, value in lightgbm.items() if key not in EXECUTION_HYPERPARAMETERS}
+    return normalized
 
 
 def _walk_metadata(value: object, key: str = ""):
@@ -162,6 +170,13 @@ def utc_now() -> str:
     return dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
 
 
+def execution_metadata(resources: ResourceConfig) -> dict:
+    return {
+        "resources": asdict(resources),
+        "platform": {"system": platform.system(), "machine": platform.machine()},
+    }
+
+
 def build_plan(
     *,
     root: Path,
@@ -171,57 +186,177 @@ def build_plan(
     resources: ResourceConfig,
     temporal_protocols: dict,
     hyperparameters: dict,
+    versions: dict[str, str] | None = None,
 ) -> dict:
     dataset = dataset_identity(processed_dir, root)
-    config = yaml_identity(
+    configuration = yaml_identity(
         [configs_dir / "models.yaml", configs_dir / "ingest.yaml", configs_dir / "explain_templates.yaml"], root
     )
     code = code_identity(root)
-    seed = int(hyperparameters["lightgbm"]["seed"])
-    identity = {
-        "models": selected_models,
-        "dataset_identity": dataset["identity_sha256"],
-        "config_identity": config["sha256"],
-        "code_identity": code["source"]["sha256"],
-        "git_commit": code["git_commit"],
-        "resources": asdict(resources),
-        "temporal_protocols": temporal_protocols,
-        "hyperparameters": hyperparameters,
+    normalized_hyperparameters = scientific_hyperparameters(hyperparameters)
+    versions = versions or implementation_versions()
+    seed = int(normalized_hyperparameters["lightgbm"]["seed"])
+    seeds = {
+        "python": seed,
+        "numpy": seed,
+        "model": seed,
+        "lightgbm": {
+            key: normalized_hyperparameters["lightgbm"].get(key)
+            for key in ("seed", "bagging_seed", "feature_fraction_seed", "data_random_seed")
+            if normalized_hyperparameters["lightgbm"].get(key) is not None
+        },
     }
+    models = sorted(selected_models)
+    families = {name: store.MODEL_CONTRACTS[name]["family"] for name in models}
+    targets = {name: store.MODEL_CONTRACTS[name]["prediction_targets"] for name in models}
+    scientific = {
+        "models": models,
+        "candidates": dict.fromkeys(models, "current"),
+        "model_families": families,
+        "prediction_targets": targets,
+        "dataset_identity": dataset["identity_sha256"],
+        "config_identity": configuration["sha256"],
+        "code_identity": code["source"]["sha256"],
+        "implementation_versions": versions,
+        "temporal_protocols": temporal_protocols,
+        "hyperparameters": normalized_hyperparameters,
+        "random_seeds": seeds,
+    }
+    identity = _hash_object(scientific)
     return {
-        "identity_sha256": _hash_object(identity),
-        "models": selected_models,
-        "model_families": {name: MODEL_FAMILIES[name] for name in selected_models},
-        "prediction_targets": {name: PREDICTION_TARGETS[name] for name in selected_models},
+        "scientific_identity_sha256": identity,
+        "identity_sha256": identity,
+        "scientific_identity": scientific,
+        "models": models,
+        "model_families": families,
+        "prediction_targets": targets,
         "dataset": dataset,
-        "configuration": config,
+        "configuration": configuration,
         "code": code,
         "temporal_protocols": temporal_protocols,
-        "random_seeds": {
-            "python": seed,
-            "numpy": seed,
-            "model": seed,
-            "lightgbm": {
-                key: hyperparameters["lightgbm"].get(key)
-                for key in ("seed", "bagging_seed", "feature_fraction_seed", "data_random_seed")
-                if hyperparameters["lightgbm"].get(key) is not None
-            },
-        },
-        "hyperparameters": hyperparameters,
-        "implementation_versions": library_versions(),
-        "platform": {"system": platform.system(), "machine": platform.machine()},
-        "resources": asdict(resources),
+        "random_seeds": seeds,
+        "hyperparameters": normalized_hyperparameters,
+        "implementation_versions": versions,
+        "execution": execution_metadata(resources),
     }
+
+
+@dataclass(frozen=True)
+class CheckpointKey:
+    model_name: str
+    candidate_id: str = "current"
+    trial_id: str = "default"
+    fold_id: str | None = None
+    forecast_origin: str | None = None
+
+    def __post_init__(self) -> None:
+        for name, value in (
+            ("model_name", self.model_name),
+            ("candidate_id", self.candidate_id),
+            ("trial_id", self.trial_id),
+            ("fold_id", self.fold_id),
+        ):
+            if value is not None and not KEY_PART.fullmatch(value):
+                raise ValueError(f"invalid checkpoint {name}: {value!r}")
+        if self.forecast_origin is not None:
+            try:
+                dt.date.fromisoformat(self.forecast_origin)
+            except ValueError as exc:
+                raise ValueError("forecast_origin must be an ISO date using last-observed-day semantics") from exc
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @property
+    def identifier(self) -> str:
+        return _hash_object(self.to_dict())
+
+    @property
+    def filename(self) -> str:
+        return f"{self.model_name}--{self.candidate_id}--{self.trial_id}--{self.identifier[:16]}.json"
+
+    @classmethod
+    def model(cls, model_name: str) -> CheckpointKey:
+        return cls(model_name=model_name)
+
+
+class RunLock:
+    """One local writer per run. Stale locks require explicit recovery."""
+
+    FILENAME = ".run.lock"
+
+    def __init__(self, path: Path, metadata: dict):
+        self.path = path
+        self.metadata = metadata
+        self.held = True
+
+    @classmethod
+    def acquire(cls, run_path: Path) -> RunLock:
+        run_path.mkdir(parents=True, exist_ok=True)
+        path = run_path / cls.FILENAME
+        metadata = {"lock_id": uuid4().hex, "pid": os.getpid(), "acquired_at": utc_now()}
+        try:
+            descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError as exc:
+            diagnostic = cls.read(run_path)
+            raise RunLockedError(
+                f"run is locked by {diagnostic}; if the writer was hard-killed, explicitly recover the stale lock"
+            ) from exc
+        try:
+            os.write(descriptor, store.canonical_json(metadata).encode())
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+        return cls(path, metadata)
+
+    @classmethod
+    def read(cls, run_path: Path) -> dict:
+        path = run_path / cls.FILENAME
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            return {"diagnostic": f"unreadable lock: {exc}"}
+
+    @classmethod
+    def recover(cls, run_path: Path) -> dict:
+        path = run_path / cls.FILENAME
+        if not path.exists():
+            raise FileNotFoundError(f"no stale lock exists for {run_path.name!r}")
+        diagnostic = cls.read(run_path)
+        path.unlink()
+        return diagnostic
+
+    def release(self) -> None:
+        if not self.held:
+            return
+        try:
+            current = json.loads(self.path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            current = {}
+        if current.get("lock_id") != self.metadata["lock_id"]:
+            raise RunLockedError("run lock ownership changed; refusing to remove another writer's lock")
+        self.path.unlink()
+        self.held = False
 
 
 class ExperimentRun:
-    """Atomic run manifest. Identity fields freeze at creation; completed runs are immutable."""
+    """Locked atomic run manifest with independently stored immutable completed checkpoints."""
 
-    def __init__(self, artifacts_dir: Path, manifest: dict):
+    def __init__(self, artifacts_dir: Path, manifest: dict, lock: RunLock | None):
         self.artifacts_dir = artifacts_dir
         self.manifest = manifest
         self.path = artifacts_dir / "runs" / manifest["run_id"]
         self.manifest_path = self.path / "run.json"
+        self.checkpoints_path = self.path / "checkpoints"
+        self.lock = lock
+
+    @classmethod
+    def read_only(cls, artifacts_dir: Path, run_id: str) -> ExperimentRun:
+        """Open a run for checkpoint inspection without acquiring writer authority."""
+        manifest_path = artifacts_dir / "runs" / run_id / "run.json"
+        if not manifest_path.is_file():
+            raise FileNotFoundError(f"run {run_id!r} does not exist")
+        return cls(artifacts_dir, json.loads(manifest_path.read_text(encoding="utf-8")), None)
 
     @classmethod
     def start(
@@ -235,31 +370,51 @@ class ExperimentRun:
         if run_id and resume_run_id:
             raise ValueError("--run-id and --resume are mutually exclusive")
         if resume_run_id:
-            path = artifacts_dir / "runs" / resume_run_id / "run.json"
-            if not path.is_file():
+            run_path = artifacts_dir / "runs" / resume_run_id
+            manifest_path = run_path / "run.json"
+            if not manifest_path.is_file():
                 raise FileNotFoundError(f"run {resume_run_id!r} does not exist")
-            manifest = json.loads(path.read_text(encoding="utf-8"))
-            if manifest["identity_sha256"] != plan["identity_sha256"]:
-                raise CheckpointIncompatibleError(
-                    "resume rejected: code, data, configuration, temporal protocol, models, or resources changed"
-                )
-            run = cls(artifacts_dir, manifest)
-            if manifest["status"] != "completed":
-                run._update(status="running", ended_at=None, evaluation={"status": "pending"}, failure=None)
-            return run
+            lock = RunLock.acquire(run_path)
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                recorded = manifest["scientific_identity_sha256"]
+                current = plan["scientific_identity_sha256"]
+                if recorded != current:
+                    if manifest.get("implementation_versions") != plan.get("implementation_versions"):
+                        raise CheckpointIncompatibleError(
+                            "resume rejected: scientifically relevant implementation versions changed"
+                        )
+                    raise CheckpointIncompatibleError(
+                        "resume rejected: model, code, data, configuration, temporal protocol, hyperparameters, "
+                        "or seeds changed"
+                    )
+                run = cls(artifacts_dir, manifest, lock)
+                run._warn_on_platform_change(plan["execution"]["platform"])
+                if manifest["status"] != "completed":
+                    run._record_execution(plan["execution"])
+                return run
+            except BaseException:
+                lock.release()
+                raise
         if run_id is None:
             stamp = dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
-            run_id = f"{stamp}-{plan['identity_sha256'][:12]}"
+            run_id = f"{stamp}-{plan['scientific_identity_sha256'][:12]}"
         if not RUN_ID.fullmatch(run_id):
             raise ValueError("run_id must contain only letters, digits, dot, underscore, and hyphen")
+        run_path = artifacts_dir / "runs" / run_id
+        if run_path.exists():
+            raise FileExistsError(f"run {run_id!r} already exists; use --resume {run_id}")
+        run_path.mkdir(parents=True)
+        lock = RunLock.acquire(run_path)
         manifest = {
             "schema_version": RUN_SCHEMA_VERSION,
             "run_id": run_id,
             "status": "running",
             "started_at": utc_now(),
             "ended_at": None,
-            **plan,
-            "checkpoints": {},
+            **{key: value for key, value in plan.items() if key != "execution"},
+            "executions": [],
+            "checkpoint_summary": {},
             "metrics": {},
             "baseline_metrics": {},
             "artifacts": {},
@@ -268,18 +423,56 @@ class ExperimentRun:
             "mutable_while_running": sorted(MUTABLE_RUN_FIELDS),
         }
         assert_safe_metadata(manifest)
-        run = cls(artifacts_dir, manifest)
-        if run.path.exists():
-            raise FileExistsError(f"run {run_id!r} already exists; use --resume {run_id}")
-        run.path.mkdir(parents=True)
-        run._write()
-        return run
+        run = cls(artifacts_dir, manifest, lock)
+        try:
+            run.checkpoints_path.mkdir()
+            run._record_execution(plan["execution"], initial=True)
+            return run
+        except BaseException:
+            lock.release()
+            raise
+
+    @property
+    def current_execution(self) -> dict:
+        return self.manifest["executions"][-1]
+
+    def _warn_on_platform_change(self, current: dict) -> None:
+        previous = {store.canonical_json(item["platform"]) for item in self.manifest.get("executions", [])}
+        if previous and store.canonical_json(current) not in previous:
+            warnings.warn(
+                "resuming on a different platform/architecture; scientific identity matches but numerical "
+                "bit-equivalence is not guaranteed",
+                stacklevel=2,
+            )
+
+    def _record_execution(self, execution: dict, *, initial: bool = False) -> None:
+        record = {
+            "execution_id": uuid4().hex,
+            "status": "running",
+            "started_at": utc_now(),
+            "ended_at": None,
+            **execution,
+        }
+        executions = [*self.manifest["executions"], record]
+        if initial:
+            self.manifest["executions"] = executions
+            self._write()
+        else:
+            self._update(
+                executions=executions,
+                status="running",
+                ended_at=None,
+                evaluation={"status": "pending"},
+                failure=None,
+            )
 
     def _write(self) -> None:
+        self._require_lock()
         assert_safe_metadata(self.manifest)
         store.atomic_write_text(self.manifest_path, store.canonical_json(self.manifest))
 
     def _update(self, **changes) -> None:
+        self._require_lock()
         if self.manifest["status"] == "completed":
             raise RuntimeError("completed run manifests are immutable")
         unexpected = changes.keys() - MUTABLE_RUN_FIELDS
@@ -288,79 +481,201 @@ class ExperimentRun:
         self.manifest.update(changes)
         self._write()
 
-    def checkpoint_identity(self, model_name: str) -> str:
-        return _hash_object({"run_identity": self.manifest["identity_sha256"], "model": model_name})
+    def _require_lock(self) -> None:
+        if self.lock is None or not self.lock.held:
+            raise RunLockedError("run writer lock is not held")
 
-    def reusable_checkpoint(self, model_name: str) -> dict | None:
-        checkpoint = self.manifest["checkpoints"].get(model_name)
-        if not checkpoint or checkpoint.get("status") != "completed":
+    def checkpoint_path(self, key: CheckpointKey) -> Path:
+        return self.checkpoints_path / key.filename
+
+    def checkpoint_identity(self, key: CheckpointKey, parameters: dict | None = None) -> str:
+        return _hash_object(
+            {
+                "run_scientific_identity": self.manifest["scientific_identity_sha256"],
+                "key": key.to_dict(),
+                "parameters": parameters or {},
+            }
+        )
+
+    def _read_checkpoint(self, key: CheckpointKey) -> dict | None:
+        path = self.checkpoint_path(key)
+        return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
+
+    def reusable_checkpoint(self, key: CheckpointKey, *, parameters: dict | None = None) -> dict | None:
+        checkpoint = self._read_checkpoint(key)
+        if checkpoint is None:
             return None
-        if checkpoint.get("identity_sha256") != self.checkpoint_identity(model_name):
-            raise CheckpointIncompatibleError(f"checkpoint {model_name!r} has an incompatible identity")
-        artifact = checkpoint["artifact"]
-        path = (self.artifacts_dir / artifact["path"]).resolve()
-        if not path.is_relative_to(self.artifacts_dir.resolve()):
-            raise CheckpointIncompatibleError(f"checkpoint {model_name!r} has an invalid artifact path")
-        verified = store.verify_artifact_manifest(path, adopt_legacy=False)
-        if verified["content_sha256"] != artifact["sha256"]:
-            raise store.ArtifactIntegrityError(f"checkpoint {model_name!r} artifact identity changed")
+        expected = self.checkpoint_identity(key, parameters)
+        if checkpoint.get("scientific_identity_sha256") != expected:
+            raise CheckpointIncompatibleError(f"checkpoint {key.to_dict()!r} has an incompatible scientific identity")
+        if checkpoint.get("status") != "completed":
+            return None
+        artifact = checkpoint.get("artifact")
+        if artifact:
+            path = (self.artifacts_dir / artifact["path"]).resolve()
+            if not path.is_relative_to(self.artifacts_dir.resolve()):
+                raise CheckpointIncompatibleError(f"checkpoint {key.to_dict()!r} has an invalid artifact path")
+            verified = store.verify_artifact_manifest(path, adopt_legacy=False)
+            if verified["content_sha256"] != artifact["sha256"]:
+                raise store.ArtifactIntegrityError(f"checkpoint {key.to_dict()!r} artifact identity changed")
         return checkpoint
 
-    def start_checkpoint(self, model_name: str) -> None:
-        checkpoints = dict(self.manifest["checkpoints"])
-        checkpoints[model_name] = {
+    def start_checkpoint(self, key: CheckpointKey, *, parameters: dict | None = None) -> dict:
+        self._require_lock()
+        if key.model_name not in self.manifest["models"]:
+            raise ValueError(f"checkpoint model {key.model_name!r} is not part of this run")
+        parameters = parameters or {}
+        identity = self.checkpoint_identity(key, parameters)
+        existing = self._read_checkpoint(key)
+        if existing and existing.get("scientific_identity_sha256") != identity:
+            raise CheckpointIncompatibleError(f"checkpoint {key.to_dict()!r} exists for incompatible inputs")
+        if existing and existing.get("status") == "completed":
+            raise RuntimeError(f"completed checkpoint {key.to_dict()!r} is immutable")
+        checkpoint = {
+            "schema_version": CHECKPOINT_SCHEMA_VERSION,
+            "key": key.to_dict(),
+            "key_id": key.identifier,
             "status": "running",
-            "identity_sha256": self.checkpoint_identity(model_name),
+            "scientific_identity_sha256": identity,
             "started_at": utc_now(),
             "ended_at": None,
+            "parameters": parameters,
+            "execution_id": self.current_execution["execution_id"],
+            "execution": {
+                "resources": self.current_execution["resources"],
+                "platform": self.current_execution["platform"],
+            },
+            "evaluation": {"status": "pending"},
+            "metrics": None,
+            "baseline_metrics": None,
+            "artifact": None,
+            "failure": None,
         }
-        self._update(checkpoints=checkpoints)
+        assert_safe_metadata(checkpoint)
+        store.atomic_write_text(self.checkpoint_path(key), store.canonical_json(checkpoint))
+        self._refresh_checkpoint_summary()
+        return checkpoint
 
     def complete_checkpoint(
         self,
-        model_name: str,
+        key: CheckpointKey,
         *,
-        artifact_path: Path,
-        artifact_sha256: str,
-        version: str,
-        metrics: dict,
-        baseline_metrics: dict,
-    ) -> None:
-        current = self.manifest["checkpoints"].get(model_name)
+        parameters: dict | None = None,
+        metrics: dict | None = None,
+        baseline_metrics: dict | None = None,
+        evaluation_status: str = "pending",
+        artifact_path: Path | None = None,
+        artifact_sha256: str | None = None,
+        version: str | None = None,
+    ) -> dict:
+        self._require_lock()
+        if evaluation_status not in {"pending", "completed"}:
+            raise ValueError("evaluation_status must be pending or completed")
+        current = self._read_checkpoint(key)
         if not current or current.get("status") != "running":
-            raise RuntimeError(f"checkpoint {model_name!r} was not started")
-        verified = store.verify_artifact_manifest(artifact_path, adopt_legacy=False)
-        if verified["content_sha256"] != artifact_sha256:
-            raise store.ArtifactIntegrityError(f"checkpoint {model_name!r} artifact checksum does not match")
-        relative = artifact_path.relative_to(self.artifacts_dir).as_posix()
+            raise RuntimeError(f"checkpoint {key.to_dict()!r} was not started or is already immutable")
+        expected = self.checkpoint_identity(key, parameters)
+        if current["scientific_identity_sha256"] != expected:
+            raise CheckpointIncompatibleError(f"checkpoint {key.to_dict()!r} changed scientific inputs")
+        artifact = None
+        supplied = (artifact_path, artifact_sha256, version)
+        if any(value is not None for value in supplied):
+            if not all(value is not None for value in supplied):
+                raise ValueError("artifact path, SHA256, and version must be supplied together")
+            assert artifact_path is not None and artifact_sha256 is not None and version is not None
+            verified = store.verify_artifact_manifest(artifact_path, adopt_legacy=False)
+            if verified["content_sha256"] != artifact_sha256:
+                raise store.ArtifactIntegrityError(f"checkpoint {key.to_dict()!r} artifact checksum does not match")
+            relative = artifact_path.relative_to(self.artifacts_dir).as_posix()
+            artifact = {"path": relative, "version": version, "sha256": artifact_sha256}
         checkpoint = {
+            **current,
             "status": "completed",
-            "identity_sha256": self.checkpoint_identity(model_name),
-            "started_at": current["started_at"],
             "ended_at": utc_now(),
-            "artifact": {"path": relative, "version": version, "sha256": artifact_sha256},
-            "evaluation_status": "passed",
+            "evaluation": {"status": evaluation_status},
+            "metrics": metrics,
+            "baseline_metrics": baseline_metrics,
+            "artifact": artifact,
+            "failure": None,
         }
-        checkpoints = {**self.manifest["checkpoints"], model_name: checkpoint}
-        self._update(
-            checkpoints=checkpoints,
-            metrics={**self.manifest["metrics"], model_name: metrics},
-            baseline_metrics={**self.manifest["baseline_metrics"], model_name: baseline_metrics},
-            artifacts={**self.manifest["artifacts"], model_name: checkpoint["artifact"]},
-        )
+        assert_safe_metadata(checkpoint)
+        store.atomic_write_text(self.checkpoint_path(key), store.canonical_json(checkpoint))
+        self._refresh_checkpoint_summary()
+        if key == CheckpointKey.model(key.model_name):
+            changes = {}
+            if metrics is not None:
+                changes["metrics"] = {**self.manifest["metrics"], key.model_name: metrics}
+            if baseline_metrics is not None:
+                changes["baseline_metrics"] = {
+                    **self.manifest["baseline_metrics"],
+                    key.model_name: baseline_metrics,
+                }
+            if artifact is not None:
+                changes["artifacts"] = {**self.manifest["artifacts"], key.model_name: artifact}
+            if changes:
+                self._update(**changes)
+        return checkpoint
 
-    def complete(self) -> None:
-        missing = [name for name in self.manifest["models"] if not self.reusable_checkpoint(name)]
-        if missing:
-            raise RuntimeError(f"cannot complete run; checkpoints incomplete: {missing}")
-        self._update(status="completed", ended_at=utc_now(), evaluation={"status": "passed"}, failure=None)
+    def fail_checkpoint(self, key: CheckpointKey, exc: BaseException, root: Path) -> None:
+        self._require_lock()
+        current = self._read_checkpoint(key)
+        if not current or current.get("status") == "completed":
+            raise RuntimeError(f"checkpoint {key.to_dict()!r} cannot transition to failed")
+        failed = {
+            **current,
+            "status": "failed",
+            "ended_at": utc_now(),
+            "failure": {"type": type(exc).__name__, "message": safe_failure_message(exc, root)},
+        }
+        store.atomic_write_text(self.checkpoint_path(key), store.canonical_json(failed))
+        self._refresh_checkpoint_summary()
+
+    def _refresh_checkpoint_summary(self) -> None:
+        counts: dict[str, int] = {}
+        for path in self.checkpoints_path.glob("*.json"):
+            status = json.loads(path.read_text(encoding="utf-8")).get("status", "unknown")
+            counts[status] = counts.get(status, 0) + 1
+        self._update(checkpoint_summary={"total": sum(counts.values()), "by_status": counts})
+
+    def complete(self, required: list[CheckpointKey] | None = None) -> None:
+        required = required or [CheckpointKey.model(name) for name in self.manifest["models"]]
+        incomplete = []
+        for key in required:
+            checkpoint = self.reusable_checkpoint(key)
+            if checkpoint is None or checkpoint["evaluation"]["status"] != "completed":
+                incomplete.append(key.to_dict())
+        if incomplete:
+            raise RuntimeError(f"cannot complete run; checkpoints incomplete or unevaluated: {incomplete}")
+        executions = list(self.manifest["executions"])
+        executions[-1] = {**executions[-1], "status": "completed", "ended_at": utc_now()}
+        self._update(
+            status="completed",
+            ended_at=utc_now(),
+            executions=executions,
+            evaluation={"status": "completed"},
+            failure=None,
+        )
 
     def fail(self, exc: BaseException, root: Path) -> None:
         if self.manifest["status"] == "completed":
             return
+        executions = list(self.manifest["executions"])
+        executions[-1] = {**executions[-1], "status": "failed", "ended_at": utc_now()}
         self._update(
             status="failed",
             ended_at=utc_now(),
-            evaluation={"status": "failed"},
+            executions=executions,
+            evaluation={"status": "pending"},
             failure={"type": type(exc).__name__, "message": safe_failure_message(exc, root)},
         )
+
+    def pause(self) -> None:
+        if self.manifest["status"] == "completed":
+            return
+        executions = list(self.manifest["executions"])
+        executions[-1] = {**executions[-1], "status": "interrupted", "ended_at": utc_now()}
+        self._update(status="interrupted", executions=executions)
+
+    def release_lock(self) -> None:
+        if self.lock is not None:
+            self.lock.release()

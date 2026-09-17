@@ -16,6 +16,20 @@ import yaml
 MANIFEST = "manifest.json"
 ARTIFACT_MANIFEST = "artifact-manifest.json"
 CARDS_CONFIG = "model_cards.yaml"
+MODEL_CONTRACTS = {
+    "wait_time": {
+        "family": "gradient_boosted_regression",
+        "prediction_targets": ["wait_days"],
+    },
+    "refusal_risk": {
+        "family": "gradient_boosted_binary_classification",
+        "prediction_targets": ["outcome_refused"],
+    },
+    "load_forecast": {
+        "family": "global_gradient_boosted_count_forecast",
+        "prediction_targets": ["registrations", "hospitalizations"],
+    },
+}
 
 
 class ArtifactIntegrityError(RuntimeError):
@@ -154,11 +168,11 @@ def save(
         _dump(
             temporary / "meta.json",
             {
+                **meta,
                 "model_name": model_name,
                 "version": version,
                 "trained_at": now.isoformat(timespec="seconds"),
                 "model_files": sorted(boosters),
-                **meta,
             },
         )
         _dump(temporary / "metrics.json", metrics)
@@ -219,6 +233,10 @@ def load(artifacts_dir: Path, model_name: str, version: str | None = None) -> di
     if current_entry is not None and not expected_sha256:
         set_current(artifacts_dir, model_name, current_entry["current"])
     meta = load_json(path, "meta.json")
+    if meta.get("model_name") != model_name:
+        raise ArtifactIntegrityError(
+            f"artifact model name mismatch: requested {model_name!r}, metadata declares {meta.get('model_name')!r}"
+        )
     out = {
         "path": path,
         "meta": meta,
@@ -240,35 +258,56 @@ def registration_evidence(artifact: dict) -> dict:
     """Return registration eligibility without pretending old artifacts have modern lineage."""
     meta, metrics = artifact["meta"], artifact["metrics"]
     evaluated = bool(metrics) and bool(meta.get("training_window"))
-    lineage_fields = ("run_id", "dataset_identity", "config_identity", "code_identity", "evaluation_status")
+    lineage_fields = (
+        "run_id",
+        "dataset_identity",
+        "config_identity",
+        "code_identity",
+        "evaluation_status",
+        "checkpoint_file",
+    )
     has_lineage = any(meta.get(field) for field in lineage_fields)
     complete_lineage = (
         all(meta.get(field) for field in lineage_fields)
         and bool(meta.get("model_family"))
-        and bool(meta.get("target") or meta.get("targets"))
+        and bool(meta.get("prediction_targets"))
     )
     adopted_legacy = artifact["artifact_manifest"].get("adopted_legacy") is True
     if not evaluated:
         raise ArtifactIntegrityError(f"artifact {artifact['version']!r} has no successful evaluation evidence")
     if has_lineage and not complete_lineage:
         raise ArtifactIntegrityError(f"artifact {artifact['version']!r} has incomplete lineage evidence")
-    if complete_lineage and meta["evaluation_status"] != "passed":
-        raise ArtifactIntegrityError(f"artifact {artifact['version']!r} did not pass evaluation")
+    if complete_lineage and meta["evaluation_status"] != "completed":
+        raise ArtifactIntegrityError(f"artifact {artifact['version']!r} has no completed evaluation")
     if not complete_lineage and not adopted_legacy:
         raise ArtifactIntegrityError(f"artifact {artifact['version']!r} has no attributable training run")
     if complete_lineage:
+        contract = MODEL_CONTRACTS.get(meta["model_name"])
+        if contract is None:
+            raise ArtifactIntegrityError(f"artifact declares unknown model {meta['model_name']!r}")
+        if meta["model_family"] != contract["family"]:
+            raise ArtifactIntegrityError(f"artifact {artifact['version']!r} has the wrong model family")
+        if meta["prediction_targets"] != contract["prediction_targets"]:
+            raise ArtifactIntegrityError(f"artifact {artifact['version']!r} has the wrong prediction targets")
         run_path = artifact["path"].parents[2] / "runs" / meta["run_id"] / "run.json"
+        checkpoint_path = run_path.parent / "checkpoints" / meta["checkpoint_file"]
         try:
             run = json.loads(run_path.read_text(encoding="utf-8"))
-            checkpoint = run["checkpoints"][meta["model_name"]]
+            checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
             consistent = (
                 run["status"] == "completed"
-                and run["evaluation"]["status"] == "passed"
+                and run["evaluation"]["status"] == "completed"
                 and run["dataset"]["identity_sha256"] == meta["dataset_identity"]
                 and run["configuration"]["sha256"] == meta["config_identity"]
                 and run["code"]["source"]["sha256"] == meta["code_identity"]
-                and checkpoint["evaluation_status"] == "passed"
+                and checkpoint["key"]["model_name"] == meta["model_name"]
+                and checkpoint["status"] == "completed"
+                and checkpoint["evaluation"]["status"] == "completed"
                 and checkpoint["artifact"]["sha256"] == artifact["artifact_sha256"]
+                and checkpoint["artifact"]["path"]
+                == artifact["path"].relative_to(artifact["path"].parents[2]).as_posix()
+                and run["model_families"][meta["model_name"]] == meta["model_family"]
+                and run["prediction_targets"][meta["model_name"]] == meta["prediction_targets"]
             )
         except (KeyError, OSError, json.JSONDecodeError) as exc:
             raise ArtifactIntegrityError(
