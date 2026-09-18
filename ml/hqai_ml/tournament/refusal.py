@@ -37,6 +37,7 @@ def refusal_benchmarks(
     *,
     legacy_eligible: bool = False,
     legacy_ineligibility_reason: str | None = None,
+    forced_selected_classifier: str | None = None,
 ) -> dict:
     train, validation, calibration, test = map(_resolved, (train, validation, calibration, test))
     frequency_encoder = FrequencyEncoder.fit(train)
@@ -79,7 +80,10 @@ def refusal_benchmarks(
         "regularized_logistic": float(np.mean((logistic_validation - y_validation) ** 2)),
         "fold_lightgbm": float(np.mean((lgb_validation - y_validation) ** 2)),
     }
-    selected = min(validation_brier, key=validation_brier.get)
+    validation_winner = min(validation_brier, key=validation_brier.get)
+    if forced_selected_classifier is not None and forced_selected_classifier not in validation_brier:
+        raise ValueError(f"unknown forced refusal classifier {forced_selected_classifier!r}")
+    selected = forced_selected_classifier or validation_winner
     development = pd.concat([train, validation], ignore_index=True)
     y_development = (development["journey_event"] == EVENT_REFUSED).to_numpy(int)
     if selected == "regularized_logistic":
@@ -123,6 +127,10 @@ def refusal_benchmarks(
         "regularized_logistic": _metrics(y_test, p_logistic),
         "fold_lightgbm": _metrics(y_test, p_lgb),
         "strongest_selected_on_validation": selected,
+        "confirmation_validation_winner": validation_winner,
+        "classifier_selection_source": (
+            "frozen_source_tournament" if forced_selected_classifier is not None else "current_fold_validation"
+        ),
         "validation_brier": validation_brier,
         "calibration": {},
     }

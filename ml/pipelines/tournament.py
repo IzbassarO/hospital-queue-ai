@@ -27,9 +27,20 @@ def main() -> int:
     parser.add_argument("--resume", metavar="RUN_ID")
     parser.add_argument("--plan", action="store_true")
     parser.add_argument("--audit-events-only", action="store_true")
+    parser.add_argument("--final-confirmation", action="store_true")
+    parser.add_argument("--source-run", metavar="RUN_ID")
+    parser.add_argument("--full-cohort", action="store_true")
     args = parser.parse_args()
 
-    resources = resource_config(args.profile)
+    if args.final_confirmation:
+        if not args.source_run or not args.full_cohort:
+            parser.error("--final-confirmation requires --source-run RUN_ID and --full-cohort")
+        if args.profile != "overnight":
+            parser.error("full-cohort confirmation must use the existing overnight resource profile")
+    elif args.source_run or args.full_cohort:
+        parser.error("--source-run and --full-cohort are valid only with --final-confirmation")
+
+    resources = resource_config(args.profile, parallel_trials=1 if args.final_confirmation else None)
     apply_resource_environment(resources)
 
     from hqai_ml.evaluation.metrics import regression_metrics
@@ -61,7 +72,12 @@ def main() -> int:
     config = load_tournament_config(config_path)
     profile = config.profiles[args.profile]
     folds = [fold for fold in config.folds if fold.id in profile.folds]
-    enabled = [name for name, candidate in config.candidates.items() if candidate.enabled]
+    source_evidence = None
+    if args.final_confirmation:
+        source_evidence = load_confirmation_evidence(settings.artifacts_dir, args.source_run, config)
+        enabled = list(source_evidence["finalists"])
+    else:
+        enabled = [name for name, candidate in config.candidates.items() if candidate.enabled]
     con = connect(settings.processed_dir, resources)
     features = build_referral_features(con, config.folds[0].train[0])
     event_fields = con.execute(
@@ -83,18 +99,29 @@ def main() -> int:
         return 0
 
     data = labels.rows
-    if profile.sample_rows is not None and len(data) > profile.sample_rows:
+    if not args.final_confirmation and profile.sample_rows is not None and len(data) > profile.sample_rows:
         data = data.sample(profile.sample_rows, random_state=config.seed).sort_values(
             ["registration_date", "referral_id"]
         )
         data = data.reset_index(drop=True)
     protocol = {
+        "mode": "full_cohort_final_confirmation" if args.final_confirmation else "tournament",
         "label_cutoff": config.label_contract.cutoff.isoformat(),
         "horizons": config.horizons,
         "folds": [fold.model_dump(mode="json") for fold in folds],
         "split_order": ["train", "validation", "calibration", "test"],
         "final_test_used_for_hpo": False,
+        "hyperparameter_selection_in_confirmation": False,
     }
+    confirmation_hyperparameters = None
+    if source_evidence is not None:
+        confirmation_hyperparameters = {
+            "source_run": args.source_run,
+            "source_summary_sha256": source_evidence["source_summary_sha256"],
+            "full_cohort": True,
+            "finalists": source_evidence["finalists"],
+            "refusal_classifier": source_evidence["refusal_classifier"],
+        }
     plan = build_plan(
         root=root,
         processed_dir=settings.processed_dir,
@@ -106,6 +133,7 @@ def main() -> int:
             "lightgbm": {"seed": config.seed},
             "tournament": config.model_dump(mode="json"),
             "profile": args.profile,
+            "final_confirmation": confirmation_hyperparameters,
         },
         configuration_paths=[config_path, settings.configs_dir / "models.yaml", settings.configs_dir / "ingest.yaml"],
     )
@@ -121,11 +149,27 @@ def main() -> int:
                     "candidates": enabled,
                     "folds": [fold.id for fold in folds],
                     "automatic_promotion": False,
+                    "mode": protocol["mode"],
+                    "source_run": args.source_run,
                 }
             ),
             end="",
         )
         return 0
+
+    if args.final_confirmation:
+        return run_final_confirmation(
+            args=args,
+            root=root,
+            settings=settings,
+            config=config,
+            resources=resources,
+            folds=folds,
+            data=data,
+            audit=labels.audit,
+            plan=plan,
+            source_evidence=source_evidence,
+        )
 
     run = None
     checkpoint_keys: list[CheckpointKey] = []
@@ -466,6 +510,629 @@ def main() -> int:
             run.complete(checkpoint_keys, parameters_by_key=checkpoint_parameters)
         log(f"summary: {summary_path.relative_to(root)}; reused checkpoints: {reused}")
         print(f"TOURNAMENT_RUN_ID={run_id}")
+        return 0
+    except KeyboardInterrupt:
+        if run is not None:
+            run.pause()
+        raise
+    except BaseException as exc:
+        if run is not None:
+            run.fail(exc, root)
+        raise
+    finally:
+        if run is not None:
+            run.release_lock()
+
+
+def load_confirmation_evidence(artifacts_dir, source_run_id, config):
+    """Load and cross-check frozen finalists from persisted tournament evidence."""
+    from hqai_ml.registry import store
+
+    summary_path = artifacts_dir / "tournaments" / source_run_id / "tournament-summary.json"
+    run_path = artifacts_dir / "runs" / source_run_id / "run.json"
+    if not summary_path.is_file() or not run_path.is_file():
+        raise FileNotFoundError(f"source tournament evidence is incomplete for run {source_run_id!r}")
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    source_run = json.loads(run_path.read_text(encoding="utf-8"))
+    if summary.get("run_id") != source_run_id or source_run.get("run_id") != source_run_id:
+        raise ValueError("source tournament evidence has a mismatched run ID")
+    if source_run.get("status") != "completed" or summary.get("profile") != "overnight":
+        raise ValueError("final confirmation requires a completed overnight source tournament")
+    if summary.get("config_identity") != config.identity_sha256:
+        raise ValueError("source tournament configuration identity differs from the current reviewed config")
+
+    finalists = {}
+    for candidate in ("empirical_competing_risk", "xgboost_aft", "discrete_hospitalization_hazard"):
+        rows = [row for row in summary.get("results", []) if row.get("candidate") == candidate]
+        if not rows:
+            raise ValueError(f"source tournament has no persisted result for finalist {candidate!r}")
+        identities = {
+            store.canonical_json({"trial_id": row.get("best_trial"), "parameters": row.get("best_parameters", {})})
+            for row in rows
+        }
+        if len(identities) != 1:
+            raise ValueError(f"source tournament did not use one frozen parameter set for {candidate!r}")
+        selection = json.loads(next(iter(identities)))
+        checkpoints = []
+        for path in sorted((artifacts_dir / "runs" / source_run_id / "checkpoints").glob("*.json")):
+            checkpoint = json.loads(path.read_text(encoding="utf-8"))
+            key = checkpoint.get("key", {})
+            if (
+                key.get("candidate_id") == candidate
+                and key.get("trial_id") == "selected"
+                and checkpoint.get("status") == "completed"
+                and checkpoint.get("parameters") == selection["parameters"]
+            ):
+                checkpoints.append(checkpoint["key_id"])
+        if len(checkpoints) != len(rows):
+            raise ValueError(f"source selected checkpoints do not verify persisted parameters for {candidate!r}")
+        finalists[candidate] = {**selection, "validated_source_checkpoint_ids": checkpoints}
+
+    refusal_classifier = summary.get("refusal_benchmarks", {}).get("strongest_selected_on_validation")
+    if refusal_classifier not in {"regularized_logistic", "fold_lightgbm"}:
+        raise ValueError("source tournament has no valid persisted refusal-classifier selection")
+    return {
+        "source_run_id": source_run_id,
+        "source_summary_path": summary_path,
+        "source_summary_sha256": store.sha256_file(summary_path),
+        "source_scientific_identity_sha256": source_run["scientific_identity_sha256"],
+        "source_sampled_rows": summary["sampled_rows"],
+        "finalists": finalists,
+        "refusal_classifier": refusal_classifier,
+    }
+
+
+def _peak_rss_bytes() -> int:
+    import resource
+
+    value = int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+    return value * 1024 if sys.platform.startswith("linux") else value
+
+
+def _calibration_ece(metrics: dict, target: str) -> float | None:
+    values = []
+    for row in metrics["by_horizon"].values():
+        table = row["calibration"].get(target)
+        if not table:
+            continue
+        total = sum(bin_row["n"] for bin_row in table)
+        values.append(sum(bin_row["n"] * abs(bin_row["mean_pred"] - bin_row["observed"]) for bin_row in table) / total)
+    return float(sum(values) / len(values)) if values else None
+
+
+def _evaluate_frozen_candidate(candidate, parts, baseline, selection, config, resources, artifacts_dir, round_cap):
+    from hqai_ml.tournament.evaluation import (
+        calibrate_hospitalization,
+        calibrate_journey,
+        journey_metrics,
+        subgroup_assurance,
+    )
+    from hqai_ml.tournament.labels import recensor_at
+
+    started = time.time()
+    peak_before = _peak_rss_bytes()
+    hospitalization_only = candidate in {"xgboost_aft", "discrete_hospitalization_hazard"}
+    parameters = selection["parameters"]
+    calibration_raw, test_raw, model_info = fit_and_predict(
+        candidate,
+        parts["train"],
+        parts["calibration"],
+        parts["test"],
+        parameters,
+        config,
+        resources,
+        artifacts_dir,
+        round_cap,
+        validation=parts["validation"],
+    )
+    model_object = model_info.pop("model_object", None)
+    calibration_fn = calibrate_hospitalization if hospitalization_only else calibrate_journey
+    calibrated, calibration = calibration_fn(parts["calibration"], calibration_raw, test_raw)
+    metrics = journey_metrics(parts["test"], calibrated, hospitalization_only=hospitalization_only)
+    assurance = subgroup_assurance(
+        parts["test"],
+        calibrated,
+        baseline,
+        config.support_buckets,
+        hospitalization_only=hospitalization_only,
+    )
+
+    strict_parts = {
+        name: parts[name][parts[name]["journey_strict_timestamp_eligible"]].reset_index(drop=True)
+        for name in ("train", "validation", "calibration", "test")
+    }
+    strict_calibration_raw, strict_test_raw, _ = fit_and_predict(
+        candidate,
+        strict_parts["train"],
+        strict_parts["calibration"],
+        strict_parts["test"],
+        parameters,
+        config,
+        resources,
+        artifacts_dir,
+        round_cap,
+        validation=strict_parts["validation"],
+    )
+    strict_calibrated, strict_calibration = calibration_fn(
+        strict_parts["calibration"], strict_calibration_raw, strict_test_raw
+    )
+    strict_metrics = journey_metrics(strict_parts["test"], strict_calibrated, hospitalization_only=hospitalization_only)
+
+    historical_train = recensor_at(parts["train"], parts["test"]["registration_date"].min())
+    historical_validation = recensor_at(parts["validation"], parts["test"]["registration_date"].min())
+    historical_probabilities, _, _ = fit_and_predict(
+        candidate,
+        historical_train,
+        parts["test"],
+        None,
+        parameters,
+        config,
+        resources,
+        artifacts_dir,
+        round_cap,
+        validation=historical_validation,
+    )
+    historical_metrics = journey_metrics(
+        parts["test"], historical_probabilities, hospitalization_only=hospitalization_only
+    )
+    result = {
+        "candidate": candidate,
+        "fold": parts["fold_id"],
+        "source_trial": selection["trial_id"],
+        "frozen_parameters": parameters,
+        "parameter_source_checkpoint_ids": selection["validated_source_checkpoint_ids"],
+        "estimand": metrics["estimand"],
+        "principal_test_metrics": metrics,
+        "calibration": calibration,
+        "mean_target_calibration_error": _calibration_ece(
+            metrics, "hospitalized" if hospitalization_only else "unresolved"
+        ),
+        "subgroup_assurance": assurance,
+        "strict_timestamp_order_sensitivity": {
+            "cohort_rows": {name: len(part) for name, part in strict_parts.items()},
+            "calibration": strict_calibration,
+            "test_metrics": strict_metrics,
+        },
+        "deployment_realistic_sensitivity": {
+            "labels_available_through": str(parts["test"]["registration_date"].min()),
+            "training_rows_recensored": int(
+                (historical_train["journey_event"] != parts["train"]["journey_event"]).sum()
+            ),
+            "validation_rows_recensored": int(
+                (historical_validation["journey_event"] != parts["validation"]["journey_event"]).sum()
+            ),
+            "calibration": "not refit because late-fold labels lack full 30-day observability",
+            "test_metrics_uncalibrated": historical_metrics,
+        },
+        "model": model_info,
+        "runtime_seconds": time.time() - started,
+        "resources": {
+            "model_threads": resources.model_threads,
+            "execution": "sequential_finalists",
+            "process_peak_rss_bytes_before": peak_before,
+            "process_peak_rss_bytes_at_completion": _peak_rss_bytes(),
+        },
+    }
+    return result, model_object
+
+
+def _future_serving_contract() -> dict:
+    return {
+        "status": "draft_only_not_implemented",
+        "candidate_independent": True,
+        "backend_api_changed": False,
+        "fields": {
+            "hospitalization_probability_7d": "number[0,1]",
+            "hospitalization_probability_14d": "number[0,1]",
+            "hospitalization_probability_30d": "number[0,1]",
+            "refusal_probability_7d_14d_30d": "optional; only for a competing-risk estimand",
+            "unresolved_probability_7d_14d_30d": "number[0,1] per horizon",
+            "model_version": "string",
+            "calibration_version": "string",
+            "support_confidence_metadata": "object",
+            "prediction_timestamp": "RFC3339 timestamp",
+            "data_freshness_metadata": "object",
+        },
+        "prohibited": ["xgboost-specific fields", "lightgbm-specific fields"],
+    }
+
+
+def _compact_confirmation_result(result: dict) -> dict:
+    metrics = result["principal_test_metrics"]
+    return {
+        "candidate": result["candidate"],
+        "fold": result["fold"],
+        "source_trial": result["source_trial"],
+        "frozen_parameters": result["frozen_parameters"],
+        "parameter_source_checkpoint_ids": result["parameter_source_checkpoint_ids"],
+        "estimand": result["estimand"],
+        "principal": {
+            "primary_metric_name": metrics["primary_metric_name"],
+            "mean_matching_horizon_brier": metrics["primary_metric"],
+            "brier_by_horizon": {
+                horizon: {
+                    "hospitalized": row["brier_hospitalized"],
+                    "refused": row["brier_refused"],
+                    "multiclass": row["brier_multiclass"],
+                }
+                for horizon, row in metrics["by_horizon"].items()
+            },
+            "concordance": metrics["concordance"],
+            "mean_target_calibration_error": result["mean_target_calibration_error"],
+        },
+        "calibration": {
+            horizon: {
+                "selected": row["selected"],
+                "fit_rows": row.get("fit_rows"),
+                "selection_rows": row.get("selection_rows"),
+                "selection_brier": row.get("selection_brier"),
+                "parameter_kind": row["parameters"]["method"],
+                "parameter_count": (
+                    len(row["parameters"].get("x_thresholds", []))
+                    if row["parameters"]["method"] == "isotonic"
+                    else len(row["parameters"]) - 1
+                ),
+            }
+            for horizon, row in result["calibration"].items()
+        },
+        "regional_assurance": {
+            "supported_regions": len(result["subgroup_assurance"]["supported_regions"]),
+            "low_support_regions": len(result["subgroup_assurance"]["low_support_regions"]),
+            "median_supported_region_brier": result["subgroup_assurance"]["median_region_brier"],
+            "worst_supported_region_brier": result["subgroup_assurance"]["worst_region_brier"],
+            "regions_losing_baseline": result["subgroup_assurance"]["regions_losing_baseline"],
+        },
+        "major_profile_assurance": result["subgroup_assurance"]["major_profiles"],
+        "strict_timestamp_order_sensitivity": {
+            "cohort_rows": result["strict_timestamp_order_sensitivity"]["cohort_rows"],
+            "mean_matching_horizon_brier": result["strict_timestamp_order_sensitivity"]["test_metrics"][
+                "primary_metric"
+            ],
+            "concordance": result["strict_timestamp_order_sensitivity"]["test_metrics"]["concordance"],
+        },
+        "deployment_realistic_sensitivity": {
+            "labels_available_through": result["deployment_realistic_sensitivity"]["labels_available_through"],
+            "training_rows_recensored": result["deployment_realistic_sensitivity"]["training_rows_recensored"],
+            "validation_rows_recensored": result["deployment_realistic_sensitivity"]["validation_rows_recensored"],
+            "mean_matching_horizon_brier": result["deployment_realistic_sensitivity"]["test_metrics_uncalibrated"][
+                "primary_metric"
+            ],
+            "concordance": result["deployment_realistic_sensitivity"]["test_metrics_uncalibrated"]["concordance"],
+        },
+        "runtime_seconds": result["runtime_seconds"],
+        "resources": result["resources"],
+        "model": result["model"],
+        "detailed_calibration_and_assurance": "persisted in the checksummed checkpoint artifact",
+    }
+
+
+def _compact_refusal_result(result: dict) -> dict:
+    return {
+        key: result[key]
+        for key in (
+            "candidate",
+            "fold",
+            "frozen_classifier",
+            "estimand",
+            "test_metrics",
+            "selected_calibration",
+            "validation_brier",
+            "confirmation_validation_winner",
+            "legacy_note",
+            "runtime_seconds",
+            "resources",
+        )
+    } | {
+        "regional_assurance": {
+            "supported_regions": len(result["regional_assurance"]["regions"])
+            - len(result["regional_assurance"]["low_support_regions"]),
+            "low_support_regions": len(result["regional_assurance"]["low_support_regions"]),
+            "median_supported_region_brier": result["regional_assurance"]["median_supported_region_brier"],
+            "worst_supported_region_brier": result["regional_assurance"]["worst_supported_region_brier"],
+            "worst_region_degradation_vs_national": result["regional_assurance"][
+                "worst_region_degradation_vs_national"
+            ],
+        },
+        "detailed_regional_assurance": "persisted in the checksummed checkpoint artifact",
+    }
+
+
+def _confirmation_decision(results):
+    final = {row["candidate"]: row for row in results if row["fold"] == "q1_final"}
+    aft = final["xgboost_aft"]
+    hazard = final["discrete_hospitalization_hazard"]
+    comparisons = {
+        "principal_mean_brier": {
+            "aft": aft["principal_test_metrics"]["primary_metric"],
+            "hazard": hazard["principal_test_metrics"]["primary_metric"],
+            "lower_is_better": True,
+        },
+        "strict_mean_brier": {
+            "aft": aft["strict_timestamp_order_sensitivity"]["test_metrics"]["primary_metric"],
+            "hazard": hazard["strict_timestamp_order_sensitivity"]["test_metrics"]["primary_metric"],
+            "lower_is_better": True,
+        },
+        "deployment_realistic_mean_brier": {
+            "aft": aft["deployment_realistic_sensitivity"]["test_metrics_uncalibrated"]["primary_metric"],
+            "hazard": hazard["deployment_realistic_sensitivity"]["test_metrics_uncalibrated"]["primary_metric"],
+            "lower_is_better": True,
+        },
+        "concordance": {
+            "aft": aft["principal_test_metrics"]["concordance"],
+            "hazard": hazard["principal_test_metrics"]["concordance"],
+            "lower_is_better": False,
+        },
+        "mean_calibration_error": {
+            "aft": aft["mean_target_calibration_error"],
+            "hazard": hazard["mean_target_calibration_error"],
+            "lower_is_better": True,
+        },
+        "worst_supported_region_brier": {
+            "aft": aft["subgroup_assurance"]["worst_region_brier"],
+            "hazard": hazard["subgroup_assurance"]["worst_region_brier"],
+            "lower_is_better": True,
+        },
+        "runtime_seconds": {
+            "aft": aft["runtime_seconds"],
+            "hazard": hazard["runtime_seconds"],
+            "lower_is_better": True,
+        },
+    }
+    winners = {}
+    for dimension, row in comparisons.items():
+        if row["aft"] == row["hazard"]:
+            winners[dimension] = "tie"
+        elif row["lower_is_better"]:
+            winners[dimension] = "aft" if row["aft"] < row["hazard"] else "hazard"
+        else:
+            winners[dimension] = "aft" if row["aft"] > row["hazard"] else "hazard"
+    non_ties = {winner for winner in winners.values() if winner != "tie"}
+    if non_ties == {"aft"}:
+        recommendation = "recommend AFT for human promotion review"
+    elif non_ties == {"hazard"}:
+        recommendation = "recommend hazard for human promotion review"
+    else:
+        recommendation = "retain both pending product/serving tradeoff"
+    return {
+        "recommendation": recommendation,
+        "automatic_promotion": False,
+        "human_review_required": True,
+        "selection_rule": "recommend a single model only under cross-dimension dominance; no weighted score",
+        "dimension_comparison": comparisons,
+        "dimension_winners": winners,
+        "competing_risk_decision": "retain empirical baseline; ML competing-risk challenger not retrained",
+    }
+
+
+def run_final_confirmation(*, args, root, settings, config, resources, folds, data, audit, plan, source_evidence):
+    from hqai_ml.registry import store
+    from hqai_ml.registry.experiment import CheckpointKey, ExperimentRun
+    from hqai_ml.tournament.candidates import empirical_competing_probabilities
+    from hqai_ml.tournament.labels import split_by_period
+    from hqai_ml.tournament.refusal import refusal_benchmarks
+
+    confirmation_started = time.time()
+    run = None
+    checkpoint_keys = []
+    checkpoint_parameters = {}
+    reused = 0
+    results = []
+    refusal_result = None
+    current_manifest = settings.artifacts_dir / "models" / store.MANIFEST
+    manifest_sha_before = store.sha256_file(current_manifest) if current_manifest.exists() else None
+    try:
+        run = ExperimentRun.start(settings.artifacts_dir, plan, run_id=args.run_id, resume_run_id=args.resume)
+        run_id = run.manifest["run_id"]
+        evidence_path = settings.artifacts_dir / "tournaments" / run_id / "final-evidence.json"
+        prior_evidence = json.loads(evidence_path.read_text(encoding="utf-8")) if evidence_path.exists() else None
+        log(f"full-cohort confirmation run: {run_id}; eligible rows: {len(data):,}")
+        fold_parts = {}
+        for fold in folds:
+            parts = {
+                name: split_by_period(data, getattr(fold, name))
+                for name in ("train", "validation", "calibration", "test")
+            }
+            parts["fold_id"] = fold.id
+            fold_parts[fold.id] = parts
+            log(
+                f"fold {fold.id}: "
+                + ", ".join(f"{name}={len(parts[name]):,}" for name in ("train", "validation", "calibration", "test"))
+            )
+
+        baselines = {
+            fold.id: empirical_competing_probabilities(
+                fold_parts[fold.id]["train"],
+                fold_parts[fold.id]["test"],
+                config.horizons,
+                config.group_baseline.columns,
+                config.group_baseline.min_support,
+            )
+            for fold in folds
+        }
+        for candidate, selection in source_evidence["finalists"].items():
+            for fold in folds:
+                key = CheckpointKey(
+                    "patient_journey", f"{candidate}-final-confirmation", selection["trial_id"], fold.id
+                )
+                parameters = {
+                    "source_run": args.source_run,
+                    "source_trial": selection["trial_id"],
+                    "frozen_parameters": selection["parameters"],
+                }
+                checkpoint_keys.append(key)
+                checkpoint_parameters[key.identifier] = parameters
+                existing = run.reusable_checkpoint(key, parameters=parameters)
+                if existing:
+                    reused += 1
+                    results.append(load_result_artifact(settings.artifacts_dir, existing))
+                    continue
+                run.start_checkpoint(key, parameters=parameters)
+                try:
+                    result, model = _evaluate_frozen_candidate(
+                        candidate,
+                        fold_parts[fold.id],
+                        baselines[fold.id],
+                        selection,
+                        config,
+                        resources,
+                        settings.artifacts_dir,
+                        config.profiles["overnight"].round_cap,
+                    )
+                    artifact_path, artifact_sha = write_result_artifact(
+                        settings.artifacts_dir, run_id, key, result, model
+                    )
+                    run.complete_checkpoint(
+                        key,
+                        parameters=parameters,
+                        metrics={
+                            "test_primary_metric": result["principal_test_metrics"]["primary_metric"],
+                            "primary_metric_name": result["principal_test_metrics"]["primary_metric_name"],
+                            "estimand": result["estimand"],
+                        },
+                        artifact_path=artifact_path,
+                        artifact_sha256=artifact_sha,
+                        version=f"{candidate}-{fold.id}-full-confirmation",
+                        evaluation_status="completed",
+                    )
+                    results.append(result)
+                    log(f"confirmed {candidate}/{fold.id}: {result['principal_test_metrics']['primary_metric']:.6f}")
+                except KeyboardInterrupt:
+                    run.interrupt_checkpoint(key)
+                    raise
+                except BaseException as exc:
+                    run.fail_checkpoint(key, exc, root)
+                    raise
+
+        final_fold = folds[-1]
+        refusal_key = CheckpointKey(
+            "patient_journey",
+            "refusal-final-confirmation",
+            source_evidence["refusal_classifier"],
+            final_fold.id,
+        )
+        refusal_parameters = {
+            "source_run": args.source_run,
+            "frozen_classifier": source_evidence["refusal_classifier"],
+            "policy": config.refusal_benchmarks,
+        }
+        checkpoint_keys.append(refusal_key)
+        checkpoint_parameters[refusal_key.identifier] = refusal_parameters
+        existing = run.reusable_checkpoint(refusal_key, parameters=refusal_parameters)
+        if existing:
+            reused += 1
+            refusal_result = load_result_artifact(settings.artifacts_dir, existing)
+        else:
+            run.start_checkpoint(refusal_key, parameters=refusal_parameters)
+            try:
+                started = time.time()
+                parts = fold_parts[final_fold.id]
+                _, legacy_reason = legacy_fold_eligibility(
+                    "legacy_refusal_risk", final_fold, config.legacy_artifacts_trained_through
+                )
+                benchmark = refusal_benchmarks(
+                    *[parts[name] for name in ("train", "validation", "calibration", "test")],
+                    settings.artifacts_dir,
+                    config.refusal_benchmarks,
+                    resources.model_threads,
+                    config.support_buckets[0],
+                    legacy_eligible=False,
+                    legacy_ineligibility_reason=legacy_reason,
+                    forced_selected_classifier=source_evidence["refusal_classifier"],
+                )
+                selected_calibration = benchmark["selected_calibration"]["method"]
+                refusal_result = {
+                    "candidate": "refusal_classifier",
+                    "fold": final_fold.id,
+                    "frozen_classifier": source_evidence["refusal_classifier"],
+                    "estimand": benchmark["estimand"],
+                    "test_metrics": benchmark["calibration"][selected_calibration],
+                    "selected_calibration": benchmark["selected_calibration"],
+                    "regional_assurance": benchmark["regional_assurance"],
+                    "validation_brier": benchmark["validation_brier"],
+                    "confirmation_validation_winner": benchmark["confirmation_validation_winner"],
+                    "legacy_note": benchmark["legacy_note"],
+                    "runtime_seconds": time.time() - started,
+                    "resources": {
+                        "model_threads": resources.model_threads,
+                        "execution": "sequential_finalists",
+                        "process_peak_rss_bytes_at_completion": _peak_rss_bytes(),
+                    },
+                }
+                artifact_path, artifact_sha = write_result_artifact(
+                    settings.artifacts_dir, run_id, refusal_key, refusal_result, None
+                )
+                run.complete_checkpoint(
+                    refusal_key,
+                    parameters=refusal_parameters,
+                    metrics={"test_metrics": refusal_result["test_metrics"], "estimand": refusal_result["estimand"]},
+                    artifact_path=artifact_path,
+                    artifact_sha256=artifact_sha,
+                    version=f"refusal-{final_fold.id}-full-confirmation",
+                    evaluation_status="completed",
+                )
+            except KeyboardInterrupt:
+                run.interrupt_checkpoint(refusal_key)
+                raise
+            except BaseException as exc:
+                run.fail_checkpoint(refusal_key, exc, root)
+                raise
+
+        decision = _confirmation_decision(results)
+        manifest_sha_after = store.sha256_file(current_manifest) if current_manifest.exists() else None
+        initial_wall_runtime = (
+            prior_evidence["initial_wall_runtime_seconds"]
+            if prior_evidence is not None
+            else time.time() - confirmation_started
+        )
+        cohort_audit_path = settings.artifacts_dir / "tournaments" / run_id / "cohort-audit.json"
+        store.atomic_write_text(cohort_audit_path, store.canonical_json(audit))
+        evidence = {
+            "schema_version": 1,
+            "mode": "full_cohort_final_confirmation",
+            "run_id": run_id,
+            "source_tournament": {
+                key: value for key, value in source_evidence.items() if key not in {"source_summary_path"}
+            },
+            "full_cohort_rows": len(data),
+            "event_audit": {key: value for key, value in audit.items() if key != "cohort_by_dimension"},
+            "cohort_dimension_audit": cohort_audit_path.relative_to(settings.artifacts_dir).as_posix(),
+            "fold_rows": {
+                fold.id: {
+                    name: len(fold_parts[fold.id][name]) for name in ("train", "validation", "calibration", "test")
+                }
+                for fold in folds
+            },
+            "results": [_compact_confirmation_result(result) for result in results],
+            "refusal_result": _compact_refusal_result(refusal_result),
+            "negative_control": {
+                "discrete_competing_risk": "not retrained; source tournament showed it underperformed empirical"
+            },
+            "decision": decision,
+            "serving_contract_draft": _future_serving_contract(),
+            "resources": {
+                **plan["execution"]["resources"],
+                "execution": "sequential_finalists",
+                "observed_process_peak_rss_bytes": _peak_rss_bytes(),
+            },
+            "initial_wall_runtime_seconds": initial_wall_runtime,
+            "summed_checkpoint_runtime_seconds": sum(row["runtime_seconds"] for row in results)
+            + refusal_result["runtime_seconds"],
+            "reused_checkpoints": reused,
+            "automatic_promotion": False,
+            "human_review_required": True,
+            "current_manifest_sha256_before": manifest_sha_before,
+            "current_manifest_sha256_after": manifest_sha_after,
+            "current_manifest_changed": manifest_sha_before != manifest_sha_after,
+        }
+        store.atomic_write_text(evidence_path, store.canonical_json(evidence))
+        store.atomic_write_text(
+            settings.artifacts_dir / "tournaments" / run_id / "champion-decision.json",
+            store.canonical_json(decision),
+        )
+        if run.manifest["status"] != "completed":
+            run.complete(checkpoint_keys, parameters_by_key=checkpoint_parameters)
+        log(f"final evidence: {evidence_path.relative_to(root)}; reused checkpoints: {reused}")
+        print(f"CONFIRMATION_RUN_ID={run_id}")
         return 0
     except KeyboardInterrupt:
         if run is not None:

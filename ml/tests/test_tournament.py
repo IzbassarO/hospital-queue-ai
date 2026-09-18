@@ -36,7 +36,13 @@ from hqai_ml.tournament.labels import (
     construct_journey_labels,
     recensor_at,
 )
-from pipelines.tournament import legacy_fold_eligibility, select_cross_fold_trial
+from pipelines.tournament import (
+    _confirmation_decision,
+    _future_serving_contract,
+    legacy_fold_eligibility,
+    load_confirmation_evidence,
+    select_cross_fold_trial,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATH = ROOT / "ml" / "configs" / "tournament.yaml"
@@ -314,6 +320,100 @@ def test_cross_fold_selection_and_legacy_contamination_policy():
             "legacy_wait_regression", fold, config.legacy_artifacts_trained_through
         )
         assert not eligible and "in-sample metrics are excluded" in reason
+
+
+def test_confirmation_loads_frozen_parameters_from_persisted_evidence(tmp_path: Path):
+    config = load_tournament_config(CONFIG_PATH)
+    run_id = "source-overnight"
+    run_dir = tmp_path / "runs" / run_id
+    checkpoint_dir = run_dir / "checkpoints"
+    checkpoint_dir.mkdir(parents=True)
+    (run_dir / "run.json").write_text(
+        json.dumps(
+            {
+                "run_id": run_id,
+                "status": "completed",
+                "scientific_identity_sha256": "source-science",
+            }
+        )
+    )
+    selections = {
+        "empirical_competing_risk": ("trial-000", {}),
+        "xgboost_aft": ("trial-008", {"max_depth": 6, "rounds": 300}),
+        "discrete_hospitalization_hazard": ("trial-030", {"num_leaves": 48, "rounds": 271}),
+    }
+    results = []
+    for candidate, (trial_id, parameters) in selections.items():
+        for fold in ("q1_fold_1", "q1_final"):
+            results.append(
+                {
+                    "candidate": candidate,
+                    "fold": fold,
+                    "best_trial": trial_id,
+                    "best_parameters": parameters,
+                }
+            )
+            (checkpoint_dir / f"{candidate}-{fold}.json").write_text(
+                json.dumps(
+                    {
+                        "key": {"candidate_id": candidate, "trial_id": "selected", "fold_id": fold},
+                        "key_id": f"{candidate}-{fold}",
+                        "status": "completed",
+                        "parameters": parameters,
+                    }
+                )
+            )
+    tournament_dir = tmp_path / "tournaments" / run_id
+    tournament_dir.mkdir(parents=True)
+    (tournament_dir / "tournament-summary.json").write_text(
+        json.dumps(
+            {
+                "run_id": run_id,
+                "profile": "overnight",
+                "config_identity": config.identity_sha256,
+                "sampled_rows": 200_000,
+                "results": results,
+                "refusal_benchmarks": {"strongest_selected_on_validation": "fold_lightgbm"},
+            }
+        )
+    )
+    evidence = load_confirmation_evidence(tmp_path, run_id, config)
+    assert evidence["finalists"]["xgboost_aft"]["trial_id"] == "trial-008"
+    assert evidence["finalists"]["xgboost_aft"]["parameters"] == {"max_depth": 6, "rounds": 300}
+    assert evidence["refusal_classifier"] == "fold_lightgbm"
+
+
+def test_confirmation_decision_retains_split_finalists_without_weighted_score():
+    def result(candidate, principal, strict, deployment, concordance, calibration, regional, runtime):
+        return {
+            "candidate": candidate,
+            "fold": "q1_final",
+            "principal_test_metrics": {"primary_metric": principal, "concordance": concordance},
+            "strict_timestamp_order_sensitivity": {"test_metrics": {"primary_metric": strict}},
+            "deployment_realistic_sensitivity": {"test_metrics_uncalibrated": {"primary_metric": deployment}},
+            "mean_target_calibration_error": calibration,
+            "subgroup_assurance": {"worst_region_brier": regional},
+            "runtime_seconds": runtime,
+        }
+
+    decision = _confirmation_decision(
+        [
+            result("xgboost_aft", 0.11, 0.12, 0.10, 0.85, 0.03, 0.15, 10),
+            result("discrete_hospitalization_hazard", 0.10, 0.11, 0.13, 0.80, 0.02, 0.14, 8),
+        ]
+    )
+    assert decision["recommendation"] == "retain both pending product/serving tradeoff"
+    assert decision["automatic_promotion"] is False
+    assert "no weighted score" in decision["selection_rule"]
+
+
+def test_future_serving_contract_is_candidate_independent_and_draft_only():
+    contract = _future_serving_contract()
+    assert contract["status"] == "draft_only_not_implemented"
+    assert contract["candidate_independent"] is True
+    assert contract["backend_api_changed"] is False
+    assert "hospitalization_probability_7d" in contract["fields"]
+    assert "model_version" in contract["fields"]
 
 
 def run_plan(config_identity: str) -> dict:
