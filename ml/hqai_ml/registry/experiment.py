@@ -27,7 +27,7 @@ RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 KEY_PART = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 SENSITIVE_KEY = re.compile(r"(?:password|passwd|secret|token|api[_-]?key|credential)", re.I)
 WINDOWS_PATH = re.compile(r"^[A-Za-z]:[\\/]")
-SCIENTIFIC_LIBRARIES = ("python", "lightgbm", "numpy", "pandas", "scikit-learn", "duckdb", "shap")
+SCIENTIFIC_LIBRARIES = ("python", "lightgbm", "xgboost", "numpy", "pandas", "scikit-learn", "duckdb", "shap")
 EXECUTION_HYPERPARAMETERS = {"num_threads", "num_thread", "n_jobs"}
 MUTABLE_RUN_FIELDS = {
     "artifacts",
@@ -221,10 +221,13 @@ def build_plan(
     temporal_protocols: dict,
     hyperparameters: dict,
     versions: dict[str, str] | None = None,
+    configuration_paths: list[Path] | None = None,
 ) -> dict:
     dataset = dataset_identity(processed_dir, root)
     configuration = yaml_identity(
-        [configs_dir / "models.yaml", configs_dir / "ingest.yaml", configs_dir / "explain_templates.yaml"], root
+        configuration_paths
+        or [configs_dir / "models.yaml", configs_dir / "ingest.yaml", configs_dir / "explain_templates.yaml"],
+        root,
     )
     code = code_identity(root)
     normalized_hyperparameters = scientific_hyperparameters(hyperparameters)
@@ -744,11 +747,17 @@ class ExperimentRun:
             counts[status] = counts.get(status, 0) + 1
         self._update(checkpoint_summary={"total": sum(counts.values()), "by_status": counts})
 
-    def complete(self, required: list[CheckpointKey] | None = None) -> None:
+    def complete(
+        self,
+        required: list[CheckpointKey] | None = None,
+        *,
+        parameters_by_key: dict[str, dict] | None = None,
+    ) -> None:
         required = required or [CheckpointKey.model(name) for name in self.manifest["models"]]
+        parameters_by_key = parameters_by_key or {}
         incomplete = []
         for key in required:
-            checkpoint = self.reusable_checkpoint(key)
+            checkpoint = self.reusable_checkpoint(key, parameters=parameters_by_key.get(key.identifier))
             if checkpoint is None or checkpoint["evaluation"]["status"] != "completed":
                 incomplete.append(key.to_dict())
         if incomplete:

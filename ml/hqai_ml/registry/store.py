@@ -17,6 +17,10 @@ MANIFEST = "manifest.json"
 ARTIFACT_MANIFEST = "artifact-manifest.json"
 CARDS_CONFIG = "model_cards.yaml"
 MODEL_CONTRACTS = {
+    "patient_journey": {
+        "family": "survival_and_competing_risk_tournament",
+        "prediction_targets": ["hospitalized_by_horizon", "refused_by_horizon", "unresolved_at_horizon"],
+    },
     "wait_time": {
         "family": "gradient_boosted_regression",
         "prediction_targets": ["wait_days"],

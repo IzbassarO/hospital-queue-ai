@@ -1,0 +1,75 @@
+schema_version: 1
+seed: 42
+legacy_artifacts_trained_through: 2025-02-28
+label_contract:
+  start: registration_dt
+  cutoff: 2026-05-13T00:00:00
+  same_day_min_duration_days: 0.5
+  refusal_is_terminal: true
+  refusal_basis: "dataset-1 refusal_dt is documented as the referral queue-resolution timestamp"
+  exclude_event_conflicts: true
+  exclude_events_before_registration: true
+horizons: [7, 14, 30]
+time_bins: [0, 1, 3, 7, 14, 30, 60, 120, 240, 500]
+group_baseline:
+  columns: [org_code, profile_code]
+  min_support: 50
+folds:
+  - id: q1_fold_1
+    train: [2025-01-01, 2025-01-31]
+    validation: [2025-02-01, 2025-02-07]
+    calibration: [2025-02-08, 2025-02-14]
+    test: [2025-02-15, 2025-02-28]
+  - id: q1_final
+    train: [2025-01-01, 2025-02-14]
+    validation: [2025-02-15, 2025-02-21]
+    calibration: [2025-02-22, 2025-02-28]
+    test: [2025-03-01, 2025-03-31]
+candidates:
+  empirical_competing_risk: {enabled: true, hpo: false}
+  legacy_wait_regression: {enabled: true, hpo: false}
+  xgboost_aft: {enabled: true, hpo: true}
+  discrete_hospitalization_hazard: {enabled: true, hpo: true}
+  discrete_competing_risk: {enabled: true, hpo: true}
+search_spaces:
+  xgboost_aft:
+    fixed: {}
+    dimensions:
+      max_depth: {type: int, low: 2, high: 6}
+      learning_rate: {type: log_float, low: 0.02, high: 0.15}
+      min_child_weight: {type: log_float, low: 5, high: 100}
+      aft_loss_distribution: {type: categorical, choices: [normal, logistic, extreme]}
+      aft_loss_distribution_scale: {type: log_float, low: 0.5, high: 2.0}
+      rounds: {type: int, low: 80, high: 300}
+  discrete_hospitalization_hazard:
+    fixed: {}
+    dimensions:
+      num_leaves: {type: int, low: 15, high: 127}
+      learning_rate: {type: log_float, low: 0.015, high: 0.12}
+      min_data_in_leaf: {type: int, low: 30, high: 300}
+      rounds: {type: int, low: 80, high: 300}
+  discrete_competing_risk:
+    fixed: {}
+    dimensions:
+      num_leaves: {type: int, low: 15, high: 127}
+      learning_rate: {type: log_float, low: 0.015, high: 0.12}
+      min_data_in_leaf: {type: int, low: 30, high: 300}
+      rounds: {type: int, low: 80, high: 300}
+metrics:
+  principal: [mean_brier_at_7_14_30d, brier_7d, brier_14d, brier_30d]
+  secondary: [concordance, calibration, regional_stability, runtime_seconds]
+support_buckets: [100, 500]
+refusal_benchmarks:
+  logistic_c: 0.1
+  lightgbm: {num_leaves: 31, learning_rate: 0.05, min_data_in_leaf: 50, rounds: 120}
+profiles:
+  smoke: {sample_rows: 4000, max_trials: 1, folds: [q1_final], round_cap: 30}
+  laptop: {sample_rows: 80000, max_trials: 8, folds: [q1_fold_1, q1_final], round_cap: 180}
+  overnight: {sample_rows: 200000, max_trials: 32, folds: [q1_fold_1, q1_final], round_cap: 300}
+promotion_constraints:
+  automatic_promotion: false
+  require_complete_lineage: true
+  require_probability_coherence: true
+  require_calibration_artifacts: true
+  require_regional_comparison: true
+  outcome_if_not_clearly_superior: no_promotion

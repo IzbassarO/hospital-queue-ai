@@ -12,11 +12,13 @@ ml/
     evaluation/   temporal split, metrics, backtest, report
     explain/      SHAP explanations with Russian templates
     registry/     run manifests, checkpoints and checksummed versioned artifacts
+    tournament/   censored journey labels, survival/competing-risk candidates and assurance metrics
     serving/      serving marts for the API (SQL run inside Postgres; docs/api.md)
   pipelines/
     ingest.py     make ingest
     baseline.py   make baseline → reports/01_baseline.md
     train.py      make train    → artifacts/models/, reports/02_models.md  (--model to run one)
+    tournament.py make tournament → ignored candidate/checkpoint/decision artifacts; never promotes
     predict.py    make predict  → pred_referral, pred_daily_forecast, model_registry (then build_marts.py)
     build_marts.py make marts   → mart_hospital_profile_status, mart_region_profile_status, mart_area_status
   configs/
@@ -25,10 +27,67 @@ ml/
     regions.yaml  region code dictionary — generated, reviewed by hand
     org_matches.yaml       manual hospital ↔ ERSB match overrides
     models.yaml            split, LightGBM defaults, forecast settings, holidays
+    tournament.yaml        reviewed journey candidates, folds, search spaces, horizons and eligibility policy
     explain_templates.yaml Russian sentence templates for explanations
 ```
 
 Pipelines are run with `PYTHONPATH=ml` (the Makefile sets it).
+
+## Patient-journey tournament
+
+`make tournament` models the distribution of time from referral registration to a terminal queue outcome instead
+of treating observed hospitalizations as the complete population. Dataset-1 `hospitalization_dt` and `refusal_dt`
+are the only terminal events: its documented `resolution_date` removes the referral from the queue. The source has
+no separate status dictionary or refusal-reason field, and dataset 3 cannot be linked as a referral outcome, so no
+other events are invented.
+
+The retrospective label cutoff is fixed at `2026-05-13T00:00:00`, after the last recorded event on 12 May and before
+the common source-load timestamp later on 13 May. Thus Q1 2025 registrations have outcome follow-up through 13 May
+2026; open referrals are right-censored there. The principal cohort excludes 45 terminal events on a genuinely
+earlier calendar date plus the one row carrying both terminal timestamps. It retains 104,598 same-calendar-date
+events whose source time precedes registration time and assigns them modelling duration 0.5 days. A separately
+reported strict timestamp-order sensitivity cohort excludes those records (662,486 eligible versus 767,084 in the
+principal cohort). Hospital/profile/purpose exclusion shares are persisted. Repeated referral codes remain separate,
+flagged observations.
+
+The reviewed candidates in `configs/tournament.yaml` are a sort/cumulative-count Aalen–Johansen empirical baseline
+with hospital/profile fallback, the unchanged legacy wait regression, XGBoost AFT with genuine infinite upper
+bounds for censored rows, a LightGBM discrete hospitalization hazard, and a coherent multinomial discrete competing
+risk model. The interval grid has nine bounded rows per referral and exact 7/14/30-day edges. XGBoost is the only new
+dependency; it supplies the required native AFT likelihood and predicts only through its early-stopped best tree.
+Native categorical features are used by XGBoost/LightGBM; the logistic refusal probe uses train-only frequency
+encoding. Bounded scrambled-Sobol trials reuse the existing trial/fold checkpoints, so a second HPO framework is
+unnecessary.
+
+Splits are chronological and disjoint: training, HPO validation, calibration, then test. Calibrator fitting and
+method selection use earlier/later halves of the calibration period; test labels are not accepted by the HPO API.
+Each trial is scored on every compatible fold and one parameter set is selected by mean fold-validation objective.
+Hospitalization candidates minimize mean Brier@7/14/30; competing-risk candidates minimize mean three-state
+Brier@7/14/30. No probability is reused at an un-emitted time. Naive Brier/concordance evaluation fails if an
+administrative censor enters the evaluated horizon. Outputs include horizon Brier scores, machine-readable
+reproducible sigmoid coefficients/isotonic breakpoints,
+cause-specific incidence, exact coherence checks, and region/profile/support assurance. Refusal benchmarks include
+prevalence, regularized logistic, a fold-trained LightGBM selected only on validation, its uncalibrated/Platt/isotonic
+versions. Legacy wait/refusal artifacts trained through 28 February 2025 are excluded whenever validation,
+calibration or test overlaps that window. A deployment-realistic sensitivity refits with labels available only at
+each test start and reports uncalibrated test metrics separately.
+
+```bash
+make tournament PROFILE=smoke
+make tournament PROFILE=laptop
+make tournament PROFILE=overnight
+make tournament PROFILE=smoke ARGS="--resume <run-id>"
+```
+
+Smoke uses 4,000 rows, one fold/trial, one CPU slot and 512 MiB DuckDB memory. Laptop uses at most 80,000 rows, two
+folds and eight trials per tree candidate. Overnight is bounded at 200,000 rows, two folds and 32 trials per tree
+candidate, with nine CPU slots total and 4 GiB aggregate memory on the 16 GiB reference host. These are portable
+detected resource limits, not hardware-specific logic.
+
+Candidate files, calibration data, summaries and `champion-decision.json` live under ignored
+`artifacts/tournaments/<run-id>/`. Tree gain is reported only as an operational association with higher/lower
+near-term event probability, never a causal effect. Completion never calls `set_current`; the decision artifact
+defaults to `no_promotion` unless a human review later finds a challenger clearly superior.
 
 ## Reproducible training runs
 

@@ -10,6 +10,7 @@ by `make train` (the report is not committed; the numbers below come from the ve
 | A wait time | How many days will this referral wait for admission? | days | `ml/hqai_ml/models/wait_time.py` |
 | B refusal risk | How likely is this referral to end in a refusal? | probability | `ml/hqai_ml/models/refusal_risk.py` |
 | C load forecast | How many registrations and hospitalizations per hospital × profile / region × profile in the next 14 days? | daily counts + derived queue | `ml/hqai_ml/models/load_forecast.py` |
+| D patient journey tournament | What is the probability of hospitalization, refusal, or remaining unresolved by 7/14/30 days? | calibrated probability distribution | `ml/hqai_ml/tournament/`, `ml/pipelines/tournament.py` |
 
 ## 1. Purpose and intended use
 
@@ -47,6 +48,41 @@ by `make train` (the report is not committed; the numbers below come from the ve
   - C: seasonal naive (most recent same weekday), 28-day and 7-day trailing means.
 - Metrics are broken down by patient region and top-10 profiles (A, B), by series level, horizon
   bucket, region and top-20 hospitals (C).
+
+### Patient-journey tournament protocol
+
+Censoring matters because the 3,962 referrals with no observed terminal event cannot be relabelled as completed
+waits. The retrospective fixed cutoff is 2026-05-13 00:00, so Q1 referrals use outcome follow-up through that date.
+Dataset-1 refusal is accepted as a competing terminal event because the
+data contract defines it as the referral's queue-resolution date; dataset-3 admission-unit refusals are not linked
+to referrals and are never used as journey outcomes. The principal audit excludes 45 genuinely earlier-calendar-date
+events and one dual-event conflict. It includes 104,598 same-date source timestamp reversals at a positive 0.5-day
+modelling duration; a strict timestamp-order sensitivity excludes them and retains 662,486 of the 767,130 inputs.
+Both cohort definitions and exclusion shares by hospital, profile and purpose are persisted.
+
+Two rolling Q1 folds separate train, HPO validation, calibration and final test. The final March slice is never used
+for trial selection, feature selection or calibrator fitting. Candidate policy, horizons, interval bins, search
+spaces and resource caps are committed in `ml/configs/tournament.yaml`. One parameter set per candidate is selected
+by aggregate validation performance across compatible folds. Principal objectives are the arithmetic mean of exact
+Brier@7/14/30 values: hospitalization Brier for hospitalization estimands and three-state Brier for competing-risk
+estimands. There is no interpolated integrated score. Naive horizon metrics fail when censoring enters a scored
+horizon. Calibration parameters, cause-specific incidence, probability coherence, supported-region degradation,
+low-support groups and runtime are persisted.
+
+The tournament compares a cumulative-count Aalen–Johansen baseline, legacy exact-wait LightGBM only on genuinely
+out-of-sample folds, XGBoost AFT, discrete hospitalization hazard, and discrete competing risk. Legacy wait/refusal
+artifacts were trained through 2025-02-28 and are excluded when validation, calibration or test overlaps that window.
+XGBoost prediction is capped at the early-stopped best iteration; tree models use native categoricals and the linear
+probe uses train-only frequency encoding. Refusal
+benchmarks include prevalence, regularized logistic, fold-trained LightGBM, and temporal sigmoid/isotonic calibration.
+Sigmoid coefficients and isotonic breakpoints are stored. Gain importance for new tree models is an association with
+near-term probability, not an explanation of cause. A separate sensitivity refits using only outcomes available at
+the historical test start and evaluates those uncalibrated predictions on the eventual test outcomes.
+
+This implementation produces a human-review decision artifact and never promotes a candidate. A challenger must
+have valid lineage/artifacts, coherent probabilities, calibration evidence and regional assurance, and must be
+competitive with its baseline. No arbitrary automatic score threshold is encoded; ambiguous evidence means
+`no_promotion`.
 
 ## 4. Features and leakage review
 
@@ -171,6 +207,7 @@ make up && make ingest     # data layer
 make train ARGS="--plan"   # inspect identities, resources and checkpoint reuse without training
 make train                 # evaluated candidates only; current serving set is unchanged
 make train ARGS="--resume <run-id> --resource-profile overnight --promote"
+make tournament PROFILE=smoke # censored journey smoke run; never promotes
 make predict               # -> pred_referral, pred_daily_forecast, model_registry
 ```
 
@@ -187,3 +224,6 @@ limits and platform are execution metadata, allowing compatible laptop-to-overni
 before loading or publishing a model. PostgreSQL includes nullable run/data/config/code/evaluation lineage and the
 verified artifact SHA256; historical rows keep unavailable lineage `NULL`. This provides attributable experiment reruns; it is not a claim of
 bit-for-bit numerical equality across operating systems or architectures.
+
+Patient-journey outputs are additional ignored experiment artifacts under `artifacts/tournaments/<run-id>/`; they do
+not alter the current model manifest, PostgreSQL serving registry, prediction schema, backend API or frontend.

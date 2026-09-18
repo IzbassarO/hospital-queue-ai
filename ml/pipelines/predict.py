@@ -136,7 +136,7 @@ def write_registry(cur: psycopg.Cursor, rows: list[dict]) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--registry-only", action="store_true", help="only refresh model_registry (no predictions)")
-    ap.add_argument("--resource-profile", choices=("laptop", "overnight"), default="laptop")
+    ap.add_argument("--resource-profile", choices=("smoke", "laptop", "overnight"), default="laptop")
     ap.add_argument("--model-threads", type=int, help="override model/DuckDB thread limit")
     ap.add_argument("--duckdb-memory-mb", type=int, help="override DuckDB memory within profile budget")
     args = ap.parse_args()

@@ -74,7 +74,7 @@ The implemented offline flow is:
 
 ```text
 raw files -> validate/normalize -> Parquet + PostgreSQL facts/aggregates
-          -> features -> train -> temporal evaluation/backtest
+          -> features -> train/tournament -> temporal evaluation/calibration/backtest
           -> disk artifacts/current-version manifest -> batch predict
           -> PostgreSQL predictions/model_registry -> PostgreSQL serving marts
 ```
@@ -86,6 +86,15 @@ The current registry is a checksummed filesystem artifact/run layout plus the Po
 Verified artifact SHA256 and nullable run/data/config/code/evaluation lineage are mirrored into dedicated
 PostgreSQL columns; unavailable historical provenance remains `NULL`. There is no general registry interface or
 production drift/outcome monitor yet.
+
+The patient-journey tournament is an offline experiment branch over the same Parquet feature boundary. It constructs
+fixed-cutoff right-censored labels, evaluates empirical, AFT and discrete hazard/competing-risk candidates, and writes
+checksummed ignored artifacts plus a human-review decision. It does not publish current pointers, write serving
+predictions, change PostgreSQL or introduce an API/runtime dependency. Candidate/trial/fold and calibration state is
+written only by the coordinator through the existing fenced checkpoint contract. Hyperparameters are selected once
+per candidate from aggregate validation performance across compatible temporal folds; legacy artifacts are never
+scored where their training window overlaps validation, calibration or test. The principal cohort treats source
+time-order reversals on the same calendar date as 0.5-day events and reports a strict timestamp-order sensitivity.
 
 The backend package has no ML dependency and does not import `hqai_ml`. The ML package does not
 import backend application code. Shared PostgreSQL tables are the implemented integration boundary.

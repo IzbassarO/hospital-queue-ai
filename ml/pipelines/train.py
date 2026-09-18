@@ -75,7 +75,7 @@ def main() -> int:
     ap.add_argument("--model", choices=["all", *MODEL_NAMES], default="all")
     ap.add_argument("--run-id", help="explicit new run identifier (otherwise timestamp + identity hash)")
     ap.add_argument("--resume", metavar="RUN_ID", help="resume a compatible interrupted run")
-    ap.add_argument("--resource-profile", choices=("laptop", "overnight"), default="laptop")
+    ap.add_argument("--resource-profile", choices=("smoke", "laptop", "overnight"), default="laptop")
     ap.add_argument("--model-threads", type=int, help="override model/BLAS thread limit")
     ap.add_argument("--parallel-trials", type=int, help="override bounded future tournament concurrency")
     ap.add_argument("--process-concurrency", type=int, help="override bounded worker-process concurrency")

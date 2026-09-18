@@ -41,7 +41,9 @@ def resource_config(
     cpus = cpu_count if cpu_count is not None else os.cpu_count() or 1
     if cpus < 1:
         raise ValueError("detected CPU count must be positive")
-    if profile_name == "laptop":
+    if profile_name == "smoke":
+        budget, desired_threads, default_trials, default_processes = 1, 1, 1, 1
+    elif profile_name == "laptop":
         budget, desired_threads, default_trials, default_processes = max(1, cpus // 2), 4, 1, 1
     elif profile_name == "overnight":
         budget = max(1, cpus - 1)
@@ -70,7 +72,9 @@ def resource_config(
     detected_memory = memory_bytes if memory_bytes is not None else _physical_memory_bytes()
     if detected_memory < MIB:
         raise ValueError("detected memory must be at least 1 MiB")
-    if profile_name == "laptop":
+    if profile_name == "smoke":
+        memory_budget = min(detected_memory // 8, 512 * MIB)
+    elif profile_name == "laptop":
         memory_budget = min(detected_memory // 4, 2 * GIB)
     else:
         memory_budget = min(detected_memory // 2, 4 * GIB)
