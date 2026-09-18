@@ -1,0 +1,38 @@
+schema_version: 1
+seed: 42
+horizon: 14
+
+# Origins are last-observed-day dates. Validation targets end on 2025-03-16;
+# the untouched final test predicts 2025-03-18 through 2025-03-31.
+validation_origins:
+  - 2025-02-16
+  - 2025-02-23
+  - 2025-03-02
+final_test_origin: 2025-03-17
+
+# Report-only diagnostic. Predictions are never clipped to this threshold.
+extrapolation_report_ratio_threshold: 5.0
+extrapolation_examples: 10
+
+baselines:
+  trailing_mean_days: 7
+  trailing_median_days: 28
+  recent_seasonal_periods: 4
+
+support:
+  min_history_days: 28
+  hospital_min_mean_registrations: 1.0
+  # Preserve current Model C semantics: all region parents are directly modelled.
+  region_parents_direct: true
+  # National forecasts are exact sums of the region forecasts, not a new model population.
+  national_from_region_aggregation: true
+  sparse_zero_rate: 0.50
+  zero_heavy_zero_rate: 0.80
+
+# This is the already-defined Model C challenger: fixed Poisson LightGBM and
+# the feature contract in hqai_ml.features.load. There is no tuning in this task.
+challenger:
+  id: current_poisson_lightgbm
+  source_config: ml/configs/models.yaml
+
+automatic_promotion: false

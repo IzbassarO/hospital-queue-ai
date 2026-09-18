@@ -33,6 +33,19 @@ ml/
 
 Pipelines are run with `PYTHONPATH=ml` (the Makefile sets it).
 
+## Flow-forecast evidence
+
+The non-promoting 1..14-day flow-forecast evidence workflow is:
+
+```bash
+make flow-evidence PROFILE=laptop
+make flow-evidence PROFILE=laptop ARGS="--resume <run-id>"
+```
+
+It writes checksummed rolling-origin/final-test evidence under `artifacts/flow_forecast/` and never
+changes the current model registry. See `docs/flow-forecast-evidence.md` for target and fallback
+semantics.
+
 ## Patient-journey tournament
 
 `make tournament` models the distribution of time from referral registration to a terminal queue outcome instead

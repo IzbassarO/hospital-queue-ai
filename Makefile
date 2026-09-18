@@ -5,7 +5,7 @@ PY           ?= $(CURDIR)/.venv/bin/python
 ML_PATH      := $(CURDIR)/ml
 API_DEV_PORT ?= 8001
 
-.PHONY: up down migrate ingest baseline psql train tournament predict registry marts create-key backup restore api-dev test ml-test \
+.PHONY: up down migrate ingest baseline psql train tournament flow-evidence predict registry marts create-key backup restore api-dev test ml-test \
         lint fmt audit fixture fixture-load web-install web-dev web-lint web-test web-build
 
 up:            ## build and start postgres + backend + frontend (UI http://localhost:3000, API docs http://localhost:8000/docs)
@@ -31,6 +31,9 @@ train:         ## train + evaluate candidates; ARGS="--promote" publishes the cu
 
 tournament:    ## patient-journey tournament; PROFILE=smoke|laptop|overnight, ARGS="--resume <run-id>"
 	PYTHONPATH=$(ML_PATH) $(PY) ml/pipelines/tournament.py --profile $(or $(PROFILE),smoke) $(ARGS)
+
+flow-evidence: ## non-promoting 1..14-day flow-forecast evidence; PROFILE=laptop, ARGS="--resume <run-id>"
+	PYTHONPATH=$(ML_PATH) $(PY) ml/pipelines/flow_forecast.py --profile $(or $(PROFILE),laptop) $(ARGS)
 
 predict: migrate ## predictions of the current models -> postgres (pred_referral, pred_daily_forecast, model_registry), then marts
 	PYTHONPATH=$(ML_PATH) $(PY) ml/pipelines/predict.py

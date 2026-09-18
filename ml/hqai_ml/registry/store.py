@@ -8,7 +8,9 @@ import json
 import os
 import shutil
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
+from uuid import uuid4
 
 import lightgbm as lgb
 import yaml
@@ -120,6 +122,35 @@ def write_artifact_manifest(path: Path, *, adopted_legacy: bool = False) -> dict
     }
     _dump(path / ARTIFACT_MANIFEST, manifest, atomic=True)
     return manifest
+
+
+def publish_artifact_directory(
+    parent: Path,
+    label: str,
+    writer: Callable[[Path], None],
+) -> tuple[Path, dict]:
+    """Write a checksummed artifact in a unique partial directory, then atomically publish it.
+
+    Unique attempt paths mean an abandoned partial directory or a crash after publication but before
+    checkpoint completion cannot wedge a retry. Such orphaned directories are harmless and auditable.
+    """
+    valid_characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_."
+    if not label or any(character not in valid_characters for character in label):
+        raise ValueError("artifact label contains unsupported characters")
+    parent.mkdir(parents=True, exist_ok=True)
+    token = uuid4().hex[:12]
+    temporary = parent / f".{label}.partial-{token}"
+    published = parent / f"{label}-{token}"
+    temporary.mkdir()
+    try:
+        writer(temporary)
+        manifest = write_artifact_manifest(temporary)
+        os.replace(temporary, published)
+        _fsync_directory(parent)
+        return published, manifest
+    except BaseException:
+        shutil.rmtree(temporary, ignore_errors=True)
+        raise
 
 
 def verify_artifact_manifest(path: Path, *, adopt_legacy: bool = True) -> dict:
