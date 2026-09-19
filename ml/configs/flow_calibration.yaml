@@ -1,0 +1,33 @@
+schema_version: 1
+version: temporal-count-interval-calibration-v1
+seed: 42
+nominal_coverage: 0.80
+candidate: quantile_lightgbm
+source_variant: raw
+
+# One transparent interval-expansion method and one median-residual reference.
+methods:
+  - conformal_interval_expansion
+  - median_absolute_residual_baseline
+
+# Both row count and unique observed target dates must pass before using a class.
+minimum_scores: 100
+minimum_unique_target_dates: 3
+fallback_ladder:
+  - support_horizon_date_class
+  - support_horizon
+  - support_date_class
+  - support
+
+targets:
+  - registrations
+  - cohort_hospitalizations
+validation_origins:
+  - 2025-02-16
+  - 2025-02-23
+  - 2025-03-02
+final_test_origin: 2025-03-17
+
+# National values are region_quantile_sum_proxy, not a national predictive distribution.
+exclude_national_proxy: true
+automatic_promotion: false

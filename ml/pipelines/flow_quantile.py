@@ -67,6 +67,42 @@ def calibration_identity(config) -> str:
     return hashlib.sha256(canonical.encode()).hexdigest()
 
 
+def build_quantile_plan(root, settings, resources, config, model_config) -> tuple[dict, dict, str]:
+    from hqai_ml.registry.experiment import build_plan
+
+    protocol = temporal_protocol(config)
+    residual_calibration_id = calibration_identity(config)
+    plan = build_plan(
+        root=root,
+        processed_dir=settings.processed_dir,
+        configs_dir=settings.configs_dir,
+        selected_models=["load_forecast"],
+        resources=resources,
+        temporal_protocols={"flow_quantile_evidence": protocol},
+        hyperparameters={
+            "lightgbm": scientific_lightgbm_parameters(model_config.lightgbm),
+            "quantile_model": {
+                "objective": "quantile",
+                "alphas": config.challenger.quantiles,
+                "rounds": config.challenger.rounds,
+                "feature_contract": "hqai_ml.features.load",
+                "search_configurations": 1,
+            },
+            "calibration": {
+                "identity": residual_calibration_id,
+                **config.residual_uncertainty.model_dump(mode="json"),
+            },
+            "flow_quantile": config.model_dump(mode="json", exclude={"identity_sha256"}),
+        },
+        configuration_paths=[
+            settings.configs_dir / "flow_quantile.yaml",
+            settings.configs_dir / "models.yaml",
+            settings.configs_dir / "ingest.yaml",
+        ],
+    )
+    return plan, protocol, residual_calibration_id
+
+
 def public_target_audit(audit: dict) -> dict:
     converted = dict(audit)
     converted["coverage"] = [
@@ -156,7 +192,7 @@ def main() -> int:
     from hqai_ml.ingest.config import IngestSettings
     from hqai_ml.models.config import load_model_config
     from hqai_ml.registry import store
-    from hqai_ml.registry.experiment import CheckpointKey, ExperimentRun, build_plan
+    from hqai_ml.registry.experiment import CheckpointKey, ExperimentRun
     from hqai_ml.registry.resources import seed_process
 
     root = Path(__file__).resolve().parents[2]
@@ -168,36 +204,7 @@ def main() -> int:
         raise ValueError("quantile horizon must match the existing load feature contract")
     model_config.lightgbm = {**model_config.lightgbm, "num_threads": resources.model_threads}
     seed_process(config.seed)
-    protocol = temporal_protocol(config)
-    calibration_id = calibration_identity(config)
-    plan = build_plan(
-        root=root,
-        processed_dir=settings.processed_dir,
-        configs_dir=settings.configs_dir,
-        selected_models=["load_forecast"],
-        resources=resources,
-        temporal_protocols={"flow_quantile_evidence": protocol},
-        hyperparameters={
-            "lightgbm": scientific_lightgbm_parameters(model_config.lightgbm),
-            "quantile_model": {
-                "objective": "quantile",
-                "alphas": config.challenger.quantiles,
-                "rounds": config.challenger.rounds,
-                "feature_contract": "hqai_ml.features.load",
-                "search_configurations": 1,
-            },
-            "calibration": {
-                "identity": calibration_id,
-                **config.residual_uncertainty.model_dump(mode="json"),
-            },
-            "flow_quantile": config.model_dump(mode="json", exclude={"identity_sha256"}),
-        },
-        configuration_paths=[
-            config_path,
-            settings.configs_dir / "models.yaml",
-            settings.configs_dir / "ingest.yaml",
-        ],
-    )
+    plan, protocol, calibration_id = build_quantile_plan(root, settings, resources, config, model_config)
     if args.plan:
         print(
             store.canonical_json(

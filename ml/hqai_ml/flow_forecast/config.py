@@ -140,3 +140,55 @@ def load_flow_quantile_config(path: Path) -> FlowQuantileConfig:
     raw = path.read_bytes()
     config = FlowQuantileConfig(**yaml.safe_load(raw))
     return config.model_copy(update={"identity_sha256": hashlib.sha256(raw).hexdigest()})
+
+
+class TemporalCalibrationConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: int
+    version: str
+    seed: int
+    nominal_coverage: float = Field(gt=0, lt=1)
+    candidate: str
+    source_variant: str
+    methods: list[str]
+    minimum_scores: int = Field(ge=1)
+    minimum_unique_target_dates: int = Field(ge=1)
+    fallback_ladder: list[str]
+    targets: list[str]
+    validation_origins: list[dt.date] = Field(min_length=2)
+    final_test_origin: dt.date
+    exclude_national_proxy: bool
+    automatic_promotion: bool
+    identity_sha256: str = ""
+
+    @model_validator(mode="after")
+    def validate_contract(self) -> TemporalCalibrationConfig:
+        expected_methods = ["conformal_interval_expansion", "median_absolute_residual_baseline"]
+        if self.methods != expected_methods:
+            raise ValueError(f"calibration methods must be exactly {expected_methods}")
+        expected_ladder = [
+            "support_horizon_date_class",
+            "support_horizon",
+            "support_date_class",
+            "support",
+        ]
+        if self.fallback_ladder != expected_ladder:
+            raise ValueError(f"calibration fallback ladder must be exactly {expected_ladder}")
+        if self.source_variant != "raw":
+            raise ValueError("temporal calibration must consume unchanged raw quantile predictions")
+        if self.targets != ["registrations", "cohort_hospitalizations"]:
+            raise ValueError("calibration targets must preserve cohort_hospitalizations semantics")
+        if self.validation_origins != sorted(set(self.validation_origins)):
+            raise ValueError("validation origins must be unique and sorted")
+        if not self.exclude_national_proxy:
+            raise ValueError("national region-quantile-sum proxy cannot claim calibrated coverage")
+        if self.automatic_promotion:
+            raise ValueError("calibration evidence cannot enable automatic promotion")
+        return self
+
+
+def load_temporal_calibration_config(path: Path) -> TemporalCalibrationConfig:
+    raw = path.read_bytes()
+    config = TemporalCalibrationConfig(**yaml.safe_load(raw))
+    return config.model_copy(update={"identity_sha256": hashlib.sha256(raw).hexdigest()})

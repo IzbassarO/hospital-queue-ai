@@ -146,6 +146,10 @@ interrupted. It emits raw and explicitly repaired p10/p50/p90 evidence for `regi
 `cohort_hospitalizations`. The latter is the Q1 referral cohort outcome, never total admissions or capacity. See
 `docs/flow-quantile-forecast.md` for its temporal, calibration, fallback and hierarchy contract.
 
+Temporal 80% interval calibration is prepared as a separate artifact-consuming workflow. It validates and reads a
+completed flow-quantile run without retraining forecast models, preserves raw quantiles, and writes independently
+versioned interval bounds. Run it only after its source run completes; see `docs/flow-temporal-calibration.md`.
+
 Python, NumPy and LightGBM seeds are centralized and recorded. Relevant Python/library versions participate in
 scientific identity. Platform/architecture are recorded per execution and warn on cross-platform resume; the
 contract does **not** promise bit-for-bit equality across platforms.
