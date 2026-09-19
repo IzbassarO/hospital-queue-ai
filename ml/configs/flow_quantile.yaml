@@ -1,0 +1,47 @@
+schema_version: 1
+seed: 42
+horizon: 14
+
+# Public target names are intentionally explicit. cohort_hospitalizations contains only
+# hospitalization events belonging to referrals registered in the Q1 extract.
+targets:
+  - registrations
+  - cohort_hospitalizations
+
+# Origins are last-observed dates and exactly match the accepted 6B.2B-1 protocol.
+validation_origins:
+  - 2025-02-16
+  - 2025-02-23
+  - 2025-03-02
+final_test_origin: 2025-03-17
+
+# Report-only: raw and repaired quantiles remain available and are never clipped to this ratio.
+extrapolation_report_ratio_threshold: 5.0
+extrapolation_examples: 10
+
+baselines:
+  trailing_mean_days: 7
+  trailing_median_days: 28
+  recent_seasonal_periods: 4
+
+support:
+  min_history_days: 28
+  hospital_min_mean_registrations: 1.0
+  region_parents_direct: true
+  national_from_region_aggregation: true
+  sparse_zero_rate: 0.50
+  zero_heavy_zero_rate: 0.80
+
+residual_uncertainty:
+  method: horizon_specific_empirical_residual
+  window_days: 28
+  minimum_samples: 7
+
+challenger:
+  id: quantile_lightgbm
+  quantiles: [0.10, 0.50, 0.90]
+  rounds: 400
+  scientific_evidence_variant: raw
+  serving_diagnostic_variant: repaired_nonnegative_monotone
+
+automatic_promotion: false

@@ -140,6 +140,12 @@ threads are derived from the remaining budget, and oversubscribing explicit over
 limits are set before numerical libraries load. Every DuckDB feature session applies the derived thread limit and a
 per-worker memory limit; `--duckdb-memory-mb` is rejected when aggregate workers would exceed the profile budget.
 
+The probabilistic flow preparation is a separate non-promoting workflow. Inspect its immutable plan with
+`make flow-quantile PROFILE=laptop ARGS="--plan"`; run it locally with an explicit run ID and resume the same ID if
+interrupted. It emits raw and explicitly repaired p10/p50/p90 evidence for `registrations` and
+`cohort_hospitalizations`. The latter is the Q1 referral cohort outcome, never total admissions or capacity. See
+`docs/flow-quantile-forecast.md` for its temporal, calibration, fallback and hierarchy contract.
+
 Python, NumPy and LightGBM seeds are centralized and recorded. Relevant Python/library versions participate in
 scientific identity. Platform/architecture are recorded per execution and warn on cross-platform resume; the
 contract does **not** promise bit-for-bit equality across platforms.

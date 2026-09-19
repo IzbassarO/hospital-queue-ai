@@ -73,3 +73,70 @@ def load_flow_config(path: Path) -> FlowForecastConfig:
     raw = path.read_bytes()
     config = FlowForecastConfig(**yaml.safe_load(raw))
     return config.model_copy(update={"identity_sha256": hashlib.sha256(raw).hexdigest()})
+
+
+class ResidualUncertaintyConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    method: str
+    window_days: int = Field(ge=7)
+    minimum_samples: int = Field(ge=3)
+
+
+class QuantileChallengerConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    quantiles: list[float] = Field(min_length=3, max_length=3)
+    rounds: int = Field(ge=1)
+    scientific_evidence_variant: str
+    serving_diagnostic_variant: str
+
+    @model_validator(mode="after")
+    def validate_quantiles(self) -> QuantileChallengerConfig:
+        if self.quantiles != [0.1, 0.5, 0.9]:
+            raise ValueError("flow quantiles must be exactly [0.1, 0.5, 0.9]")
+        if self.scientific_evidence_variant != "raw":
+            raise ValueError("raw predictions must be the primary scientific evidence")
+        if self.serving_diagnostic_variant != "repaired_nonnegative_monotone":
+            raise ValueError("serving diagnostic must explicitly repair non-negativity and monotonicity")
+        return self
+
+
+class FlowQuantileConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: int
+    seed: int
+    horizon: int = Field(ge=1)
+    targets: list[str]
+    validation_origins: list[dt.date] = Field(min_length=2)
+    final_test_origin: dt.date
+    extrapolation_report_ratio_threshold: float = Field(gt=1)
+    extrapolation_examples: int = Field(ge=1)
+    baselines: BaselineConfig
+    support: SupportConfig
+    residual_uncertainty: ResidualUncertaintyConfig
+    challenger: QuantileChallengerConfig
+    automatic_promotion: bool
+    identity_sha256: str = ""
+
+    @model_validator(mode="after")
+    def validate_protocol(self) -> FlowQuantileConfig:
+        if self.targets != ["registrations", "cohort_hospitalizations"]:
+            raise ValueError("targets must preserve registrations and cohort_hospitalizations semantics")
+        if self.validation_origins != sorted(set(self.validation_origins)):
+            raise ValueError("validation origins must be unique and sorted")
+        validation_end = self.validation_origins[-1] + dt.timedelta(days=self.horizon)
+        test_start = self.final_test_origin + dt.timedelta(days=1)
+        if validation_end >= test_start:
+            raise ValueError("validation targets must end before the untouched final test starts")
+        if self.automatic_promotion:
+            raise ValueError("the quantile evidence workflow cannot enable automatic promotion")
+        return self
+
+
+def load_flow_quantile_config(path: Path) -> FlowQuantileConfig:
+    raw = path.read_bytes()
+    config = FlowQuantileConfig(**yaml.safe_load(raw))
+    return config.model_copy(update={"identity_sha256": hashlib.sha256(raw).hexdigest()})
