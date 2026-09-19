@@ -361,3 +361,59 @@ def load_flow_pressure_config(path: Path) -> FlowPressureConfig:
     raw = path.read_bytes()
     config = FlowPressureConfig(**yaml.safe_load(raw))
     return config.model_copy(update={"identity_sha256": hashlib.sha256(raw).hexdigest()})
+
+
+class SignalPrioritizationConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: int
+    version: str
+    seed: int
+    source_signal_contract_version: str
+    source_alert_unit: str
+    primary_target: str
+    secondary_target: str
+    materiality_floor_expected_count: float = Field(gt=0)
+    alert_severities: list[str]
+    ranking_order: list[str]
+    demo_top_n: int = Field(ge=1, le=100)
+    regional_top_profiles: int = Field(ge=1, le=20)
+    human_review_required: bool
+    autonomous_action: bool
+    automatic_promotion: bool
+    identity_sha256: str = ""
+
+    @model_validator(mode="after")
+    def validate_contract(self) -> SignalPrioritizationConfig:
+        if self.source_signal_contract_version != "preventive-flow-pressure-v1":
+            raise ValueError("Signals Inbox requires the corrected preventive-flow-pressure-v1 contract")
+        if self.source_alert_unit != "hospital_profile_target_origin":
+            raise ValueError("Signals Inbox must consume entity/origin signals, not daily cells")
+        if self.primary_target != "registrations" or self.secondary_target != "cohort_hospitalizations":
+            raise ValueError("Signals Inbox must keep registrations primary and cohort evidence secondary")
+        if self.materiality_floor_expected_count != 1.0:
+            raise ValueError("the fixed product materiality floor must be exactly 1.0 expected count/day")
+        if self.alert_severities != ["HIGH", "ELEVATED", "WATCH"]:
+            raise ValueError("alert severity precedence must be HIGH, ELEVATED, WATCH")
+        expected_ranking = [
+            "severity_desc",
+            "lead_time_days_asc",
+            "direct_supported_first",
+            "calibrated_uncertainty_first",
+            "valid_central_threshold_ratio_desc",
+            "region_id_asc",
+            "hospital_id_asc",
+            "profile_id_asc",
+            "series_id_asc",
+        ]
+        if self.ranking_order != expected_ranking:
+            raise ValueError(f"ranking order must be exactly {expected_ranking}")
+        if not self.human_review_required or self.autonomous_action or self.automatic_promotion:
+            raise ValueError("Signals Inbox is human-review-only and cannot act or promote automatically")
+        return self
+
+
+def load_signal_prioritization_config(path: Path) -> SignalPrioritizationConfig:
+    raw = path.read_bytes()
+    config = SignalPrioritizationConfig(**yaml.safe_load(raw))
+    return config.model_copy(update={"identity_sha256": hashlib.sha256(raw).hexdigest()})

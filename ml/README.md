@@ -21,6 +21,7 @@ ml/
     tournament.py make tournament → ignored candidate/checkpoint/decision artifacts; never promotes
     flow_hierarchy.py central-only hierarchy/fallback evidence from immutable forecast artifacts
     flow_pressure.py  historical-flow pressure/warning evidence from accepted hierarchy artifacts
+    signal_prioritization.py deterministic entity/origin Signals Inbox from accepted pressure artifacts
     predict.py    make predict  → pred_referral, pred_daily_forecast, model_registry (then build_marts.py)
     build_marts.py make marts   → mart_hospital_profile_status, mart_region_profile_status, mart_area_status
   configs/
@@ -31,6 +32,7 @@ ml/
     models.yaml            split, LightGBM defaults, forecast settings, holidays
     tournament.yaml        reviewed journey candidates, folds, search spaces, horizons and eligibility policy
     explain_templates.yaml Russian sentence templates for explanations
+    signal_prioritization.yaml reviewed lexicographic Inbox ranking and governance contract
 ```
 
 Pipelines are run with `PYTHONPATH=ml` (the Makefile sets it).
@@ -57,6 +59,13 @@ The preventive warning workflow consumes the accepted hierarchy artifact and bui
 historical-flow thresholds, deterministic future pressure states, and a robust observed-flow anomaly
 companion. It does not infer physical bed capacity or take autonomous action. See
 `docs/flow-pressure-warning.md`.
+
+The Signals Inbox workflow consumes accepted entity/origin pressure artifacts, ranks registration
+warnings with a fixed lexicographic contract, separates unsupported data-quality items and cohort
+research evidence, and emits deterministic non-causal explanations and regional counts. Supported
+zero-baseline signals below the fixed 1.0 expected count/day product floor remain source evidence but
+move to a separate low-volume attention view. The workflow neither loads daily alert cells nor creates
+a learned priority score. See `docs/signal-prioritization.md`.
 
 ## Patient-journey tournament
 

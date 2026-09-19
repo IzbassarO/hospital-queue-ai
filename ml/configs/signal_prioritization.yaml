@@ -1,0 +1,36 @@
+schema_version: 1
+version: signals-inbox-v1
+seed: 42
+
+source_signal_contract_version: preventive-flow-pressure-v1
+source_alert_unit: hospital_profile_target_origin
+primary_target: registrations
+secondary_target: cohort_hospitalizations
+
+# Fixed product-triage rule for supported zero-baseline count signals. This is not tuned,
+# calibration, or a change to source pressure severity.
+materiality_floor_expected_count: 1.0
+
+alert_severities:
+  - HIGH
+  - ELEVATED
+  - WATCH
+
+# Stable lexicographic contract. This is not a learned or weighted score.
+ranking_order:
+  - severity_desc
+  - lead_time_days_asc
+  - direct_supported_first
+  - calibrated_uncertainty_first
+  - valid_central_threshold_ratio_desc
+  - region_id_asc
+  - hospital_id_asc
+  - profile_id_asc
+  - series_id_asc
+
+demo_top_n: 20
+regional_top_profiles: 5
+
+human_review_required: true
+autonomous_action: false
+automatic_promotion: false
