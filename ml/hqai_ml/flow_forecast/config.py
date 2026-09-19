@@ -192,3 +192,84 @@ def load_temporal_calibration_config(path: Path) -> TemporalCalibrationConfig:
     raw = path.read_bytes()
     config = TemporalCalibrationConfig(**yaml.safe_load(raw))
     return config.model_copy(update={"identity_sha256": hashlib.sha256(raw).hexdigest()})
+
+
+class HierarchyFallbackConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidates: list[str]
+    full_own_weight_nonzero_days: int = Field(ge=1)
+    maximum_own_weight: float = Field(gt=0, lt=1)
+    selection_metrics: list[str]
+
+    @model_validator(mode="after")
+    def validate_contract(self) -> HierarchyFallbackConfig:
+        expected = ["current_region_profile_share", "support_weighted_parent_own_blend"]
+        if self.candidates != expected:
+            raise ValueError(f"fallback candidates must be exactly {expected}")
+        if self.selection_metrics != ["wape", "mae_macro_series", "rmsse_macro_series"]:
+            raise ValueError("fallback selection must use the precommitted WAPE/MAE/RMSSE order")
+        return self
+
+
+class FlowHierarchyConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: int
+    version: str
+    seed: int
+    horizon: int = Field(ge=1)
+    targets: list[str]
+    validation_origins: list[dt.date] = Field(min_length=2)
+    final_test_origin: dt.date
+    source_candidate: str
+    source_raw_variant: str
+    source_central_variant: str
+    calibration_method: str
+    alternatives: list[str]
+    hierarchy_selection_metrics: list[str]
+    coherence_tolerance: float = Field(gt=0)
+    material_change_absolute: float = Field(ge=0)
+    material_change_relative: float = Field(ge=0)
+    fallback: HierarchyFallbackConfig
+    automatic_promotion: bool
+    probabilistic_reconciliation_applied: bool
+    identity_sha256: str = ""
+
+    @model_validator(mode="after")
+    def validate_contract(self) -> FlowHierarchyConfig:
+        if self.targets != ["registrations", "cohort_hospitalizations"]:
+            raise ValueError("hierarchy targets must preserve cohort_hospitalizations semantics")
+        if self.validation_origins != sorted(set(self.validation_origins)):
+            raise ValueError("hierarchy validation origins must be unique and sorted")
+        if self.horizon != 14:
+            raise ValueError("hierarchy preparation must preserve horizons 1..14")
+        expected_alternatives = ["current_direct", "bottom_up_hospital", "parent_consistent_region_scaling"]
+        if self.alternatives != expected_alternatives:
+            raise ValueError(f"hierarchy alternatives must be exactly {expected_alternatives}")
+        expected_metrics = [
+            "hospital_wape",
+            "region_wape",
+            "national_wape",
+            "hospital_mae_macro_series",
+            "hospital_rmsse_macro_series",
+        ]
+        if self.hierarchy_selection_metrics != expected_metrics:
+            raise ValueError(f"hierarchy selection metrics must be exactly {expected_metrics}")
+        if self.source_raw_variant != "raw":
+            raise ValueError("raw quantile evidence must be preserved")
+        if self.source_central_variant != "repaired_nonnegative_monotone":
+            raise ValueError("operational central input must use the accepted repaired p50 variant")
+        if self.calibration_method != "conformal_interval_expansion":
+            raise ValueError("hierarchy preparation must retain the accepted primary calibration method")
+        if self.automatic_promotion:
+            raise ValueError("hierarchy evidence cannot enable automatic promotion")
+        if self.probabilistic_reconciliation_applied:
+            raise ValueError("this step cannot claim probabilistic reconciliation")
+        return self
+
+
+def load_flow_hierarchy_config(path: Path) -> FlowHierarchyConfig:
+    raw = path.read_bytes()
+    config = FlowHierarchyConfig(**yaml.safe_load(raw))
+    return config.model_copy(update={"identity_sha256": hashlib.sha256(raw).hexdigest()})

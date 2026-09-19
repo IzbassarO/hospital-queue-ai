@@ -405,6 +405,7 @@ def load_verified_source_predictions(
     phases: list[tuple[dt.date, str]],
     checkpoint_parameters: dict,
     candidate: str,
+    source_variant: str = RAW_VARIANT,
 ) -> tuple[pd.DataFrame, dict]:
     source_run = ExperimentRun.read_only(artifacts_dir, source_run_id)
     if source_run.manifest["status"] != "completed":
@@ -424,9 +425,9 @@ def load_verified_source_predictions(
         if resources["origin"] != str(origin) or resources["phase"] != phase:
             raise ValueError(f"source origin metadata mismatch: {phase} {origin}")
         frame = pd.read_parquet(artifact / "evaluation.parquet")
-        selected = frame[(frame["candidate"] == candidate) & (frame["variant"] == RAW_VARIANT)].copy()
+        selected = frame[(frame["candidate"] == candidate) & (frame["variant"] == source_variant)].copy()
         if selected.empty:
-            raise ValueError(f"source origin has no raw {candidate} rows: {phase} {origin}")
+            raise ValueError(f"source origin has no {source_variant} {candidate} rows: {phase} {origin}")
         if set(pd.to_datetime(selected["origin"]).dt.date) != {origin} or set(selected["phase"]) != {phase}:
             raise ValueError(f"source evaluation row identity mismatch: {phase} {origin}")
         frames.append(selected)

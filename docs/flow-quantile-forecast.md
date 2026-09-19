@@ -46,7 +46,8 @@ National values are labelled `region_quantile_sum_proxy`: each is the sum of cor
 quantiles. They are not mathematically valid national quantiles in general, are not probabilistically
 reconciled, and do not establish national coherence. National proxy coverage and WIS describe only
 the proxy interval, not a reconciled national predictive distribution. Sophisticated probabilistic
-reconciliation is deferred to 6B.2B-3.
+reconciliation remains deferred; the next hierarchy step reconciles only the central operational
+forecast and leaves all interval evidence level-local.
 
 For every quantile, candidate and raw/repaired variant, artifacts report prediction-to-historical-max
 ratios, positive predictions with zero historical support, flagged cells/series and worst examples.

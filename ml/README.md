@@ -19,6 +19,7 @@ ml/
     baseline.py   make baseline → reports/01_baseline.md
     train.py      make train    → artifacts/models/, reports/02_models.md  (--model to run one)
     tournament.py make tournament → ignored candidate/checkpoint/decision artifacts; never promotes
+    flow_hierarchy.py central-only hierarchy/fallback evidence from immutable forecast artifacts
     predict.py    make predict  → pred_referral, pred_daily_forecast, model_registry (then build_marts.py)
     build_marts.py make marts   → mart_hospital_profile_status, mart_region_profile_status, mart_area_status
   configs/
@@ -45,6 +46,11 @@ make flow-evidence PROFILE=laptop ARGS="--resume <run-id>"
 It writes checksummed rolling-origin/final-test evidence under `artifacts/flow_forecast/` and never
 changes the current model registry. See `docs/flow-forecast-evidence.md` for target and fallback
 semantics.
+
+The central hierarchy/fallback workflow consumes completed quantile and temporal-calibration runs,
+evaluates three transparent central-only hierarchy contracts and one fallback challenger using
+validation evidence, and writes only ignored artifacts. It never reconciles quantiles or promotes a
+model. See `docs/flow-hierarchy-forecast.md`.
 
 ## Patient-journey tournament
 

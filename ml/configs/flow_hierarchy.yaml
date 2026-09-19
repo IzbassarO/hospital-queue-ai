@@ -1,0 +1,51 @@
+schema_version: 1
+version: central-hierarchy-and-fallback-v1
+seed: 42
+horizon: 14
+
+targets:
+  - registrations
+  - cohort_hospitalizations
+validation_origins:
+  - 2025-02-16
+  - 2025-02-23
+  - 2025-03-02
+final_test_origin: 2025-03-17
+
+source_candidate: quantile_lightgbm
+source_raw_variant: raw
+# Reuse the existing non-negative/monotone serving diagnostic for the central operational value.
+# Raw p10/p50/p90 remain separate evidence and are never overwritten.
+source_central_variant: repaired_nonnegative_monotone
+calibration_method: conformal_interval_expansion
+
+alternatives:
+  - current_direct
+  - bottom_up_hospital
+  - parent_consistent_region_scaling
+hierarchy_selection_metrics:
+  - hospital_wape
+  - region_wape
+  - national_wape
+  - hospital_mae_macro_series
+  - hospital_rmsse_macro_series
+coherence_tolerance: 0.000000001
+
+material_change_absolute: 0.10
+material_change_relative: 0.05
+
+fallback:
+  candidates:
+    - current_region_profile_share
+    - support_weighted_parent_own_blend
+  # Own recent-seasonal evidence receives at most half the weight. The weight rises
+  # deterministically with non-zero history and is zero when the series has no history.
+  full_own_weight_nonzero_days: 14
+  maximum_own_weight: 0.50
+  selection_metrics:
+    - wape
+    - mae_macro_series
+    - rmsse_macro_series
+
+automatic_promotion: false
+probabilistic_reconciliation_applied: false
