@@ -273,3 +273,91 @@ def load_flow_hierarchy_config(path: Path) -> FlowHierarchyConfig:
     raw = path.read_bytes()
     config = FlowHierarchyConfig(**yaml.safe_load(raw))
     return config.model_copy(update={"identity_sha256": hashlib.sha256(raw).hexdigest()})
+
+
+class HistoricalFlowThresholdConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    method: str
+    quantile: float = Field(gt=0.5, lt=1)
+    history_window_days: int = Field(ge=28)
+    minimum_date_class_observations: int = Field(ge=2)
+    minimum_date_class_positive_days: int = Field(ge=1)
+    minimum_pooled_observations: int = Field(ge=7)
+    minimum_pooled_positive_days: int = Field(ge=1)
+    fallback_ladder: list[str]
+    event_comparison: str
+
+    @model_validator(mode="after")
+    def validate_contract(self) -> HistoricalFlowThresholdConfig:
+        expected = ["hospital_date_class", "hospital_pooled", "region_date_class", "region_pooled"]
+        if self.fallback_ladder != expected:
+            raise ValueError(f"threshold fallback ladder must be exactly {expected}")
+        if self.method != "origin_legal_empirical_quantile_higher":
+            raise ValueError("only the transparent empirical-quantile threshold is supported")
+        if self.event_comparison != "actual_strictly_greater_than_threshold":
+            raise ValueError("retrospective high-flow events must strictly exceed the threshold")
+        return self
+
+
+class FlowAnomalyConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    method: str
+    target: str
+    lookback_days: int = Field(ge=21)
+    minimum_residuals: int = Field(ge=5)
+    robust_z_threshold: float = Field(gt=0)
+
+    @model_validator(mode="after")
+    def validate_contract(self) -> FlowAnomalyConfig:
+        if self.method != "weekly_residual_median_mad":
+            raise ValueError("only the transparent weekly-residual MAD detector is supported")
+        if self.target != "registrations":
+            raise ValueError("the anomaly companion currently supports registrations only")
+        return self
+
+
+class FlowPressureConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: int
+    version: str
+    seed: int
+    threshold_semantics: str
+    compatible_future_threshold_semantics: str
+    primary_target: str
+    secondary_target: str
+    horizon: int = Field(ge=1)
+    validation_origins: list[dt.date] = Field(min_length=2)
+    final_test_origin: dt.date
+    severity_order: list[str]
+    threshold: HistoricalFlowThresholdConfig
+    anomaly: FlowAnomalyConfig
+    automatic_promotion: bool
+    autonomous_action: bool
+    identity_sha256: str = ""
+
+    @model_validator(mode="after")
+    def validate_contract(self) -> FlowPressureConfig:
+        if self.threshold_semantics != "historical_flow_proxy_v1":
+            raise ValueError("current pressure evidence must use historical_flow_proxy_v1")
+        if self.compatible_future_threshold_semantics != "physical_capacity_provider_v1":
+            raise ValueError("future provider contract must remain physical_capacity_provider_v1")
+        if self.primary_target != "registrations" or self.secondary_target != "cohort_hospitalizations":
+            raise ValueError("pressure targets must preserve registrations and cohort semantics")
+        if self.horizon != 14:
+            raise ValueError("pressure preparation must preserve horizons 1..14")
+        if self.validation_origins != sorted(set(self.validation_origins)):
+            raise ValueError("pressure validation origins must be unique and sorted")
+        if self.severity_order != ["NORMAL", "WATCH", "ELEVATED", "HIGH"]:
+            raise ValueError("severity order must be NORMAL, WATCH, ELEVATED, HIGH")
+        if self.automatic_promotion or self.autonomous_action:
+            raise ValueError("pressure signals cannot promote models or trigger autonomous action")
+        return self
+
+
+def load_flow_pressure_config(path: Path) -> FlowPressureConfig:
+    raw = path.read_bytes()
+    config = FlowPressureConfig(**yaml.safe_load(raw))
+    return config.model_copy(update={"identity_sha256": hashlib.sha256(raw).hexdigest()})

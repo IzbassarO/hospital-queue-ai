@@ -20,6 +20,7 @@ ml/
     train.py      make train    → artifacts/models/, reports/02_models.md  (--model to run one)
     tournament.py make tournament → ignored candidate/checkpoint/decision artifacts; never promotes
     flow_hierarchy.py central-only hierarchy/fallback evidence from immutable forecast artifacts
+    flow_pressure.py  historical-flow pressure/warning evidence from accepted hierarchy artifacts
     predict.py    make predict  → pred_referral, pred_daily_forecast, model_registry (then build_marts.py)
     build_marts.py make marts   → mart_hospital_profile_status, mart_region_profile_status, mart_area_status
   configs/
@@ -51,6 +52,11 @@ The central hierarchy/fallback workflow consumes completed quantile and temporal
 evaluates three transparent central-only hierarchy contracts and one fallback challenger using
 validation evidence, and writes only ignored artifacts. It never reconciles quantiles or promotes a
 model. See `docs/flow-hierarchy-forecast.md`.
+
+The preventive warning workflow consumes the accepted hierarchy artifact and builds origin-legal
+historical-flow thresholds, deterministic future pressure states, and a robust observed-flow anomaly
+companion. It does not infer physical bed capacity or take autonomous action. See
+`docs/flow-pressure-warning.md`.
 
 ## Patient-journey tournament
 

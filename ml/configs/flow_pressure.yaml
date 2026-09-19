@@ -1,0 +1,48 @@
+schema_version: 1
+version: preventive-flow-pressure-v1
+seed: 42
+
+# This release has no physical bed/capacity feed. The future provider keeps the downstream
+# threshold interface stable without pretending that the historical proxy is capacity.
+threshold_semantics: historical_flow_proxy_v1
+compatible_future_threshold_semantics: physical_capacity_provider_v1
+
+primary_target: registrations
+secondary_target: cohort_hospitalizations
+horizon: 14
+validation_origins:
+  - 2025-02-16
+  - 2025-02-23
+  - 2025-03-02
+final_test_origin: 2025-03-17
+
+severity_order:
+  - NORMAL
+  - WATCH
+  - ELEVATED
+  - HIGH
+
+threshold:
+  method: origin_legal_empirical_quantile_higher
+  quantile: 0.90
+  history_window_days: 56
+  minimum_date_class_observations: 6
+  minimum_date_class_positive_days: 2
+  minimum_pooled_observations: 28
+  minimum_pooled_positive_days: 3
+  fallback_ladder:
+    - hospital_date_class
+    - hospital_pooled
+    - region_date_class
+    - region_pooled
+  event_comparison: actual_strictly_greater_than_threshold
+
+anomaly:
+  method: weekly_residual_median_mad
+  target: registrations
+  lookback_days: 56
+  minimum_residuals: 14
+  robust_z_threshold: 3.5
+
+automatic_promotion: false
+autonomous_action: false
