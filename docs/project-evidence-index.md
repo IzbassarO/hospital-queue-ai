@@ -1,0 +1,490 @@
+# Project Evidence Index
+## Hospital Flow Control Tower — GovTech Camp 2026
+
+> Purpose: fast navigation from capability to accepted evidence.  
+> This is an index, not a replacement for stage-specific documentation or run artifacts.  
+> Do not use superseded experimental runs when a later accepted run is listed here.
+
+---
+
+## 1. Evidence policy
+
+For every capability distinguish:
+
+1. **code / config**
+2. **documentation**
+3. **accepted real-data run**
+4. **metrics**
+5. **limitations**
+6. **promotion / product decision**
+
+Rules:
+- final-test evidence is for confirmation, not rule selection;
+- no random split for temporal forecasting;
+- no automatic model promotion;
+- no causal claims unless identified;
+- no physical-capacity claim without capacity data;
+- preserve source lineage / artifact SHA / scientific identity;
+- generated outputs remain under ignored artifact directories.
+
+---
+
+## 2. Architecture / experiment foundation
+
+### 6A — Architecture Baseline
+Status: **CLOSED**
+
+Evidence:
+- repository architecture/ADR documents under `docs/`;
+- OpenAPI snapshot/contract;
+- audit/CI gates;
+- deterministic TypeScript generation.
+
+Key contract:
+`Pydantic → OpenAPI → generated TS → frontend adapters`
+
+### 6B.1 / 6B.1b / 6B.1c
+Status: **CLOSED**
+
+Evidence:
+- ML manifests;
+- scientific/data/config/code identities;
+- artifact SHA256;
+- checkpoint/resume;
+- lock/fencing;
+- resource profiles;
+- PostgreSQL lineage;
+- Alembic migration tests;
+- human-controlled promotion.
+
+---
+
+## 3. Patient Journey
+
+Capability:
+individual referral time-to-event / event-probability support.
+
+Status: **CLOSED**
+
+Accepted evidence:
+full eligible cohort = 767,084 referrals.
+
+### XGBoost AFT
+- mean Brier@7/14/30: 0.109753
+- C-index: 0.847552
+- mean calibration error: 0.009750
+
+### Discrete hospitalization hazard
+- mean Brier@7/14/30: 0.108575
+- C-index: 0.802645
+- mean calibration error: 0.010725
+
+Decision:
+retain both; no auto champion.
+
+### Refusal LightGBM
+- ROC-AUC: 0.782074
+- PR-AUC: 0.364998
+- Brier: 0.083447
+- calibration error: 0.003399
+
+### Competing risk
+Decision:
+empirical competing-risk baseline retained; ML challenger rejected.
+
+Known accepted commit:
+`a5eb2e9 feat(ml): complete patient journey full-cohort confirmation`
+
+Important contract:
+- `estimand_id`;
+- hospitalization probabilities 7/14/30;
+- optional refusal/unresolved only when actually modeled;
+- do not synthesize unresolved from hospitalization-only probability;
+- independent marginal models do not imply a coherent joint distribution.
+
+Limitations:
+- cohort defined by Q1 2025 registrations;
+- serving contract still needs synthesis with the rest of 6B.2.
+
+---
+
+## 4. Flow Forecast deterministic evidence
+
+Capability:
+daily hospital/profile flow forecasting.
+
+Status: **CLOSED**
+
+Primary target:
+`registrations`
+
+Secondary:
+`cohort_hospitalizations`
+
+Accepted run:
+`flow-evidence-6b2b1-corrected-v3`
+
+Temporal protocol:
+- validation: 2025-02-16, 2025-02-23, 2025-03-02
+- final origin: 2025-03-17
+- horizons: 1–14
+
+Key result:
+recent seasonal average strongest in 5/6 main validation cells.
+
+Decision:
+Poisson LightGBM not promoted as universal replacement.
+
+Limitation:
+registration history = 90 days only.
+
+---
+
+## 5. Quantile forecast
+
+Capability:
+p10 / p50 / p90 probabilistic forecast.
+
+Status: **CLOSED**
+
+Code/config:
+- `ml/configs/flow_quantile.yaml`
+- `ml/hqai_ml/flow_forecast/quantile.py`
+- `ml/pipelines/flow_quantile.py`
+- `ml/tests/test_flow_quantile.py`
+
+Documentation:
+- `docs/flow-quantile-forecast.md`
+
+Accepted run:
+`flow-quantile-6b2b2-real-v1`
+
+Key validation result, registrations/hospital-profile/raw:
+- seasonal probabilistic baseline pinball ~0.34558
+- quantile LightGBM pinball ~0.28328
+- baseline WIS80 ~0.69116
+- quantile LightGBM WIS80 ~0.56655
+
+Decision:
+`both_retained`
+
+Important:
+raw q10/q50/q90 are preserved.
+
+Limitation:
+raw interval coverage is not close enough to nominal 80%, especially on final period.
+
+---
+
+## 6. Temporal calibration
+
+Capability:
+versioned calibrated uncertainty interval.
+
+Status: **CLOSED**
+
+Accepted run:
+`flow-calibration-6b2b2b-real-v1`
+
+Method:
+conformal-style symmetric interval expansion on origin-legal residual evidence.
+
+Outputs:
+- raw quantiles unchanged;
+- calibrated lower/upper stored separately;
+- support class and calibration version explicit.
+
+Hospital registrations coverage:
+- validation ~50.9% → ~82.97%
+- final ~29.9% → ~69.92%
+
+Final date classes:
+- weekday ~75.1%
+- holiday ~66.7%
+- weekend ~59.7%
+
+Decision:
+use calibrated “Uncertainty range”; do not promise perfect 80%.
+
+---
+
+## 7. Hierarchical coherence
+
+Capability:
+hospital → region → national central consistency.
+
+Status: **CLOSED**
+
+Accepted run:
+`flow-hierarchy-6b2b3-real-v1`
+
+Compared:
+- current direct;
+- bottom-up hospital;
+- parent-consistent scaling.
+
+Selected:
+`bottom_up_hospital`
+
+Properties:
+- hospital child rows unchanged;
+- region/national derived by summation;
+- exact central coherence;
+- no probabilistic reconciliation claim.
+
+This run is the accepted forecast source for pressure warnings.
+
+---
+
+## 8. Preventive Flow Pressure
+
+Capability:
+future historical-flow pressure warnings.
+
+Status: **CLOSED**
+
+Code/config:
+- `ml/configs/flow_pressure.yaml`
+- `ml/hqai_ml/flow_forecast/pressure.py`
+- `ml/pipelines/flow_pressure.py`
+- `ml/tests/test_flow_pressure.py`
+
+Documentation:
+- `docs/flow-pressure-warning.md`
+
+Accepted run:
+`flow-pressure-6b2c1-real-v2`
+
+Threshold:
+- q90;
+- `higher`;
+- 56-day origin-legal history;
+- hospital/date-class → hospital pooled → region/date-class → region pooled → unsupported.
+
+Severity:
+- NORMAL
+- WATCH
+- ELEVATED
+- HIGH
+- UNSUPPORTED
+
+Semantics:
+`historical_flow_proxy_v1`
+
+Future compatible provider:
+`physical_capacity_provider_v1`
+
+Retrospective entity/origin registrations signal usefulness:
+- final 14d precision ~39%
+- final 14d recall ~68%
+- final 7d recall ~66%
+
+Decision:
+acceptable as human-reviewed early-warning triage.
+
+Limitation:
+not physical-capacity overload.
+
+---
+
+## 9. Observed unusual-flow anomaly
+
+Capability:
+detect unusual observed flow now.
+
+Status: **CLOSED as part of 6B.2C-1**
+
+Method:
+weekly residual + robust median/MAD.
+
+Signal type:
+`observed_unusual_flow`
+
+Rule:
+does not change preventive pressure severity.
+
+No causal claim.
+
+---
+
+## 10. Signal Prioritization & Explanation
+
+Capability:
+operator-facing Signals Inbox.
+
+Status: **CLOSED**
+
+Code/config:
+- `ml/configs/signal_prioritization.yaml`
+- `ml/hqai_ml/flow_forecast/prioritization.py`
+- `ml/pipelines/signal_prioritization.py`
+- `ml/tests/test_signal_prioritization.py`
+
+Documentation:
+- `docs/signal-prioritization.md`
+
+Accepted run:
+`signal-prioritization-6b2c2-real-v2`
+
+Canonical unit:
+`hospital/profile/target/origin`
+
+Ranking:
+fixed lexicographic; no learned ranker; no weighted score.
+
+Order:
+1. severity
+2. shorter lead
+3. direct/supported
+4. calibrated uncertainty
+5. valid central/threshold ratio
+6. stable IDs
+
+Explanation:
+- headline
+- concise reason
+- reason codes
+- evidence facts
+
+### Product materiality
+
+Fixed rule:
+`materiality_floor_expected_count = 1.0`
+
+Supported zero-threshold rows with central forecast <1:
+- source severity preserved;
+- removed from primary Inbox;
+- moved to `zero_baseline_low_volume_attention`.
+
+This is product triage, not model recalibration.
+
+Accepted v2:
+- primary Inbox: 7,253
+- zero-baseline low-volume attention: 4,081
+- unsupported data quality: 502
+- observed anomalies: 509
+- fallback attention: 2,684
+- operationally material HIGH: 4
+
+Primary composition:
+- direct-supported: 4,569 (~63%)
+- fallback/limited: 2,684 (~37%)
+
+Final-test Top-20:
+- 18 direct
+- 2 fallback
+
+Runtime:
+~7.1 s
+
+Peak memory:
+~515 MiB
+
+Decision:
+accepted for future Control Tower / Signals Inbox integration.
+
+---
+
+## 11. Data evidence
+
+### Dataset 1
+Role:
+core referrals / outcomes.
+
+Registration span:
+2025-01-01 through 2025-03-31.
+
+Important:
+outcomes extend later than the registration window.
+
+### Dataset 2
+Role:
+same cohort / code dictionary; not an independent live queue feed.
+
+### Dataset 3
+Role:
+separate receiving-department refusal/load stream.
+
+### Dataset 4
+Role:
+static ERSB organization snapshot.
+
+Known gap:
+no real treated-case time series.
+
+### Dataset 5
+Status:
+downloaded locally, 105 CSVs.
+
+Current use:
+**not integrated**
+
+Required before use:
+inventory + joinability + leakage + temporal-density audit + ablation.
+
+### Datasets 6–8
+Current use:
+not core / not integrated.
+
+---
+
+## 12. Open customer evidence gaps
+
+Still unresolved:
+- production user / owner;
+- process KPI;
+- baseline / target;
+- stable IDs;
+- source of truth;
+- integration mode;
+- refresh SLA;
+- physical capacity data;
+- closed contour;
+- SSO / IdP;
+- roles / retention;
+- deployment target;
+- hardware budget;
+- support owner.
+
+Do not fill these gaps by assumption.
+
+---
+
+## 13. Current authoritative run chain
+
+Use this chain for downstream reasoning:
+
+`flow-evidence-6b2b1-corrected-v3`
+→ `flow-quantile-6b2b2-real-v1`
+→ `flow-calibration-6b2b2b-real-v1`
+→ `flow-hierarchy-6b2b3-real-v1`
+→ `flow-pressure-6b2c1-real-v2`
+→ `signal-prioritization-6b2c2-real-v2`
+
+Do not cite older superseded pressure/prioritization runs as authoritative evidence.
+
+---
+
+## 14. Next stage
+
+Next:
+**6B.2D — synthesis / serving contract**
+
+Status: **CLOSED**
+
+Specification evidence:
+- `docs/serving-contract-6b2d.md`
+- accepted ADR `docs/adr/0005-candidate-independent-intelligence-serving-semantics.md`
+
+Accepted result:
+- candidate-independent semantic serving contract and canonical grains;
+- explicit Patient Journey estimands and flow uncertainty/hierarchy separation;
+- distinct pressure, anomaly, materiality, and Inbox semantics;
+- support, fallback, freshness, and provenance rules;
+- explicit boundary between retrospective evaluation evidence and future serving execution;
+- no database, backend, frontend, or legal-origin runtime serving integration yet.
+
+After:
+- 6B.3 Digital Twin / Scenario Engine
+- 6B.4 Constrained Optimizer
+- 6B.5 Model Assurance

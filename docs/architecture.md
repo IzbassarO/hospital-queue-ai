@@ -6,8 +6,10 @@ boundaries already exist. Detailed endpoint, data, UI, model and security behavi
 [`api.md`](api.md), [`data.md`](data.md), [`frontend.md`](frontend.md),
 [`model_card.md`](model_card.md) and [`security.md`](security.md).
 
-The decisions behind the proposed direction are under [`adr/`](adr/). ADRs 0001–0004 are
-**Accepted**; the boundaries automated today are listed in section 13.
+The decisions behind the proposed direction are under [`adr/`](adr/). ADRs 0001–0005 are **Accepted**. The
+candidate-independent [`6B.2D intelligence serving contract`](serving-contract-6b2d.md) is **Accepted / closed** as
+a semantic design; persistence, API, frontend, and legal-origin runtime scoring remain future work. The boundaries
+automated today are listed in section 13.
 
 ## 1. Architecture principles
 
@@ -95,6 +97,12 @@ written only by the coordinator through the existing fenced checkpoint contract.
 per candidate from aggregate validation performance across compatible temporal folds; legacy artifacts are never
 scored where their training window overlaps validation, calibration or test. The principal cohort treats source
 time-order reversals on the same calendar date as 0.5-day events and reports a strict timestamp-order sensitivity.
+
+The proposed 6B.2D contract is the semantic boundary between accepted Patient Journey/flow/signal artifacts and
+future persistence, API and UI adapters. It is candidate-independent; keeps raw quantiles, calibrated uncertainty,
+central hierarchy, pressure, anomaly, materiality, support and freshness distinct; and excludes retrospective
+evaluation labels from serving objects. This is documentation only: no serving table, endpoint or UI behavior has
+been implemented for that contract.
 
 The backend package has no ML dependency and does not import `hqai_ml`. The ML package does not
 import backend application code. Shared PostgreSQL tables are the implemented integration boundary.
@@ -311,7 +319,8 @@ benefit, operational ownership and a simpler alternative that was measured first
 ## 12. Migration strategy
 
 1. Keep the current root layout and green audit/test/build gates.
-2. Record and review architectural decisions before structural work; accept or revise ADRs 0001–0004.
+2. Record and review architectural decisions before structural work; retain ADRs 0001–0005 and implement ADR 0005's
+   accepted semantic boundary only through separately reviewed persistence, API, frontend, and scoring changes.
 3. Select one backend capability and separate an application query or command behind a port while
    preserving routes and behavior. Move policy inward only when tests demonstrate the seam.
 4. Maintain stable OpenAPI operation IDs and deterministic generated transport types; migrate frontend adapters

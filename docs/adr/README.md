@@ -31,3 +31,4 @@ records belong under `docs/adr/`.
 | [0002](0002-postgresql-and-schema-ownership.md) | Accepted | PostgreSQL and schema ownership |
 | [0003](0003-ml-runtime-boundary.md) | Accepted | ML runtime boundary |
 | [0004](0004-openapi-transport-contract.md) | Accepted | OpenAPI transport contract |
+| [0005](0005-candidate-independent-intelligence-serving-semantics.md) | Accepted | Candidate-independent intelligence serving semantics |
