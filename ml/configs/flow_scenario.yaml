@@ -1,0 +1,75 @@
+schema_version: 1
+scenario_contract_version: forecast-stress-test-v1
+target: registrations
+
+source_hierarchy_run: flow-hierarchy-6b2b3-real-v1
+source_pressure_run: flow-pressure-6b2c1-real-v2
+source_prioritization_run: signal-prioritization-6b2c2-real-v2
+
+allowed_levers:
+  - identity
+  - demand_multiplier
+  - profile_surge
+  - inflow_transfer
+  - time_shift
+
+classification_mapping:
+  identity: SAFE_NON_CAUSAL_STRESS_TEST
+  demand_multiplier: SAFE_NON_CAUSAL_STRESS_TEST
+  profile_surge: SAFE_NON_CAUSAL_STRESS_TEST
+  inflow_transfer: MECHANISTIC_ACCOUNTING_SCENARIO
+  time_shift: SAFE_NON_CAUSAL_STRESS_TEST
+
+default_demand_stress_levels:
+  - 0.90
+  - 1.10
+  - 1.20
+
+uncertainty_transform: additive_central_shift_v1
+range_semantics: derived_sensitivity_range_not_recalibrated
+coverage_guarantee: false
+hierarchy_method: bottom_up_hospital_exact_central
+parent_allocation_method: proportional_to_baseline_central_heuristic
+materiality_config_reference: signal_prioritization.yaml#materiality_floor_expected_count
+
+# These fixed cases are sensitivity evidence, never candidates to select or tune.
+standard_scenarios:
+  - scenario_id: baseline-identity
+    scenario_type: identity
+    classification: SAFE_NON_CAUSAL_STRESS_TEST
+    scope:
+      scope_type: all_hospitals
+      horizon_start: 1
+      horizon_end: 14
+    parameters: {}
+    created_at: 2026-09-19T00:00:00Z
+  - scenario_id: national-registrations-x0.90
+    scenario_type: demand_multiplier
+    classification: SAFE_NON_CAUSAL_STRESS_TEST
+    scope:
+      scope_type: all_hospitals
+      horizon_start: 1
+      horizon_end: 14
+    parameters:
+      multiplier: 0.90
+    created_at: 2026-09-19T00:00:00Z
+  - scenario_id: national-registrations-x1.10
+    scenario_type: demand_multiplier
+    classification: SAFE_NON_CAUSAL_STRESS_TEST
+    scope:
+      scope_type: all_hospitals
+      horizon_start: 1
+      horizon_end: 14
+    parameters:
+      multiplier: 1.10
+    created_at: 2026-09-19T00:00:00Z
+  - scenario_id: national-registrations-x1.20
+    scenario_type: demand_multiplier
+    classification: SAFE_NON_CAUSAL_STRESS_TEST
+    scope:
+      scope_type: all_hospitals
+      horizon_start: 1
+      horizon_end: 14
+    parameters:
+      multiplier: 1.20
+    created_at: 2026-09-19T00:00:00Z

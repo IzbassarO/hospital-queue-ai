@@ -485,6 +485,61 @@ Accepted result:
 - no database, backend, frontend, or legal-origin runtime serving integration yet.
 
 After:
-- 6B.3 Digital Twin / Scenario Engine
 - 6B.4 Constrained Optimizer
 - 6B.5 Model Assurance
+
+---
+
+## 15. Forecast Stress-Test / Scenario Engine
+
+### 6B.3
+Status: **IMPLEMENTED / AWAITING REAL-DATA ACCEPTANCE**
+
+Code/config:
+- `ml/configs/flow_scenario.yaml`
+- `ml/hqai_ml/flow_forecast/scenario.py`
+- `ml/pipelines/flow_scenario.py`
+- `ml/tests/test_flow_scenario.py`
+
+Documentation:
+- `docs/flow-scenario-engine.md`
+
+Accepted source chain:
+`flow-hierarchy-6b2b3-real-v1`
+→ `flow-pressure-6b2c1-real-v2`
+→ `signal-prioritization-6b2c2-real-v2`
+
+Restricted scope:
+- deterministic, explicitly synthetic registration stress tests only;
+- exactly one reviewed lever per scenario; ordered `composite` sequences are unsupported in v1;
+- hospital-level transformation followed by exact bottom-up central aggregation;
+- existing historical-flow pressure, entity aggregation, fixed materiality, and lexicographic Inbox rules;
+- retrospective `EVALUATION` mode, with no serving claim.
+
+Reporting and vocabulary:
+- summaries are per target, with `registrations` primary and `cohort_hospitalizations` reported
+  separately as unchanged secondary context, so cohort rows never dilute the registrations denominator;
+- derived scenario bounds are published as `scenario_sensitivity_lower/upper` under
+  `additive_central_shift_v1`, never under accepted calibrated field names, with no coverage guarantee;
+- accepted calibrated evidence stays under `baseline_*` names and is unchanged, as do raw quantiles;
+- reason codes preserve the accepted source reason; a severity label is never a reason code.
+
+Standard future evidence suite:
+- baseline identity;
+- national registrations ×0.90, ×1.10, and ×1.20.
+
+Acceptance gate:
+- the no-op scenario must reproduce accepted daily central/sensitivity bounds/severity/source reason,
+  entity severity/crossing/alert flags/severity evidence, and Inbox materiality, eligibility, support
+  class and deterministic rank, at tolerance `1e-9`, before any nonzero scenario is accepted;
+- scenario scientific identity excludes audit-only specification timestamps;
+- real-data execution and independent review remain pending.
+
+Prohibited claims/outputs:
+- no queue or backlog trajectory;
+- no capacity, occupancy, bed, or staffing simulation;
+- no Monte Carlo or joint predictive probability;
+- no causal rerouting, policy counterfactual, or intervention benefit claim;
+- no registration-shock propagation into `cohort_hospitalizations`.
+
+This stage is not CLOSED and does not promote a model or implement persistence, API, UI, or live scoring.

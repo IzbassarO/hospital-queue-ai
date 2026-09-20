@@ -22,6 +22,7 @@ ml/
     flow_hierarchy.py central-only hierarchy/fallback evidence from immutable forecast artifacts
     flow_pressure.py  historical-flow pressure/warning evidence from accepted hierarchy artifacts
     signal_prioritization.py deterministic entity/origin Signals Inbox from accepted pressure artifacts
+    flow_scenario.py deterministic offline registration forecast stress tests from the accepted chain
     predict.py    make predict  → pred_referral, pred_daily_forecast, model_registry (then build_marts.py)
     build_marts.py make marts   → mart_hospital_profile_status, mart_region_profile_status, mart_area_status
   configs/
@@ -33,6 +34,7 @@ ml/
     tournament.yaml        reviewed journey candidates, folds, search spaces, horizons and eligibility policy
     explain_templates.yaml Russian sentence templates for explanations
     signal_prioritization.yaml reviewed lexicographic Inbox ranking and governance contract
+    flow_scenario.yaml reviewed scenario contract, accepted lineage, and standard sensitivity cases
 ```
 
 Pipelines are run with `PYTHONPATH=ml` (the Makefile sets it).
@@ -66,6 +68,19 @@ research evidence, and emits deterministic non-causal explanations and regional 
 zero-baseline signals below the fixed 1.0 expected count/day product floor remain source evidence but
 move to a separate low-volume attention view. The workflow neither loads daily alert cells nor creates
 a learned priority score. See `docs/signal-prioritization.md`.
+
+The Forecast Stress-Test Engine consumes the accepted hierarchy, pressure, and prioritization chain.
+It applies deterministic synthetic registration multipliers, scoped profile surges, same-profile
+inflow transfers, and bounded time shifts at hospital/profile level; then it reuses the accepted
+pressure and fixed lexicographic prioritization rules. It runs in retrospective `EVALUATION` mode and
+publishes only ignored evidence artifacts. It does not forecast a queue, model capacity, simulate a
+joint distribution, or estimate causal intervention effects. See `docs/flow-scenario-engine.md`.
+
+```bash
+make flow-scenario PROFILE=laptop ARGS="--plan"
+make flow-scenario PROFILE=laptop ARGS="--run-id flow-scenario-6b3-real-v1"
+make flow-scenario PROFILE=laptop ARGS="--scenario-spec /absolute/path/to/reviewed-spec.json --run-id <run-id>"
+```
 
 ## Patient-journey tournament
 

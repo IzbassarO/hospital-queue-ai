@@ -5,7 +5,7 @@ PY           ?= $(CURDIR)/.venv/bin/python
 ML_PATH      := $(CURDIR)/ml
 API_DEV_PORT ?= 8001
 
-.PHONY: up down migrate ingest baseline psql train tournament flow-evidence flow-quantile flow-calibration flow-hierarchy flow-pressure signal-prioritization predict registry marts create-key backup restore api-dev test ml-test \
+.PHONY: up down migrate ingest baseline psql train tournament flow-evidence flow-quantile flow-calibration flow-hierarchy flow-pressure signal-prioritization flow-scenario predict registry marts create-key backup restore api-dev test ml-test \
         lint fmt audit fixture fixture-load web-install web-dev web-lint web-test web-build
 
 up:            ## build and start postgres + backend + frontend (UI http://localhost:3000, API docs http://localhost:8000/docs)
@@ -49,6 +49,9 @@ flow-pressure: ## preventive historical-flow pressure and unusual-flow warning e
 
 signal-prioritization: ## deterministic entity/origin Signals Inbox preparation
 	PYTHONPATH=$(ML_PATH) $(PY) ml/pipelines/signal_prioritization.py --profile $(or $(PROFILE),laptop) $(ARGS)
+
+flow-scenario: ## offline non-causal forecast stress tests from the accepted flow chain
+	PYTHONPATH=$(ML_PATH) $(PY) ml/pipelines/flow_scenario.py --profile $(or $(PROFILE),laptop) $(ARGS)
 
 predict: migrate ## predictions of the current models -> postgres (pred_referral, pred_daily_forecast, model_registry), then marts
 	PYTHONPATH=$(ML_PATH) $(PY) ml/pipelines/predict.py
