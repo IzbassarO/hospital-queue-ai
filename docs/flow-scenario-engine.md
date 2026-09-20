@@ -2,7 +2,8 @@
 
 ## Status and purpose
 
-Step 6B.3 is implemented as an offline Scenario Engine and is **awaiting real-data acceptance**.
+Step 6B.3 is implemented as an offline Scenario Engine and is **CLOSED**: accepted on real data
+(run `flow-scenario-6b3-real-v1`, verdict ACCEPT WITH P2 ONLY; see "Real-data acceptance" below).
 It answers one restricted question:
 
 > If registrations followed this explicitly specified synthetic scenario, how would the existing
@@ -285,6 +286,72 @@ artifacts/flow_scenario/<run-id>/
     summary.json
     validation.json
 ```
+
+## Real-data acceptance
+
+The standard suite was executed once on real data and reviewed independently, read-only:
+
+- run id: `flow-scenario-6b3-real-v1`;
+- implementation commit: `36e83f26b8d1e0c5e7a53ec74e102c9d24d4103f` (clean worktree, recorded in the
+  evaluation manifest and experiment run record);
+- scientific identity: `483dd631ce27d02e351db5b8b8f1e7ac0325bf789c9f35daf897560dbcf51098`;
+- baseline reproduction: **PASS** at tolerance `1e-9` over 732,144 daily rows, 52,296 entity rows,
+  7,253 Inbox rows, 4,081 low-volume rows, and 502 unsupported rows;
+- acceptance verdict: **ACCEPT WITH P2 ONLY** (P0: none; P1: none).
+
+Standard scenario results for `registrations`:
+
+| scenario | daily severity changed (share) | entity changed (share) | Inbox | entered | left |
+|---|---|---|---|---|---|
+| baseline identity | 0 (0) | 0 (0) | 7,253 → 7,253 | 0 | 0 |
+| ×0.90 | 6,320 (0.0173) | 1,085 (0.0415) | 7,253 → 6,409 | 0 | 844 |
+| ×1.10 | 30,392 (0.0830) | 3,194 (0.1222) | 7,253 → 8,073 | 821 | 1 |
+| ×1.20 | 37,695 (0.1030) | 4,360 (0.1667) | 7,253 → 8,845 | 1,593 | 1 |
+
+In every scenario the region and national central sums are exact (error 0), source frames and raw
+quantiles are unchanged, `cohort_hospitalizations` is unchanged, counterfactual validation is false,
+the scenario range carries no coverage guarantee, nothing is promoted, no serving claim is made, and
+human review is required. Runtime was 1,803.5 s with peak memory 3,562.6 MiB on the laptop profile.
+
+The accepted capability is non-causal scenario stress testing. It is not a Digital Twin, causal
+intervention model, patient-rerouting model, queue or backlog predictor, occupancy or bed/staffing
+simulator, Monte Carlo joint simulation, or policy counterfactual validation.
+
+## Interpretation limitations
+
+These P2 caveats are non-blocking and are recorded for anyone reading the accepted artifacts.
+
+1. **Inherited reason-code vocabulary.** Machine-facing `reason_codes` and `source_reason_code` may
+   retain accepted source tokens such as `CALIBRATED_LOWER_EXCEEDS_HISTORICAL_FLOW_THRESHOLD` and
+   `CALIBRATED_UPPER_EXCEEDS_HISTORICAL_FLOW_THRESHOLD` even when severity was recomputed from
+   scenario sensitivity bounds. Operator-facing text is rewritten to "Derived scenario sensitivity
+   lower/upper bound", and the row metadata says `baseline_only_not_scenario` and
+   `derived_sensitivity_range_not_recalibrated`. The inherited tokens are historical source
+   vocabulary and must not be interpreted as evidence that scenario bounds were calibrated.
+2. **Zero-threshold knife edge.** Under positive stress most ELEVATED→HIGH transitions occur on
+   zero-threshold sparse cells where the baseline lower bound is exactly 0. For ×1.10, 23,608 of
+   23,609 ELEVATED→HIGH daily transitions are such cells, so any positive central/range shift
+   satisfies lower > 0. This is inherited from the accepted 6B.2C-1 severity rule. The product
+   materiality rule keeps these cells out of the primary Inbox, so entity HIGH can rise strongly
+   while operationally material primary-Inbox HIGH stays small. Do not reinterpret these transitions
+   as physical overload.
+3. **Monotonicity validator.** The built-in validator checks the sign of the central delta. The
+   acceptance review independently recomputed severity transition direction and confirmed 0 upward
+   transitions for ×0.90 and 0 downward pressure transitions for ×1.10 and ×1.20.
+4. **Scope-invariance counts.** Changed-cell counts use tolerance `1e-9` and therefore differ from
+   exact-arithmetic nonzero-change counts for near-zero rows. The meaningful invariant,
+   `unexpected_changed_cells = 0`, passed.
+5. **`deterministic_synthetic_inputs`.** This protocol flag means the scenario inputs and
+   perturbations are explicitly deterministic synthetic stress specifications. It does not mean the
+   underlying observed or forecast dataset is synthetic.
+6. **Summary lineage.** The summary checkpoint does not independently repeat the Git commit.
+   Clean-tree and code lineage are authoritative from the evaluation manifest and the experiment run
+   record; the summary is linked to that evaluation by content hash.
+7. **Memory.** Peak RSS was about 3,562.6 MiB, above the nominal 2 GiB laptop profile budget. This
+   did not affect scientific correctness or run completion. Future performance work may reduce
+   baseline entity/Inbox recomputation; it must not change scientific results.
+
+Next ML stage: **6B.4 — Constrained Optimizer / Decision Alternatives**. It is not designed here.
 
 Future evolution requires separate review and evidence for live legal-origin scoring, real
 capacity/occupancy/staffing data, an accepted refusal-flow forecast, intervention identification,

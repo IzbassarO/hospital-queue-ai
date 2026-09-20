@@ -468,7 +468,14 @@ Do not cite older superseded pressure/prioritization runs as authoritative evide
 ## 14. Next stage
 
 Next:
-**6B.2D — synthesis / serving contract**
+**6B.4 — Constrained Optimizer / Decision Alternatives**
+
+Status: **NOT STARTED**
+
+Prerequisite stages 6B.2D (serving contract) and 6B.3 (Forecast Stress-Test Engine v1, section 15)
+are CLOSED. 6B.4 is not designed or implemented here.
+
+### 6B.2D — synthesis / serving contract
 
 Status: **CLOSED**
 
@@ -485,7 +492,8 @@ Accepted result:
 - no database, backend, frontend, or legal-origin runtime serving integration yet.
 
 After:
-- 6B.4 Constrained Optimizer
+- 6B.3 Forecast Stress-Test Engine v1 (CLOSED, section 15)
+- 6B.4 Constrained Optimizer / Decision Alternatives
 - 6B.5 Model Assurance
 
 ---
@@ -493,7 +501,23 @@ After:
 ## 15. Forecast Stress-Test / Scenario Engine
 
 ### 6B.3
-Status: **IMPLEMENTED / AWAITING REAL-DATA ACCEPTANCE**
+Status: **CLOSED**
+
+Accepted run:
+`flow-scenario-6b3-real-v1`
+
+Implementation commit:
+`36e83f26b8d1e0c5e7a53ec74e102c9d24d4103f`
+
+Scientific identity:
+`483dd631ce27d02e351db5b8b8f1e7ac0325bf789c9f35daf897560dbcf51098`
+
+Acceptance verdict:
+**ACCEPT WITH P2 ONLY** (P0: none; P1: none)
+
+Accepted capability:
+Forecast Stress-Test Engine v1: deterministic non-causal registrations stress testing propagated
+through exact central hierarchy, historical-flow pressure, materiality, and prioritization.
 
 Code/config:
 - `ml/configs/flow_scenario.yaml`
@@ -524,16 +548,49 @@ Reporting and vocabulary:
 - accepted calibrated evidence stays under `baseline_*` names and is unchanged, as do raw quantiles;
 - reason codes preserve the accepted source reason; a severity label is never a reason code.
 
-Standard future evidence suite:
+Standard evidence suite (fixed in configuration before the run):
 - baseline identity;
 - national registrations ×0.90, ×1.10, and ×1.20.
+
+Accepted real-data results (`registrations`, hospital/profile level):
+- baseline reproduction **PASS** at tolerance `1e-9`: 732,144 daily rows, 52,296 entity rows,
+  7,253 Inbox rows, 4,081 low-volume rows, 502 unsupported rows;
+- identity: 0 daily and 0 entity severity changes; Inbox 7,253 → 7,253; entered 0; left 0;
+- ×0.90: 6,320 daily changes (share 0.0173); 1,085 entity changes (share 0.0415);
+  Inbox 7,253 → 6,409; entered 0; left 844; 0 upward severity transitions;
+- ×1.10: 30,392 daily changes (share 0.0830); 3,194 entity changes (share 0.1222);
+  Inbox 7,253 → 8,073; entered 821; left 1; 0 downward severity transitions;
+- ×1.20: 37,695 daily changes (share 0.1030); 4,360 entity changes (share 0.1667);
+  Inbox 7,253 → 8,845; entered 1,593; left 1; 0 downward severity transitions;
+- every scenario: region and national hierarchy error 0 (exact central sums), source frames
+  unchanged, raw quantiles untouched, `cohort_hospitalizations` unchanged, counterfactual
+  validation false, coverage guarantee false, no promotion, no serving claim, human review required;
+- runtime 1,803.5 s; peak memory 3,562.6 MiB (laptop profile).
 
 Acceptance gate:
 - the no-op scenario must reproduce accepted daily central/sensitivity bounds/severity/source reason,
   entity severity/crossing/alert flags/severity evidence, and Inbox materiality, eligibility, support
   class and deterministic rank, at tolerance `1e-9`, before any nonzero scenario is accepted;
 - scenario scientific identity excludes audit-only specification timestamps;
-- real-data execution and independent review remain pending.
+- the gate passed on real data and the independent acceptance review returned ACCEPT WITH P2 ONLY.
+
+P2 interpretation limitations (non-blocking; see `docs/flow-scenario-engine.md`):
+- machine-facing `reason_codes` retain accepted source tokens such as
+  `CALIBRATED_LOWER/UPPER_EXCEEDS_HISTORICAL_FLOW_THRESHOLD` even when severity was recomputed from
+  scenario sensitivity bounds; they are historical source vocabulary, not evidence that scenario
+  bounds were calibrated;
+- under positive stress, ELEVATED→HIGH transitions are dominated by zero-threshold sparse cells
+  (×1.10: 23,608 of 23,609 daily transitions); the materiality rule keeps them out of the primary
+  Inbox, and they must not be read as physical overload;
+- the built-in monotonicity validator checks the sign of the central delta; severity transition
+  direction was confirmed independently by the acceptance review;
+- scope-invariance changed-cell counts use tolerance `1e-9`; the meaningful invariant
+  `unexpected_changed_cells = 0` passed;
+- `deterministic_synthetic_inputs` means the stress specifications are deterministic and synthetic,
+  not that the observed or forecast data are synthetic;
+- the summary checkpoint does not repeat the Git commit; clean-tree lineage is authoritative from the
+  evaluation manifest and experiment run record, linked to the summary by content hash;
+- peak RSS exceeded the nominal 2 GiB laptop budget; this did not affect correctness or completion.
 
 Prohibited claims/outputs:
 - no queue or backlog trajectory;
@@ -542,4 +599,8 @@ Prohibited claims/outputs:
 - no causal rerouting, policy counterfactual, or intervention benefit claim;
 - no registration-shock propagation into `cohort_hospitalizations`.
 
-This stage is not CLOSED and does not promote a model or implement persistence, API, UI, or live scoring.
+This stage is CLOSED as non-causal scenario stress testing. It is not a Digital Twin, causal
+intervention model, queue or backlog predictor, or physical-capacity simulator. It does not promote a
+model or implement persistence, API, UI, or live scoring.
+
+Next ML stage: **6B.4 — Constrained Optimizer / Decision Alternatives** (not designed here).
