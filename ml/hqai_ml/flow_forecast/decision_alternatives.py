@@ -446,6 +446,27 @@ def _ordered_daily(frame: pd.DataFrame) -> pd.DataFrame:
     return frame.sort_values(["horizon", "target_date"], kind="stable").reset_index(drop=True)
 
 
+def _is_missing_scalar(value: Any) -> bool:
+    if value is None:
+        return True
+    missing = pd.isna(value)
+    return isinstance(missing, (bool, np.bool_)) and bool(missing)
+
+
+def _first_reason_code(source_reason_code: Any, reason_codes: Any) -> Any | None:
+    """Normalize scalar/sequence parquet representations without array truthiness."""
+    if not _is_missing_scalar(source_reason_code):
+        return source_reason_code
+    if _is_missing_scalar(reason_codes):
+        return None
+    if isinstance(reason_codes, (str, bytes)):
+        return reason_codes
+    try:
+        return next(iter(reason_codes), None)
+    except TypeError:
+        return reason_codes
+
+
 def _aligned_window(frame: pd.DataFrame, donor: pd.DataFrame) -> bool:
     if len(frame) != 14 or frame.duplicated(["horizon", "target_date"]).any():
         return False
@@ -688,16 +709,16 @@ def _state(frame: pd.DataFrame, scenario: bool) -> dict[str, Any]:
                 "sensitivity_upper": float(row.uncertainty_upper) if pd.notna(row.uncertainty_upper) else None,
                 "uncertainty_status": str(row.uncertainty_status),
             }
-        source_reason = getattr(row, "source_reason_code", None)
-        if source_reason is None:
-            reasons = getattr(row, "reason_codes", [])
-            source_reason = reasons[0] if reasons else None
+        source_reason = _first_reason_code(
+            getattr(row, "source_reason_code", None),
+            getattr(row, "reason_codes", None),
+        )
         cell |= {
             "threshold_value": float(row.threshold_value) if pd.notna(row.threshold_value) else None,
             "threshold_status": str(row.threshold_status),
             "threshold_fallback_level": str(row.threshold_fallback_level),
             "severity": str(row.severity),
-            "source_reason_code": str(source_reason),
+            "source_reason_code": str(source_reason) if source_reason is not None else None,
         }
         cells.append(cell)
     return summary | {"cells": cells}

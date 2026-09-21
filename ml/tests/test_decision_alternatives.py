@@ -25,7 +25,9 @@ from hqai_ml.flow_forecast.decision_alternatives import (
     VerificationCacheKey,
     _candidate_for_receiver,
     _daily_support_class,
+    _first_reason_code,
     _local_transformed,
+    _state,
     assert_public_contract,
     derive_donor_minimum,
     derive_receiver_maximum,
@@ -218,6 +220,45 @@ def donor_receiver(
 
 def donor_signal(inbox: pd.DataFrame) -> pd.Series:
     return inbox[inbox["hospital_id"].eq("h1")].iloc[0]
+
+
+@pytest.mark.parametrize(
+    ("reason_codes", "expected"),
+    [
+        (["A", "B"], "A"),
+        (("A", "B"), "A"),
+        (np.array(["A", "B"], dtype=object), "A"),
+        ([], None),
+        ((), None),
+        (np.array([], dtype=object), None),
+        (None, None),
+        (pd.NA, None),
+    ],
+)
+def test_first_reason_code_normalizes_sequence_and_missing_representations(reason_codes, expected):
+    assert _first_reason_code(None, reason_codes) == expected
+
+
+def test_first_reason_code_prefers_explicit_scalar_and_falls_back_from_missing_scalar():
+    reasons = np.array(["ARRAY_FIRST", "ARRAY_SECOND"], dtype=object)
+    assert _first_reason_code("EXPLICIT", reasons) == "EXPLICIT"
+    assert _first_reason_code(np.nan, reasons) == "ARRAY_FIRST"
+    assert _first_reason_code(pd.NA, reasons) == "ARRAY_FIRST"
+
+
+def test_state_handles_real_parquet_numpy_reason_code_arrays_and_empty_arrays():
+    daily, _, _ = baseline_fixture()
+    donor, _ = donor_receiver(daily)
+    donor = donor.drop(columns=["source_reason_code"], errors="ignore")
+    donor["reason_codes"] = [np.array(["A", "B"], dtype=object) for _ in range(len(donor))]
+    assert {cell["source_reason_code"] for cell in _state(donor, scenario=False)["cells"]} == {"A"}
+
+    donor["reason_codes"] = [np.array([], dtype=object) for _ in range(len(donor))]
+    assert {cell["source_reason_code"] for cell in _state(donor, scenario=False)["cells"]} == {None}
+
+    donor["source_reason_code"] = pd.NA
+    donor["reason_codes"] = [np.array(["FALLBACK"], dtype=object) for _ in range(len(donor))]
+    assert {cell["source_reason_code"] for cell in _state(donor, scenario=False)["cells"]} == {"FALLBACK"}
 
 
 def test_config_precommits_real_data_acceptance_values_and_rejects_safety_drift(tmp_path: Path):
