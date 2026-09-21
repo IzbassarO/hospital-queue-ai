@@ -211,6 +211,10 @@ Rules:
   on first load but remain explicitly `legacy_unattributed` rather than gaining invented provenance.
 - Evaluation completion does not imply approval. Training retains candidates by default, and an explicit operator
   promotion atomically replaces the validated multi-model filesystem current set.
+- Decision-support outputs that generate alternatives rather than predictions sit behind their own semantic
+  boundary — currently `docs/decision-alternatives-6b4.md` with ADR 0006 (Proposed). They are retrospective
+  `EVALUATION` artifacts that require human review, never act, never promote a model, and never imply physical
+  capacity.
 - Only the coordinator writes experiment/checkpoint state. On-disk lock identities fence every mutation; stale-lock
   recovery requires exact confirmation, refuses a same-host live owner and records an audit event.
 - Monitoring must eventually cover pipeline/data freshness, input and prediction distribution

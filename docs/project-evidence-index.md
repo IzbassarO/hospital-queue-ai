@@ -468,12 +468,34 @@ Do not cite older superseded pressure/prioritization runs as authoritative evide
 ## 14. Next stage
 
 Next:
-**6B.4 — Constrained Optimizer / Decision Alternatives**
+**6B.4 — Constrained Decision Alternatives Engine v1**
+(previously listed as "Constrained Optimizer / Decision Alternatives")
 
-Status: **NOT STARTED**
+Status: **SPECIFICATION / IN REVIEW**
 
 Prerequisite stages 6B.2D (serving contract) and 6B.3 (Forecast Stress-Test Engine v1, section 15)
-are CLOSED. 6B.4 is not designed or implemented here.
+are CLOSED.
+
+Specification evidence:
+- `docs/decision-alternatives-6b4.md` (normative v1 specification)
+- `docs/adr/0006-exact-constrained-decision-alternatives.md` (status **Proposed**)
+
+Specified capability:
+human-reviewed exact constrained decision alternatives over the accepted 6B.3 scenario surrogate —
+one scalar same-profile transfer fraction per donor/receiver pair, minimizing total synthetic expected
+registrations moved, under a donor `CENTRAL_EXCEEDANCE_CLEARED` goal and a receiver
+`NO_WORSE_HISTORICAL_FLOW_PROXY_STATE` constraint, solved by exact breakpoint enumeration with no solver
+dependency.
+
+Not yet present:
+- no optimizer runtime code;
+- no configuration file;
+- no accepted run, artifact, or measured result;
+- no accepted 6B.3/6B.2C code change (the accepted `inflow_transfer` lever is reused unchanged).
+
+It is not an AI recommender, routing optimizer, autonomous routing, or capacity optimizer. Every output
+is retrospective `EVALUATION`, requires human review, and carries
+`feasibility_status = NOT_PHYSICAL_CAPACITY_VALIDATED` with `capacity_checked = false`.
 
 ### 6B.2D — synthesis / serving contract
 
@@ -493,7 +515,7 @@ Accepted result:
 
 After:
 - 6B.3 Forecast Stress-Test Engine v1 (CLOSED, section 15)
-- 6B.4 Constrained Optimizer / Decision Alternatives
+- 6B.4 Constrained Decision Alternatives Engine v1 (SPECIFICATION / IN REVIEW)
 - 6B.5 Model Assurance
 
 ---
@@ -603,4 +625,4 @@ This stage is CLOSED as non-causal scenario stress testing. It is not a Digital 
 intervention model, queue or backlog predictor, or physical-capacity simulator. It does not promote a
 model or implement persistence, API, UI, or live scoring.
 
-Next ML stage: **6B.4 — Constrained Optimizer / Decision Alternatives** (not designed here).
+Next ML stage: **6B.4 — Constrained Decision Alternatives Engine v1** (SPECIFICATION / IN REVIEW, section 14; not designed here).
