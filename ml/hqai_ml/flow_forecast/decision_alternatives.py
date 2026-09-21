@@ -1248,6 +1248,25 @@ def _public_alternative(
     }
 
 
+def _verification_scenario_id(donor: pd.DataFrame, candidate: InternalCandidate) -> str:
+    donor_row = donor.iloc[0]
+    semantic_payload = {
+        "origin": pd.Timestamp(donor_row["origin"]).isoformat(),
+        "phase": str(donor_row["phase"]),
+        "region_id": str(donor_row["region_id"]),
+        "profile_id": str(donor_row["profile_id"]),
+        "donor_hospital_id": str(donor_row["hospital_id"]),
+        "receiver_hospital_id": candidate.receiver_id,
+        "transfer_fraction_hex": candidate.transfer_fraction.hex(),
+    }
+    receiver_fragment = "".join(
+        character if character.isascii() and (character.isalnum() or character in "._-") else "-"
+        for character in candidate.receiver_id
+    )
+    receiver_fragment = (receiver_fragment or "receiver")[:48]
+    return f"decision-alternative-{receiver_fragment}-{_canonical_hash(semantic_payload)[:32]}"
+
+
 def _verification_spec(
     donor: pd.DataFrame,
     candidate: InternalCandidate,
@@ -1255,9 +1274,8 @@ def _verification_spec(
     baseline_provenance: BaselineProvenance,
 ) -> ScenarioSpec:
     donor_row = donor.iloc[0]
-    phi_id = candidate.transfer_fraction.hex().replace(".", "_")
     return ScenarioSpec(
-        scenario_id=f"decision-alternative-{candidate.receiver_id}-{phi_id}",
+        scenario_id=_verification_scenario_id(donor, candidate),
         scenario_version=scenario_contract_version,
         scenario_type="inflow_transfer",
         classification=ScenarioClassification.MECHANISTIC_ACCOUNTING_SCENARIO,

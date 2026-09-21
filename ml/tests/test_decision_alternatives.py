@@ -4,6 +4,7 @@ import datetime as dt
 import hashlib
 import json
 import math
+import re
 from dataclasses import fields, is_dataclass, replace
 from pathlib import Path
 
@@ -28,6 +29,8 @@ from hqai_ml.flow_forecast.decision_alternatives import (
     _first_reason_code,
     _local_transformed,
     _state,
+    _verification_scenario_id,
+    _verification_spec,
     assert_public_contract,
     derive_donor_minimum,
     derive_receiver_maximum,
@@ -39,7 +42,7 @@ from hqai_ml.flow_forecast.decision_alternatives import (
 )
 from hqai_ml.flow_forecast.pressure import SEVERITY_RANK, aggregate_pressure_signals, derive_daily_pressure_signals
 from hqai_ml.flow_forecast.prioritization import _direct_supported, prepare_inbox
-from hqai_ml.flow_forecast.scenario import ScenarioEvaluation, evaluate_scenario
+from hqai_ml.flow_forecast.scenario import BaselineProvenance, ScenarioEvaluation, ScenarioSpec, evaluate_scenario
 from pipelines.decision_alternatives import (
     _acceptance_summary,
     _require_donor_daily_integrity,
@@ -448,6 +451,56 @@ def candidate(receiver_id: str, severity: str, headroom: float, tier: str = "DIR
             "receiver_min_central_headroom": headroom,
         },
     )
+
+
+@pytest.mark.parametrize(
+    ("receiver_id", "phi"),
+    [
+        ("01BP", 1.0),
+        ("01BP", 0.5),
+        ("01BP", 0.125),
+        ("01BP", math.nextafter(1.0, 0.0)),
+        ("01BP", math.nextafter(0.0, 1.0)),
+        ("unsafe receiver/+?", 1.0),
+        ("receiver-" + "x" * 300, 1.0),
+    ],
+)
+def test_verification_scenario_id_is_safe_bounded_deterministic_and_scenariospec_valid(
+    receiver_id: str,
+    phi: float,
+):
+    daily, _, _ = baseline_fixture()
+    donor, _ = donor_receiver(daily)
+    internal = replace(
+        candidate(receiver_id, "NORMAL", 1.0),
+        transfer_fraction=phi,
+        receiver_series_id=f"hp:{receiver_id}:p1",
+    )
+    scenario_id = _verification_scenario_id(donor, internal)
+    assert scenario_id == _verification_scenario_id(donor, internal)
+    assert len(scenario_id) <= 128
+    assert re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", scenario_id)
+
+    provenance = BaselineProvenance(
+        hierarchy_run_id=ACCEPTED_SOURCE_RUN_IDS["hierarchy"],
+        pressure_run_id=ACCEPTED_SOURCE_RUN_IDS["pressure"],
+        prioritization_run_id=ACCEPTED_SOURCE_RUN_IDS["prioritization"],
+    )
+    spec = _verification_spec(donor, internal, config().scenario_contract_version, provenance)
+    assert spec.scenario_id == scenario_id
+    assert ScenarioSpec(**spec.model_dump()).scenario_id == scenario_id
+    assert spec.parameters["fraction"] == phi
+
+
+def test_verification_scenario_id_changes_with_receiver_and_exact_phi_hex():
+    daily, _, _ = baseline_fixture()
+    donor, _ = donor_receiver(daily)
+    base = candidate("01BP", "NORMAL", 1.0)
+    different_receiver = replace(base, receiver_id="01BQ", receiver_series_id="hp:01BQ:p1")
+    different_phi = replace(base, transfer_fraction=math.nextafter(base.transfer_fraction, math.inf))
+    assert _verification_scenario_id(donor, base) != _verification_scenario_id(donor, different_receiver)
+    assert _verification_scenario_id(donor, base) != _verification_scenario_id(donor, different_phi)
+    assert base.transfer_fraction.hex() != different_phi.transfer_fraction.hex()
 
 
 def test_pareto_dominance_is_stratum_local_and_display_order_is_deterministic():
