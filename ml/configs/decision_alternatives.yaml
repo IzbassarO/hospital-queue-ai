@@ -1,0 +1,52 @@
+schema_version: 1
+optimizer_contract_version: constrained-decision-alternatives-v1
+target: registrations
+
+source_hierarchy_run: flow-hierarchy-6b2b3-real-v1
+source_pressure_run: flow-pressure-6b2c1-real-v2
+source_prioritization_run: signal-prioritization-6b2c2-real-v2
+source_scenario_run: flow-scenario-6b3-real-v1
+scenario_contract_version: forecast-stress-test-v1
+
+donor_goal: CENTRAL_EXCEEDANCE_CLEARED
+decision_basis: CENTRAL_CASE
+algorithm: EXACT_BREAKPOINT_ENUMERATION_V1
+
+donor_cohort:
+  origins:
+    - 2025-02-16
+    - 2025-02-23
+    - 2025-03-02
+    - 2025-03-17
+  top_n_primary_donors: 20
+  # Precommitted secondary-evidence cohort size; independent of the primary cohort limit.
+  top_n_fallback_donors: 20
+  severities: [ELEVATED, HIGH]
+  require_central_driven: true
+  primary_tier: direct_supported
+  include_fallback_tier_separately: true
+
+receiver_policy:
+  same_profile: true
+  same_region: true
+  geographic_scope: SAME_REGION
+  require_supported_threshold_all_affected_horizons: true
+  require_aligned_full_horizon_window: true
+  eligible_receiver_ids: null
+
+# Reviewed policy stress budgets, not physical capacity values. These are fixed before any 6B.4 run.
+transfer_budget_ladder: [0.05, 0.10, 0.25, 1.00]
+max_total_synthetic_transfer: null
+shortlist_max_alternatives: 5
+phi_guard_max_steps: 8
+float_tolerance: 1.0e-9
+
+materiality_config_reference: signal_prioritization.yaml#materiality_floor_expected_count
+range_recalibrated: false
+coverage_guarantee: false
+capacity_checked: false
+causal_effect_claimed: false
+human_review_required: true
+autonomous_action: false
+execution_mode: EVALUATION
+serving_claim: false

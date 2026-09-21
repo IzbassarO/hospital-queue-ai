@@ -11,8 +11,8 @@ The final independent review of this ADR and `docs/decision-alternatives-6b4.md`
 P1 findings; all previously raised P0/P1 findings are resolved. This accepts the **specification only**: the
 algebraic-minimum formulation with safe upward binary64 certification (`ALGEBRAIC_MINIMUM_CERTIFIED_UPWARD_FLOAT64`,
 no downward tightening below the algebraic minimum), the constraint taxonomy, the contract, and the acceptance
-protocol. Runtime implementation has not started; no configuration file, optimizer code, accepted run, or real-data
-result exists, and 6B.4 is not closed.
+protocol. The offline runtime was subsequently implemented under this unchanged decision. No accepted run or
+real-data result exists, and 6B.4 is not closed.
 
 ## Context
 
@@ -155,8 +155,8 @@ with the following decisions.
     `human_review_required = true`, `capacity_checked = false`, `causal_effect_claimed = false`. No persistence, API,
     UI, migration, or live scoring is introduced.
 
-This ADR is **Accepted**. It accepts the specification only; runtime implementation has not started. The 6B.4
-status is **SPEC ACCEPTED / IMPLEMENTATION NOT STARTED**.
+This ADR remains **Accepted**. The conforming offline runtime is implemented; independent code review and real-data
+acceptance remain pending. The 6B.4 status is **IMPLEMENTED / REAL-DATA ACCEPTANCE PENDING**.
 
 ## Dependency rules
 

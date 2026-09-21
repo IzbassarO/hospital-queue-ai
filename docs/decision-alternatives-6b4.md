@@ -2,7 +2,7 @@
 
 Step 6B.4 — v1 normative specification
 
-Status: **SPEC ACCEPTED / IMPLEMENTATION NOT STARTED**
+Status: **IMPLEMENTED / REAL-DATA ACCEPTANCE PENDING**
 Accepted: 2026-09-20
 Optimizer contract version: `constrained-decision-alternatives-v1`
 Decision record: [`adr/0006-exact-constrained-decision-alternatives.md`](adr/0006-exact-constrained-decision-alternatives.md) (Accepted)
@@ -11,9 +11,9 @@ Acceptance basis: independent science/architecture audit, corrective specificati
 PASS, all known P0/P1 findings resolved. Acceptance of this specification does not mean the optimizer runtime,
 real-data acceptance, backend/API integration, or operational feasibility exists.
 
-No implementation exists. No ML runtime, backend, frontend, database, migration, or artifact behaviour is changed
-by this document. It fixes the science, the contract, and the acceptance protocol **before** code is written, so
-that the implementation has nothing left to decide about meaning.
+The contained offline ML runtime is implemented and covered by unit/fixture integration tests. No accepted real-data
+6B.4 run or measured result exists yet. No backend, frontend, database, migration, serving, or accepted 6B.3/6B.2C
+science is changed. This document fixed the science, contract, and acceptance protocol before implementation.
 
 ---
 
@@ -1279,8 +1279,7 @@ Full verification is expensive (section 12.5), so a bounded shortlist is taken *
 
 ## 17. Configuration surface (normative for the future implementation)
 
-No configuration file is created by this specification. The intended path is
-`ml/configs/decision_alternatives.yaml`, and the following keys are normative when it is created:
+The implementation configuration is `ml/configs/decision_alternatives.yaml`; the following keys are normative:
 
 ```text
 schema_version
@@ -1299,7 +1298,8 @@ algorithm                             # EXACT_BREAKPOINT_ENUMERATION_V1 (only le
 
 donor_cohort:
   origins                             # accepted origins, precommitted
-  top_n                               # precommitted before the real run
+  top_n_primary_donors                # precommitted direct-supported cohort size
+  top_n_fallback_donors               # separately precommitted fallback/limited secondary-evidence cohort size
   severities                          # [ELEVATED, HIGH]
   require_central_driven               # true
   primary_tier                        # direct_supported
@@ -1420,6 +1420,8 @@ substitute a receiver, soften a threshold, or weaken the donor goal in order to 
 | `DONOR_TIER_EXCLUDED` | donor is `FALLBACK_LIMITED` and the fallback tier is not enabled for this run |
 | `RECEIVER_UNSUPPORTED_EVIDENCE` | an affected receiver cell has `threshold_status = unsupported` |
 | `RECEIVER_ALIGNMENT_INCOMPLETE` | the receiver lacks an aligned complete horizon 1–14 cell set |
+| `RECEIVER_OUTSIDE_SAME_REGION_POLICY` | a same-profile peer is excluded by the v1 `SAME_REGION` product policy |
+| `RECEIVER_NOT_ALLOW_LISTED` | a same-profile peer is excluded by the configured receiver allow-list |
 | `PHI_CERTIFICATION_FAILED` | the bounded certification guard could not certify any fraction |
 | `FULL_VERIFICATION_FAILED` | the full 6B.3 engine disagreed with a claimed field at tolerance `1e-9` |
 
@@ -1762,10 +1764,10 @@ Recorded so that no reader mistakes an artefact of the accepted evidence for a p
 
 ```text
 6B.4  Constrained Decision Alternatives Engine v1
-Status: SPEC ACCEPTED / IMPLEMENTATION NOT STARTED
+Status: IMPLEMENTED / REAL-DATA ACCEPTANCE PENDING
 Accepted: 2026-09-20
 Decision record: ADR 0006 (Accepted)
-Implementation: NOT STARTED
+Implementation: COMPLETE; independent code review pending
 Accepted run: NONE
 Artifacts: NONE
 ```
@@ -1773,6 +1775,6 @@ Artifacts: NONE
 Acceptance basis: independent science/architecture audit, corrective specification passes, final targeted review
 PASS, all known P0/P1 findings resolved.
 
-No optimizer runtime code exists. This document is normative for the implementation that follows it. Acceptance of
-this specification does not mean the optimizer runtime, real-data acceptance, backend/API integration, or
-operational feasibility exists. 6B.4 is not CLOSED.
+The offline runtime and fixture verification now exist. No accepted real-data run, backend/API integration, live
+serving, or operational feasibility exists. Specification acceptance and implementation do not constitute
+real-data acceptance. 6B.4 is not CLOSED.

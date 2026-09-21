@@ -23,6 +23,7 @@ ml/
     flow_pressure.py  historical-flow pressure/warning evidence from accepted hierarchy artifacts
     signal_prioritization.py deterministic entity/origin Signals Inbox from accepted pressure artifacts
     flow_scenario.py deterministic offline registration forecast stress tests from the accepted chain
+    decision_alternatives.py exact retrospective constrained alternatives with mandatory full-engine verification
     predict.py    make predict  → pred_referral, pred_daily_forecast, model_registry (then build_marts.py)
     build_marts.py make marts   → mart_hospital_profile_status, mart_region_profile_status, mart_area_status
   configs/
@@ -35,6 +36,7 @@ ml/
     explain_templates.yaml Russian sentence templates for explanations
     signal_prioritization.yaml reviewed lexicographic Inbox ranking and governance contract
     flow_scenario.yaml reviewed scenario contract, accepted lineage, and standard sensitivity cases
+    decision_alternatives.yaml precommitted donor cohort, policy-budget ladder, and verification bound
 ```
 
 Pipelines are run with `PYTHONPATH=ml` (the Makefile sets it).
@@ -81,6 +83,18 @@ make flow-scenario PROFILE=laptop ARGS="--plan"
 make flow-scenario PROFILE=laptop ARGS="--run-id flow-scenario-6b3-real-v1"
 make flow-scenario PROFILE=laptop ARGS="--scenario-spec /absolute/path/to/reviewed-spec.json --run-id <run-id>"
 ```
+
+The Constrained Decision Alternatives Engine is an offline `EVALUATION` layer over the unchanged accepted
+`inflow_transfer` lever. It computes the algebraic minimum transfer fraction, certifies the binary64 representation
+upward, applies receiver no-worse breakpoints, Pareto-filters within evidence strata, and publishes only candidates
+reproduced by the full Forecast Stress-Test Engine. Its policy budgets are not physical capacity values; all outputs
+require human review and keep physical feasibility unknown. Inspect the precommitted plan with:
+
+```bash
+make decision-alternatives PROFILE=laptop ARGS="--plan"
+```
+
+No real-data 6B.4 acceptance run has been performed. See `docs/decision-alternatives-implementation.md`.
 
 ## Patient-journey tournament
 

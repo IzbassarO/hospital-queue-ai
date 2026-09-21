@@ -471,7 +471,7 @@ Next:
 **6B.4 — Constrained Decision Alternatives Engine v1**
 (previously listed as "Constrained Optimizer / Decision Alternatives")
 
-Status: **SPEC ACCEPTED / IMPLEMENTATION NOT STARTED** (accepted 2026-09-20; not CLOSED)
+Status: **IMPLEMENTED / REAL-DATA ACCEPTANCE PENDING** (spec accepted 2026-09-20; not CLOSED)
 
 Prerequisite stages 6B.2D (serving contract) and 6B.3 (Forecast Stress-Test Engine v1, section 15)
 are CLOSED.
@@ -497,9 +497,14 @@ registrations moved, under a donor `CENTRAL_EXCEEDANCE_CLEARED` goal and a recei
 `NO_WORSE_HISTORICAL_FLOW_PROXY_STATE` constraint, solved by exact breakpoint enumeration with no solver
 dependency.
 
-Still pending (runtime implementation and real-data evidence):
-- no optimizer runtime code;
-- no configuration file;
+Implemented runtime evidence:
+- `ml/hqai_ml/flow_forecast/decision_alternatives.py`;
+- `ml/pipelines/decision_alternatives.py`;
+- `ml/configs/decision_alternatives.yaml`;
+- `ml/tests/test_decision_alternatives.py`;
+- `docs/decision-alternatives-implementation.md`.
+
+Still pending (real-data evidence):
 - no accepted run, artifact, or measured result;
 - no accepted 6B.3/6B.2C code change (the accepted `inflow_transfer` lever is reused unchanged).
 
@@ -525,7 +530,7 @@ Accepted result:
 
 After:
 - 6B.3 Forecast Stress-Test Engine v1 (CLOSED, section 15)
-- 6B.4 Constrained Decision Alternatives Engine v1 (SPEC ACCEPTED / IMPLEMENTATION NOT STARTED)
+- 6B.4 Constrained Decision Alternatives Engine v1 (IMPLEMENTED / REAL-DATA ACCEPTANCE PENDING)
 - 6B.5 Model Assurance
 
 ---
@@ -635,4 +640,5 @@ This stage is CLOSED as non-causal scenario stress testing. It is not a Digital 
 intervention model, queue or backlog predictor, or physical-capacity simulator. It does not promote a
 model or implement persistence, API, UI, or live scoring.
 
-Next ML stage: **6B.4 — Constrained Decision Alternatives Engine v1** (SPEC ACCEPTED / IMPLEMENTATION NOT STARTED, section 14; not designed here).
+Next acceptance work: **6B.4 — Constrained Decision Alternatives Engine v1** real-data protocol and independent
+review (implementation exists; section 14; not CLOSED).
