@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 import math
 from dataclasses import fields, is_dataclass, replace
@@ -698,17 +699,18 @@ def test_public_contract_rejects_forbidden_fields_and_unverified_members():
 
 
 def test_source_files_for_accepted_science_are_unchanged_by_implementation():
-    # The accepted baseline commit is the implementation parent; hashes make the boundary executable.
-    import subprocess
-
-    protected = [
-        "ml/hqai_ml/flow_forecast/scenario.py",
-        "ml/hqai_ml/flow_forecast/pressure.py",
-        "ml/hqai_ml/flow_forecast/prioritization.py",
-    ]
-    for path in protected:
-        baseline = subprocess.check_output(["git", "show", f"d12ca7ea9abf42d0cc9a8fc14e35cae5eacc93f1:{path}"])
-        assert (ROOT / path).read_bytes() == baseline
+    protected = {
+        "ml/hqai_ml/flow_forecast/scenario.py": "17ba920611bfdb3c0ca9b825baed2343602edf85f9d1c7a32df04ff6de2c4f18",
+        "ml/hqai_ml/flow_forecast/pressure.py": "5586da0dc89a37a997ac0de5d8ed992a27b386d1851a33e11c56751894a1fe33",
+        "ml/hqai_ml/flow_forecast/prioritization.py": (
+            "2c7933ec7953d63d1da953cd5d9db589dfb3448737eb60642f94931cdb916566"
+        ),
+    }
+    for path, expected_sha256 in protected.items():
+        actual_sha256 = hashlib.sha256((ROOT / path).read_bytes()).hexdigest()
+        assert actual_sha256 == expected_sha256, (
+            f"protected science file drifted: {path}; expected SHA-256 {expected_sha256}, got {actual_sha256}"
+        )
 
 
 def test_no_solver_or_hidden_score_dependency_or_contract_key():
