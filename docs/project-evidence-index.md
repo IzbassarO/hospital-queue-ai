@@ -471,14 +471,24 @@ Next:
 **6B.4 — Constrained Decision Alternatives Engine v1**
 (previously listed as "Constrained Optimizer / Decision Alternatives")
 
-Status: **SPECIFICATION / IN REVIEW**
+Status: **SPEC ACCEPTED / IMPLEMENTATION NOT STARTED** (accepted 2026-09-20; not CLOSED)
 
 Prerequisite stages 6B.2D (serving contract) and 6B.3 (Forecast Stress-Test Engine v1, section 15)
 are CLOSED.
 
 Specification evidence:
-- `docs/decision-alternatives-6b4.md` (normative v1 specification)
-- `docs/adr/0006-exact-constrained-decision-alternatives.md` (status **Proposed**)
+- `docs/decision-alternatives-6b4.md` (normative v1 specification, **accepted**)
+- `docs/adr/0006-exact-constrained-decision-alternatives.md` (status **Accepted**)
+
+Accepted specification:
+- exact one-donor/one-receiver scalar transfer-fraction (`phi`) formulation, same profile, same origin;
+- decision basis `CENTRAL_CASE`, with a mandatory non-probabilistic sensitivity-range companion;
+- exact closed-form donor minimum and receiver breakpoint semantics, algebraic minimum with safe upward
+  binary64 certification;
+- no solver dependency;
+- full 6B.3 scenario verification required before any alternative is published;
+- human review required on every output;
+- physical feasibility unknown (`feasibility_status = NOT_PHYSICAL_CAPACITY_VALIDATED`).
 
 Specified capability:
 human-reviewed exact constrained decision alternatives over the accepted 6B.3 scenario surrogate —
@@ -487,7 +497,7 @@ registrations moved, under a donor `CENTRAL_EXCEEDANCE_CLEARED` goal and a recei
 `NO_WORSE_HISTORICAL_FLOW_PROXY_STATE` constraint, solved by exact breakpoint enumeration with no solver
 dependency.
 
-Not yet present:
+Still pending (runtime implementation and real-data evidence):
 - no optimizer runtime code;
 - no configuration file;
 - no accepted run, artifact, or measured result;
@@ -515,7 +525,7 @@ Accepted result:
 
 After:
 - 6B.3 Forecast Stress-Test Engine v1 (CLOSED, section 15)
-- 6B.4 Constrained Decision Alternatives Engine v1 (SPECIFICATION / IN REVIEW)
+- 6B.4 Constrained Decision Alternatives Engine v1 (SPEC ACCEPTED / IMPLEMENTATION NOT STARTED)
 - 6B.5 Model Assurance
 
 ---
@@ -625,4 +635,4 @@ This stage is CLOSED as non-causal scenario stress testing. It is not a Digital 
 intervention model, queue or backlog predictor, or physical-capacity simulator. It does not promote a
 model or implement persistence, API, UI, or live scoring.
 
-Next ML stage: **6B.4 — Constrained Decision Alternatives Engine v1** (SPECIFICATION / IN REVIEW, section 14; not designed here).
+Next ML stage: **6B.4 — Constrained Decision Alternatives Engine v1** (SPEC ACCEPTED / IMPLEMENTATION NOT STARTED, section 14; not designed here).

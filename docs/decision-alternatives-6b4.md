@@ -2,9 +2,14 @@
 
 Step 6B.4 — v1 normative specification
 
-Status: **SPECIFICATION / IN REVIEW**
+Status: **SPEC ACCEPTED / IMPLEMENTATION NOT STARTED**
+Accepted: 2026-09-20
 Optimizer contract version: `constrained-decision-alternatives-v1`
-Decision record: [`adr/0006-exact-constrained-decision-alternatives.md`](adr/0006-exact-constrained-decision-alternatives.md) (Proposed)
+Decision record: [`adr/0006-exact-constrained-decision-alternatives.md`](adr/0006-exact-constrained-decision-alternatives.md) (Accepted)
+
+Acceptance basis: independent science/architecture audit, corrective specification passes, final targeted review
+PASS, all known P0/P1 findings resolved. Acceptance of this specification does not mean the optimizer runtime,
+real-data acceptance, backend/API integration, or operational feasibility exists.
 
 No implementation exists. No ML runtime, backend, frontend, database, migration, or artifact behaviour is changed
 by this document. It fixes the science, the contract, and the acceptance protocol **before** code is written, so
@@ -227,7 +232,8 @@ no hidden scalar score anywhere in v1 (invariant 17, section 20).
 
 ### 6.1 Primary donor population
 
-A donor signal is eligible for the **primary evidence tier** if and only if every condition holds, evaluated on the
+A donor signal is eligible for the **primary donor forecast-support tier** if and only if every condition holds,
+evaluated on the
 accepted `signal-prioritization-6b2c2-real-v2` artifacts without recomputation:
 
 1. `target = registrations`;
@@ -242,8 +248,11 @@ Donors satisfying 1–5 but with `priority_support_class = fallback_or_limited_h
 separately labelled lower-evidence tier (`FALLBACK_LIMITED`, section 14). Their results MUST NOT be pooled with
 primary-tier results in any metric.
 
-Donors with `threshold_status = unsupported`, or with any unsupported binding cell, are **forbidden**. Unsupported
-evidence is never treated as safe, never treated as zero, and never treated as normal.
+Donors with `threshold_status = unsupported` on the entity severity-evidence cell are forbidden. Binding cells are
+supported by definition because `S_i(t) = supported` is part of `B_i`. Unsupported **non-binding** donor horizons
+may remain in the 14-day series; they remain explicitly `UNSUPPORTED`, are never reinterpreted as safe evidence,
+and are not subject to `CENTRAL_EXCEEDANCE_CLEARED`, which applies only to `B_i`. v1 does not require all 14 donor
+horizons to be threshold-supported unless a future reviewed policy says so.
 
 ### 6.2 The binding set and the central-driven requirement
 
@@ -322,7 +331,7 @@ A hospital `j` is a **v1 receiver candidate** for donor `i` at `(o, REGISTRATION
    `INVALID_TRANSFER_ALIGNMENT` contract and is required for full verification to be runnable at all;
 7. `j` is in `eligible_receiver_ids` when that user constraint is supplied (section 9.3).
 
-`priority_support_class` is **not** an eligibility condition for a receiver; it sets the evidence tier
+`priority_support_class` is **not** an eligibility condition for a receiver; it maps to the forecast-support tier
 (section 14). Receivers with `threshold_status = unsupported` anywhere in `A` are rejected — **unsupported
 receivers are rejected**, never scored, never displayed as marginal.
 
@@ -547,9 +556,17 @@ than an otherwise identical receiver with usable range evidence.
 This is an artefact of missing evidence, not a property of the receiver. v1 MUST:
 
 - publish `receiver_range_masking_present = true` whenever any affected receiver cell has `R_j(t) = UNAVAILABLE`;
+- set `receiver_range_evidence = RANGE_LIMITED`; this axis is independent of forecast support, so the same
+  alternative may still have `forecast_support_tier = DIRECT_SUPPORTED`;
 - set `sensitivity_range_result = RANGE_EVIDENCE_INCOMPLETE` for that alternative;
+- permit the alternative to be published with this disclosure after full verification, but exclude it from the
+  primary complete-evidence acceptance cohort;
 - report, in the acceptance protocol, the alternative counts and minimum-fraction distributions **split by receiver
-  range availability**, never pooled.
+  range-evidence tier**, never pooled.
+
+Missing range evidence can mechanically remove `WATCH`/`HIGH` predicates and make the receiver appear more tolerant;
+it does not change the provenance of the central forecast. Therefore forecast support and receiver range evidence
+are orthogonal axes and MUST NOT be collapsed into one label.
 
 ---
 
@@ -630,8 +647,9 @@ Therefore
 phi_min = max over t ∈ B_i of ( 1 - T_i(t) / c_i(t) )        ∈ (0, 1]
 ```
 
-`phi_min` is the exact minimum transfer fraction achieving `CENTRAL_EXCEEDANCE_CLEARED`. The `argmax` cell is the
-**binding donor cell** and MUST be published.
+`phi_min` is the exact algebraic minimum transfer fraction achieving `CENTRAL_EXCEEDANCE_CLEARED`. The `argmax`
+cell is the **binding donor cell** and MUST be published. If multiple horizons attain the same binding maximum, the
+published binding donor cell is the one with the smallest horizon number.
 
 **Lemma L5 (receiver independence).** `phi_min` depends only on the donor's own cells. It is identical for every
 receiver candidate of the canonical unit. Consequently `total_synthetic_flow_moved` is identical across all feasible
@@ -667,6 +685,15 @@ Derivations:
 - when `R_j(t) = UNAVAILABLE` the `L'` and `U'` predicates are permanently false and their bounds are omitted; see
   the mandatory disclosure in section 10.4.
 
+**Zero-threshold receiver cells.** For a baseline `NORMAL` receiver cell with `T = 0`, every positive central
+increase satisfies `c'_j > T`, so the central breakpoint is `phi = 0`; the certified `phi_max` may therefore be
+exactly zero and the receiver may become `RECEIVER_BLOCKED` immediately. For baseline `ELEVATED` or `HIGH` cells
+with `T = 0`, the applicable higher-rank predicates depend on usable scenario sensitivity evidence and the accepted
+severity cascade above. If that range evidence is missing, the omitted `L'`/`U'` predicates can make the receiver
+bound mechanically more permissive. Such a candidate MUST set `receiver_range_masking_present = true`,
+`receiver_range_evidence = RANGE_LIMITED`, and `sensitivity_range_result = RANGE_EVIDENCE_INCOMPLETE`; it is not
+primary complete-evidence acceptance.
+
 Then
 
 ```text
@@ -677,46 +704,118 @@ with `phi_max = 1` when no breakpoint applies. Breakpoint candidates MUST be enu
 ascending value, ties broken by `(horizon, predicate_rank, receiver_hospital_id)` — so that the identified binding
 receiver cell is reproducible. The binding receiver cell and predicate MUST be published.
 
-### 11.5 Selection, certification, and numeric determinism
+### 11.5 Selection, upward candidate certification, and numeric determinism
+
+The scientific minimum is the exact algebraic value `phi_min_alg` defined by the formula in section 11.3. Binary64
+is only the execution and replay representation of that algebraically defined minimum; it does not redefine the
+optimization problem. The implementation computes the formula in its deterministic arithmetic representation and
+selects `float(phi_min_alg)` as the initial binary64 candidate.
+
+For the lower-bound comparison, each finite binary64 input `T_i(t)` and `c_i(t)` is interpreted as the exact real
+number it encodes. The implementation MUST use exact rational comparison or an equivalent directed-rounding method
+to establish `phi ≥ phi_min_alg`; testing only the rounded product `(1 − phi)·c_i(t) ≤ T_i(t)` is insufficient.
+
+Certification is required because the accepted severity predicates use strict `>` comparisons and an algebraic
+boundary such as `1 − T/c` may round when represented and substituted into the binary64 calculation. Upward
+certification prevents floating-point rounding from publishing a transfer fraction below the mathematically required
+boundary. Downward ULP tightening of the chosen donor fraction is forbidden: apparent feasibility caused only by
+rounding of `(1 − phi)` does not establish feasibility relative to the exact algebraic optimization problem.
+
+The normative order is:
+
+1. derive algebraic `phi_min_alg` and every algebraic receiver breakpoint, then `phi_max_alg`;
+2. certify the donor lower bound upward and receiver/policy upper bounds downward into binary64 values;
+3. compare the **certified** donor and receiver bounds—never uncertified algebraic floats;
+4. choose the certified donor lower bound as the final candidate when it lies within every certified upper bound;
+5. upward-certify the chosen candidate as needed; never move the chosen donor candidate downward;
+6. re-check receiver no-worse and every other constraint at the exact final published float.
+
+Receiver breakpoint certification uses `nextafter(bound, 0.0)` until the exact bound satisfies receiver no-worse.
+Fraction and total-transfer policy budgets are likewise treated as certified upper bounds. This downward movement is
+safe certification of an **upper bound** and is distinct from the forbidden downward movement of the selected donor
+fraction. Donor lower-bound certification starts from the binary64 encoding of `phi_min_alg`, advances only with
+`nextafter(phi, +infinity)` until every binding donor predicate passes, and accumulates those moves in
+`certify_up_steps`. The donor lower-bound test requires both that the candidate is not below `phi_min_alg` under the
+deterministic algebraic-bound comparison and that recomputation at the candidate satisfies every binding donor
+predicate. Then:
 
 ```text
-phi_cap   = min( phi_max, max_transfer_fraction )
+phi_cap = min(phi_max_certified,
+              max_transfer_fraction_certified,
+              max_total_synthetic_transfer_bound_certified)
 ```
 
-- if `phi_min > phi_max` → `RECEIVER_BLOCKED` (the receiver cannot carry the required flow without modelled
-  worsening);
-- else if `phi_min > max_transfer_fraction`, or
-  `phi_min · Σ_t c_i(t) > max_total_synthetic_transfer` → `TRANSFER_BUDGET_INSUFFICIENT`;
-- else the alternative's fraction is `phi_min` — the objective is strictly increasing, so the minimum of the
-  feasible closed interval `[phi_min, phi_cap]` is the exact optimum, and no search is required.
+- if `phi_min_certified > phi_max_certified` → `RECEIVER_BLOCKED`;
+- else if `phi_min_certified >` either certified policy-budget bound → `TRANSFER_BUDGET_INSUFFICIENT`;
+- otherwise the candidate is `phi_min_certified`. The objective remains strictly increasing and no search is used.
 
-Because the accepted severity rule uses strict inequalities and `phi_min` is computed in IEEE-754 binary64, the
-value `1 − T/c` may not reproduce `(1 − phi)·c ≤ T` exactly. v1 MUST therefore **certify** the published fraction:
+The final upward certification is:
 
 ```text
-certify_up(p):
-    for k in 0 .. PHI_GUARD_MAX_STEPS:                  # PHI_GUARD_MAX_STEPS = 8, fixed in config
-        if (1 - p) * c_i(t) <= T_i(t) for all t in B_i:  # recomputed with the accepted rule
-            return p, k
-        p = nextafter(p, 1.0)
-    fail DONOR_CENTRAL_RELIEF_INFEASIBLE / PHI_CERTIFICATION_FAILED
+phi = float(phi_min_alg)
+certify_up_steps = 0
+
+while true:
+    test the current phi against the donor lower-bound certification
+    if the donor lower bound passes:
+        phi_min_certified = phi
+        break
+    if certify_up_steps == PHI_GUARD_MAX_STEPS:
+        fail PHI_CERTIFICATION_FAILED
+    phi = nextafter(phi, +infinity)
+    certify_up_steps += 1
+
+compare phi_min_certified with every certified upper bound
+if phi_min_certified > phi_max_certified:
+    fail RECEIVER_BLOCKED
+if phi_min_certified exceeds either certified policy-budget bound:
+    fail TRANSFER_BUDGET_INSUFFICIENT
+
+phi = phi_min_certified
+while true:
+    test final_certification(phi)
+    if every required constraint passes:
+        break
+    if any upper-bound, domain, or conservation constraint fails:
+        fail PHI_CERTIFICATION_FAILED          # increasing phi cannot repair it
+    if certify_up_steps == PHI_GUARD_MAX_STEPS:
+        fail PHI_CERTIFICATION_FAILED
+    phi = nextafter(phi, +infinity)
+    certify_up_steps += 1
+
+if final_certification(phi) fails:
+    fail PHI_CERTIFICATION_FAILED
 ```
 
-Receiver breakpoints are certified symmetrically with `certify_down` toward `0.0`. The published
-`transfer_fraction` is the certified binary64 value; `phi_guard_steps_applied` MUST be published. The published
-value MUST be reproducible bit-for-bit: it is serialized with 17 significant decimal digits **and** as a
-hexadecimal float, and the certified value — not the uncertified algebraic value — is what full verification runs.
+Both loops test the current candidate **before** checking whether the step budget is exhausted. A candidate reached
+by the final permitted upward correction is therefore tested and may succeed. `PHI_GUARD_MAX_STEPS` is the maximum
+number of upward `nextafter` corrections across donor-bound and final certification, not the number of candidates
+tested.
 
-Minimality is therefore published precisely as
+`final_certification` recomputes, at the tested binary64 value: donor
+`CENTRAL_EXCEEDANCE_CLEARED`, receiver `NO_WORSE_HISTORICAL_FLOW_PROXY_STATE`, `phi ≤ phi_max_certified`, both
+policy budgets, domain `phi ∈ [0,1]`, and per-horizon/total same-profile conservation within `1e-9`. The final
+receiver no-worse check is mandatory even when a separately certified `phi_max` was already compared.
+
+The public certificate emits `transfer_fraction`, `transfer_fraction_decimal` with 17 significant digits,
+`phi_hex`, and `certify_up_steps`. The decimal and hexadecimal forms provide deterministic replay of the exact
+published binary64 value. If the upward guard exhausts before certification, the result is
+`PHI_CERTIFICATION_FAILED`; a weaker certificate MUST NOT be published.
+
+The certification label is:
 
 ```text
-transfer_fraction_minimality = MINIMUM_CERTIFIED_FLOAT64_UNDER_STATED_CONSTRAINTS
+transfer_fraction_certification = ALGEBRAIC_MINIMUM_CERTIFIED_UPWARD_FLOAT64
 ```
+
+It means that the optimization minimum is defined algebraically, the published binary64 fraction is equal to or
+slightly above that boundary when upward correction is required, and the published value is feasible at its exact
+binary64 representation. It makes no representable-value minimality claim.
 
 `DONOR_CENTRAL_RELIEF_INFEASIBLE` is otherwise unreachable in v1: `phi = 1` gives `c'_i(t) = 0 ≤ T_i(t)` for every
-supported cell, so the donor goal is always achievable in exact arithmetic for a single receiver. The code is
-defined, MUST be emitted rather than silently relaxing the goal if certification ever fails, and becomes
-structurally reachable only under a future stricter donor goal or a multi-receiver/capacity-constrained extension.
+supported binding cell, so the donor goal is always achievable in exact arithmetic for a single receiver. The code
+is reserved for a future stricter donor goal or multi-receiver/capacity-constrained extension. A bounded upward
+Float64 certification failure in v1 emits `PHI_CERTIFICATION_FAILED` instead.
 
 ### 11.6 Why no MILP in v1, and when one would be justified
 
@@ -754,7 +853,8 @@ Scope: **only** the donor and receiver daily cells of the canonical unit — the
 `(origin, profile)`. It is exact, not approximate: it applies the same algebra as the accepted engine to a restricted
 cell set.
 
-It computes, and MAY claim:
+It computes the following **internal candidate evidence** for search, Pareto filtering, shortlisting, and the
+full-engine agreement test:
 
 | claimed field group | content |
 |---|---|
@@ -765,7 +865,7 @@ It computes, and MAY claim:
 | constraint satisfaction | `source_central_goal_satisfied`, `receiver_no_worse_constraint_satisfied`, `budget_constraint_satisfied`, `conservation_satisfied`, binding donor cell, binding receiver cell and predicate |
 | transfer amounts | `transfer_fraction`, `transferred_expected_registrations_total`, `transferred_by_horizon` |
 | Pareto dimensions | `receiver_worst_severity_after`, `receiver_min_central_headroom` |
-| support / evidence | `donor_support_class`, `receiver_support_class`, `evidence_basis`, threshold support rungs, range availability, `receiver_range_masking_present` |
+| support / evidence | `donor_support_class`, `receiver_support_class`, `forecast_support_tier`, `receiver_range_evidence`, threshold support rungs, range availability, `receiver_range_masking_present` |
 | range companion | `sensitivity_range_result`, `receiver_range_worst_severity_after` |
 
 It **MUST NOT** claim, and MUST NOT emit even provisionally:
@@ -777,11 +877,12 @@ It **MUST NOT** claim, and MUST NOT emit even provisionally:
 - deterministic operator explanation as a verified artifact;
 - complete scenario output, scenario summary, or difference frames.
 
-Fields that require full verification are `null` while `verification_state = FAST_EVALUATOR_ONLY`.
+These records are not `DecisionAlternative` objects and MUST NOT appear in the published `alternatives` array.
+`FAST_EVALUATOR_ONLY` is an internal candidate state only; no accepted or published alternative may retain it.
 
 ### 12.2 Layer 2 — FULL 6B.3 SCENARIO VERIFICATION
 
-For every **shortlisted** alternative, v1 MUST run the unchanged accepted 6B.3 engine and compare.
+For every **shortlisted internal candidate**, v1 MUST run the unchanged accepted 6B.3 engine and compare.
 
 Full verification establishes:
 
@@ -794,8 +895,10 @@ Full verification establishes:
 - conservation, scope invariance, input immutability, unchanged secondary target, unchanged raw quantiles,
   unchanged provenance and anomaly context, deterministic scientific hash.
 
-Only after this does the alternative carry `verification_state = VERIFIED_FULL_ENGINE` and populate the
-verification-only fields.
+Only after this does the candidate become a publishable `DecisionAlternative`, carry
+`verification_state = VERIFIED_FULL_ENGINE`, and populate every contract-defined verification-only field with a
+non-null value. A verification failure excludes the candidate and is recorded separately as a diagnostic; it never
+creates a partially verified public alternative.
 
 ### 12.3 The agreement test — mandatory
 
@@ -873,6 +976,11 @@ DecisionAlternative
 
 objects. Zero is a valid, complete, successful result (section 19).
 
+The `alternatives` array contains **only** fully verified objects with
+`verification_state = VERIFIED_FULL_ENGINE`. Fast-evaluator candidates, candidates omitted by the precommitted
+shortlist bound, and candidates that fail full verification are separate non-alternative evidence records. They are
+never typed, described, counted, or displayed as published `DecisionAlternative` objects.
+
 v1 MUST NOT produce a single autonomous recommendation, a default selection, a highlighted choice, a "best" object,
 or an implicit choice by ordering. **The system does not choose among the alternatives.**
 
@@ -923,30 +1031,60 @@ Receiver harm is evaluated on **raw** severity, cell by cell, with no materialit
 
 ### 14.3 Evidence tiers
 
+Forecast support is normalized onto this axis:
+
 ```text
 DIRECT_SUPPORTED
 FALLBACK_LIMITED
 UNSUPPORTED       → rejected, never an alternative
 ```
 
-Per party:
+Per party, after the explicit normalization in section 14.4:
 
-- `donor_support_class` — the donor's accepted `priority_support_class`;
-- `receiver_support_class` — the receiver's accepted `priority_support_class`.
+- `donor_support_class` — the donor's normalized accepted `priority_support_class`;
+- `receiver_support_class` — the receiver's normalized accepted `priority_support_class`.
 
-Alternative-level tier:
+Alternative-level forecast-support tier:
 
 ```text
-evidence_basis = DIRECT_SUPPORTED   if donor and receiver are both DIRECT_SUPPORTED
-                 FALLBACK_LIMITED   otherwise
+forecast_support_tier = DIRECT_SUPPORTED   if donor and receiver are both DIRECT_SUPPORTED
+                        FALLBACK_LIMITED   otherwise
 ```
 
-`evidence_basis` is a floor, never an average and never a blend. Acceptance metrics MUST be reported per tier and,
-where the composition matters, per `(donor tier, receiver tier)` pair. **Never combine their acceptance metrics
-silently.** A single pooled "alternative rate" across tiers is a reporting defect.
+`forecast_support_tier` is a floor, never an average and never a blend. Receiver range evidence is a separate axis:
+
+```text
+receiver_range_evidence = COMPLETE       if every affected receiver cell has usable accepted range evidence
+                          RANGE_LIMITED  otherwise
+```
+
+`receiver_range_masking_present = true` implies `receiver_range_evidence = RANGE_LIMITED` and
+`sensitivity_range_result = RANGE_EVIDENCE_INCOMPLETE`. A range-limited alternative may be fully verified and
+published with disclosure, including when its `forecast_support_tier` is `DIRECT_SUPPORTED`, but it MUST NOT count
+toward the primary acceptance cohort. The primary cohort requires both `forecast_support_tier = DIRECT_SUPPORTED`
+and `receiver_range_evidence = COMPLETE`.
+
+Acceptance metrics MUST be reported on both axes and, where composition matters, per
+`(donor support class, receiver support class)` pair. **Never combine their acceptance metrics silently.** A single
+pooled "alternative rate" across either axis is a reporting defect.
 
 Forecast support, threshold support, and range availability remain three independent dimensions and MUST NOT be
 merged into one support score.
+
+### 14.4 Normalized contract vocabulary
+
+6B.4 uses normalized public vocabulary rather than claiming enum identity with its accepted inputs:
+
+| source concept | accepted source literal / condition | normalized 6B.4 contract value |
+|---|---|---|
+| target | `registrations` | `REGISTRATIONS` |
+| priority support | `direct_supported` | `DIRECT_SUPPORTED` |
+| priority support | `fallback_or_limited_history` | `FALLBACK_LIMITED` |
+| receiver range completeness | usable accepted scenario sensitivity evidence on every affected cell | `COMPLETE` |
+| receiver range completeness | any missing or masked scenario sensitivity evidence | `RANGE_LIMITED` |
+
+In particular, `FALLBACK_LIMITED` is normalized 6B.4 vocabulary; it is **not** the literal accepted source value
+`fallback_or_limited_history`. Source literals remain unchanged in accepted inputs and provenance.
 
 ---
 
@@ -966,8 +1104,10 @@ parameter, fold, or candidate name appears in them, consistent with ADR 0005.
 | `donor_signal_ref` | required object | accepted donor signal identity: `signal_id`, hospital, profile, target, origin, displayed severity, `priority_support_class`, `operational_priority_status`, `materiality_status`, plus `B_i` as `binding_horizons` |
 | `search_policy` | required object | donor cohort rule, receiver candidate rule, `donor_goal`, `decision_basis`, `algorithm`, Pareto dimensions, display order, `identity_sha256` |
 | `constraint_policy` | required object | scientific constraint set version, product policy, user budget values, `PHI_GUARD_MAX_STEPS`, `identity_sha256` |
-| `evidence_basis` | required object | `{donor_support_class, receiver_support_classes_present, tier_counts}`; no pooled tier value |
-| `alternatives` | required list | zero or more `DecisionAlternative`, in deterministic display order |
+| `evidence_policy` | required object | definitions and counts for the orthogonal `forecast_support_tier` and `receiver_range_evidence` axes, plus donor/receiver support-class pair counts; no pooled tier value |
+| `alternatives` | required list | zero or more fully verified `DecisionAlternative` objects, in deterministic display order; every member has `verification_state = VERIFIED_FULL_ENGINE` |
+| `alternatives_dropped_by_shortlist_bound` | required list | non-alternative evidence records identifying otherwise feasible candidates not sent to full verification; never `DecisionAlternative` objects |
+| `verification_failures` | required list | non-alternative diagnostics for candidates excluded after `FULL_VERIFICATION_FAILED`; never `DecisionAlternative` objects |
 | `abstention_status` | required object | `{abstained, codes[], rejected_receivers[]}` with a code per rejected receiver |
 | `provenance` | required object | accepted source run ids, 6B.3 scenario contract version and scientific identity, config identity, code identity, `execution_mode` |
 | `human_review_required` | required constant | `true` |
@@ -995,7 +1135,7 @@ Required fields, as specified:
 | `alternative_id` | required string | deterministic hash over canonical unit, receiver, goal, policies, and the certified fraction; no timestamp input |
 | `donor` | required object | hospital, region, profile, series id |
 | `receiver` | required object | hospital, region, profile, series id |
-| `transfer_fraction` | required float | the **certified** `phi`, 17 significant digits plus hexadecimal float |
+| `transfer_fraction` | required float | the exact published binary64 `phi`, upward-certified from `phi_min_alg` |
 | `transferred_expected_registrations_total` | required float | `phi · Σ_t c_i(t)` |
 | `transferred_by_horizon` | required list | per `t = 1 … 14`: `{horizon, target_date, moved}` |
 | `baseline_donor_state` | required object | per-horizon baseline cells (section 15.3) |
@@ -1010,14 +1150,16 @@ Required fields, as specified:
 | `receiver_support_class` | required enum | `DIRECT_SUPPORTED` \| `FALLBACK_LIMITED` |
 | `receiver_min_central_headroom` | required float | `min_{t ∈ A} ( T_j(t) − c'_j(t) )`; signed; modelled headroom under the historical-flow proxy, never capacity |
 | `receiver_worst_severity_after` | required enum | worst scenario `PressureSeverity` over `t ∈ A` |
-| `evidence_basis` | required enum | tier floor of donor and receiver |
+| `decision_basis` | required constant | `CENTRAL_CASE` |
+| `forecast_support_tier` | required enum | `DIRECT_SUPPORTED` \| `FALLBACK_LIMITED`; normalized floor of donor and receiver forecast support |
+| `receiver_range_evidence` | required enum | `COMPLETE` \| `RANGE_LIMITED`; independent of forecast support |
 | `sensitivity_range_result` | required enum | `ROBUST_TO_TRANSFORMED_RANGE` \| `NOT_ROBUST_TO_TRANSFORMED_RANGE` \| `RANGE_EVIDENCE_INCOMPLETE` |
 | `range_recalibrated` | required constant | `false` |
 | `coverage_guarantee` | required constant | `false` |
 | `feasibility_status` | required constant | `NOT_PHYSICAL_CAPACITY_VALIDATED` |
 | `capacity_checked` | required constant | `false` |
 | `causal_effect_claimed` | required constant | `false` |
-| `verification_state` | required enum | `FAST_EVALUATOR_ONLY` \| `VERIFIED_FULL_ENGINE` \| `VERIFICATION_FAILED` |
+| `verification_state` | required constant | `VERIFIED_FULL_ENGINE`; internal candidate states are not legal in this public object |
 | `human_review_required` | required constant | `true` |
 | `explanation` | required object | deterministic explanation (section 18) |
 | `provenance` | required object | accepted lineage plus the exact verification scenario specification |
@@ -1028,8 +1170,10 @@ Additional normative fields:
 
 | field | type | semantics |
 |---|---|---|
-| `transfer_fraction_minimality` | required constant | `MINIMUM_CERTIFIED_FLOAT64_UNDER_STATED_CONSTRAINTS` |
-| `phi_guard_steps_applied` | required integer | certification steps used (section 11.5) |
+| `transfer_fraction_certification` | required constant | `ALGEBRAIC_MINIMUM_CERTIFIED_UPWARD_FLOAT64` |
+| `transfer_fraction_decimal` | required string | decimal representation of the exact binary64 `transfer_fraction`, using 17 significant digits |
+| `phi_hex` | required string | hexadecimal representation of the exact binary64 `transfer_fraction` |
+| `certify_up_steps` | required integer | upward `nextafter` steps used by certification (section 11.5) |
 | `donor_binding_cell` | required object | `argmax` cell of `phi_min`: horizon, target date, `c_i`, `T_i` |
 | `donor_binding_horizons` | required list | `B_i` |
 | `donor_zero_threshold_binding_present` | required boolean | section 11.3 |
@@ -1041,7 +1185,7 @@ Additional normative fields:
 | `receiver_range_worst_severity_after` | required enum | worst range-driven state over `A` |
 | `pair_conservation_max_absolute_error` | required float | measured, must be `≤ 1e-9` |
 | `limitations` | required list | includes `NOT_PHYSICAL_CAPACITY_VALIDATED`, `THRESHOLD_COMPARATOR_ASSUMPTION`, and `PHYSICAL_FEASIBILITY_UNKNOWN` |
-| `verification_only_fields` | nullable object | Inbox membership/rank, entered/left, materiality status, hierarchy coherence, difference summaries; `null` unless `verification_state = VERIFIED_FULL_ENGINE` |
+| `verification_only_fields` | required non-null object | Inbox membership/rank, entered/left, materiality status, hierarchy coherence, and difference summaries established by full verification |
 
 ### 15.3 Per-horizon state object
 
@@ -1091,27 +1235,28 @@ and 2 as minimize and dimension 3 as maximize.
 Rules:
 
 - dominance is evaluated **within one canonical unit** only;
-- dominance is evaluated **within one evidence tier** only. A `DIRECT_SUPPORTED` alternative never eliminates a
-  `FALLBACK_LIMITED` alternative and vice versa, because evidence tier is not a Pareto dimension and folding it into
-  the dominance relation would be a hidden preference;
+- dominance is evaluated **within one evidence stratum** only, where a stratum is the pair
+  `(forecast_support_tier, receiver_range_evidence)`. Alternatives on different forecast-support or range-evidence
+  axes never eliminate one another, because folding either evidence axis into dominance would be a hidden preference;
 - Pareto filtering is used **only** to remove dominated alternatives. It never ranks, scores, or selects;
 - by Lemma L5, dimension 1 is constant within a canonical unit, so within one unit the filter discriminates on
   dimensions 2 and 3 only. Dimension 1 remains normative because it is the published objective and because it
   discriminates across budget rungs and across future multi-donor or multi-goal extensions. The set is therefore a
   set of **equally minimal-transfer options that differ in receiver-side modelled impact**, and this MUST be stated
   wherever a set is displayed;
-- if every alternative is dominated — which can only happen through a defect, since dominance is a strict partial
+- if every candidate is dominated — which can only happen through a defect, since dominance is a strict partial
   order — the unit abstains with `NO_NON_DOMINATED_ALTERNATIVE`.
 
 ### 16.4 Deterministic display ordering
 
-After Pareto filtering, the surviving alternatives are ordered by:
+After Pareto filtering, the surviving internal candidates are ordered by:
 
-1. `evidence_basis`: `DIRECT_SUPPORTED` before `FALLBACK_LIMITED`;
-2. smaller `transferred_expected_registrations_total`;
-3. lower `receiver_worst_severity_after` (accepted `SEVERITY_RANK`);
-4. larger `receiver_min_central_headroom`;
-5. stable receiver id ascending (`region_id`, `hospital_id`, `series_id` for total stability).
+1. `forecast_support_tier`: `DIRECT_SUPPORTED` before `FALLBACK_LIMITED`;
+2. `receiver_range_evidence`: `COMPLETE` before `RANGE_LIMITED`;
+3. smaller `transferred_expected_registrations_total`;
+4. lower `receiver_worst_severity_after` (accepted `SEVERITY_RANK`);
+5. larger `receiver_min_central_headroom`;
+6. stable receiver id ascending (`region_id`, `hospital_id`, `series_id` for total stability).
 
 **This ordering is NOT a claim of real-world superiority.** It is a deterministic, reproducible presentation order
 so that two runs and two reviewers see the same list. It is not a ranking of quality, safety, preference,
@@ -1123,11 +1268,12 @@ Full verification is expensive (section 12.5), so a bounded shortlist is taken *
 **after** display ordering, using `shortlist_max_alternatives`, fixed in configuration before the run.
 
 - the bound MUST be precommitted, never chosen after seeing outcomes;
-- the bound is applied per canonical unit and per evidence tier, so a small primary tier is never crowded out by a
-  large fallback tier;
+- the bound is applied per canonical unit and per evidence stratum, so the primary direct/complete stratum is never
+  crowded out by fallback or range-limited strata;
 - **no silent caps**: the set MUST publish `shortlist_bound`, `alternatives_pareto_surviving`,
-  `alternatives_shortlisted`, and `alternatives_dropped_by_shortlist_bound`. A truncated set MUST NOT read as a
-  complete set.
+  `alternatives_shortlisted`, and `alternatives_dropped_by_shortlist_bound`. Dropped records are a separate
+  non-alternative evidence structure, MUST NOT use the `DecisionAlternative` schema, and MUST NOT appear in
+  `alternatives`. A truncated set MUST NOT read as a complete set.
 
 ---
 
@@ -1204,7 +1350,8 @@ Every alternative's explanation MUST state all eight items:
 3. **receiver constraint** — that no affected receiver day's modelled historical-flow proxy state is higher than its
    baseline state, and which receiver cell is binding when one is;
 4. **flow conservation** — that the same-profile, same-date total is conserved within `1e-9`;
-5. **evidence tier** — the donor and receiver support classes separately, and the alternative's tier floor;
+5. **evidence axes** — the donor and receiver support classes separately, the normalized
+   `forecast_support_tier`, and the independent `receiver_range_evidence` value;
 6. **sensitivity-range companion result** — the `sensitivity_range_result` value, with the explicit statement that
    the range is not recalibrated and carries no probability, confidence level, or coverage guarantee;
 7. **operational / capacity limitation** — that physical feasibility is unknown, capacity was not checked, and the
@@ -1276,8 +1423,10 @@ substitute a receiver, soften a threshold, or weaken the donor goal in order to 
 | `PHI_CERTIFICATION_FAILED` | the bounded certification guard could not certify any fraction |
 | `FULL_VERIFICATION_FAILED` | the full 6B.3 engine disagreed with a claimed field at tolerance `1e-9` |
 
-`FULL_VERIFICATION_FAILED` sets `verification_state = VERIFICATION_FAILED`. Such an alternative MUST NOT be
-displayed as a result; it is a blocking defect for the run.
+`FULL_VERIFICATION_FAILED` excludes that candidate from `alternatives` and records it in the set's
+`verification_failures` diagnostic and applicable abstention diagnostics. It does not create a public object with
+`verification_state = VERIFICATION_FAILED`; a partially verified alternative is never published. The disagreement
+remains a blocking defect for the run.
 
 ### 19.3 Standing qualifier
 
@@ -1318,7 +1467,7 @@ Every invariant is a test. A failure is blocking.
 | 15 | fast evaluator equals the full engine on every claimed field at tolerance `1e-9` |
 | 16 | deterministic outputs and hashes; timestamps excluded from every identity; two runs byte-identical |
 | 17 | no hidden scalar score anywhere — no weighted objective, no composite index, no learned ranker |
-| 18 | Pareto dominance correct: reflexive-free strict partial order, evaluated within canonical unit and evidence tier only |
+| 18 | Pareto dominance correct: reflexive-free strict partial order, evaluated within canonical unit and the same `(forecast_support_tier, receiver_range_evidence)` stratum only |
 | 19 | abstention supported and exercised; zero alternatives is a valid published result; no constraint is silently relaxed |
 | 20 | `human_review_required = true` on every set and every alternative |
 | 21 | `capacity_checked = false` on every alternative |
@@ -1334,12 +1483,13 @@ Additional derived invariants, proved in section 11 and asserted in code:
 | 26 | receiver cell severity rank is monotone non-decreasing in `phi`; the no-worse feasible set is a single closed interval `[0, phi_max]` |
 | 27 | donor cell severity rank is monotone non-increasing in `phi`; the donor goal set is a single closed interval `[phi_min, 1]` |
 | 28 | `phi_min` is receiver-independent (Lemma L5), so `transferred_expected_registrations_total` is identical across all alternatives of one canonical unit |
-| 29 | the published `transfer_fraction` is certified: recomputing the accepted severity rule at that exact binary64 value satisfies the donor goal and the receiver constraint |
-| 30 | `receiver_range_masking_present` is published whenever any affected receiver cell lacks a usable range, and such an alternative can never carry `ROBUST_TO_TRANSFORMED_RANGE` |
+| 29 | the published `transfer_fraction` satisfies every certified constraint at its exact binary64 value and is obtained from the algebraic minimum using at most `PHI_GUARD_MAX_STEPS` upward `nextafter` corrections; no downward tightening below the algebraic minimum is permitted |
+| 30 | `receiver_range_masking_present` is published whenever any affected receiver cell lacks a usable range; it implies `receiver_range_evidence = RANGE_LIMITED` and `RANGE_EVIDENCE_INCOMPLETE`, and excludes the alternative from the primary direct/complete cohort |
 | 31 | no solver, MILP, CP, LP, metaheuristic, or learned-policy dependency is introduced |
 | 32 | no accepted 6B.3 / 6B.2C / 6B.2C-2 code path is modified; the verification run uses the accepted `inflow_transfer` lever unchanged |
 | 33 | no patient-level, referral-level, or individual-level object exists in the contract |
 | 34 | shortlist truncation is published (`alternatives_dropped_by_shortlist_bound`); no silent cap |
+| 35 | every published `DecisionAlternative` has `verification_state = VERIFIED_FULL_ENGINE`; no `FAST_EVALUATOR_ONLY` or failed candidate appears in `DecisionAlternativeSet.alternatives` |
 
 ---
 
@@ -1397,7 +1547,10 @@ be pooled across rungs.
 
 ### 21.5 Required report
 
-Reported per budget rung, per evidence tier, and split by receiver range availability — never pooled:
+Reported per budget rung and on both orthogonal evidence axes — `forecast_support_tier` and
+`receiver_range_evidence` — never pooled. The primary acceptance cohort is exactly
+`(DIRECT_SUPPORTED, COMPLETE)`; `RANGE_LIMITED` results are secondary disclosed evidence and do not count as primary
+acceptance:
 
 1. signals evaluated;
 2. at-least-one-alternative rate;
@@ -1408,16 +1561,18 @@ Reported per budget rung, per evidence tier, and split by receiver range availab
 7. minimum transfer fraction distribution (min, quartiles, median, max), plus the share with `phi_min = 1.0` and the
    share with `donor_zero_threshold_binding_present = true`;
 8. transferred expected registrations distribution;
-9. direct / fallback composition, reported per `(donor tier, receiver tier)` pair;
+9. direct / fallback composition, reported per `(donor tier, receiver tier)` pair, crossed with
+   `receiver_range_evidence`;
 10. receiver worsening count;
-11. full-engine verification rate for shortlisted alternatives;
+11. full-engine verification rate for shortlisted internal candidates;
 12. runtime;
 13. peak memory.
 
 Also required, as v1-specific diagnostics: `RECEIVER_UNSUPPORTED_EVIDENCE` and `RECEIVER_ALIGNMENT_INCOMPLETE`
 rates, `receiver_range_masking_present` share, `sensitivity_range_result` composition,
-`donor_residual_range_driven_high_horizons` non-empty share, `phi_guard_steps_applied` distribution, and
-`alternatives_dropped_by_shortlist_bound`.
+`donor_residual_range_driven_high_horizons` non-empty share, `certify_up_steps` distribution, zero-threshold receiver
+counts split by baseline `NORMAL` / `ELEVATED` / `HIGH` and resulting
+`RECEIVER_BLOCKED` counts, `verification_failures`, and `alternatives_dropped_by_shortlist_bound`.
 
 ### 21.6 Required outcomes
 
@@ -1426,7 +1581,7 @@ receiver worsening count                      = 0
 full-engine verification rate (shortlisted)   = 100%
 ```
 
-Any receiver worsening, or any shortlisted alternative that the full engine does not reproduce at `1e-9`, is a
+Any receiver worsening, or any shortlisted internal candidate that the full engine does not reproduce at `1e-9`, is a
 blocking defect. It MUST NOT be resolved by widening tolerance, excluding the alternative, or relabelling the
 constraint.
 
@@ -1474,7 +1629,7 @@ not agreed rules. The v1 alternative set is an analytical artifact for review, n
 ## 23. Future capacity extension
 
 Real capacity data, when it exists and is independently reviewed, can be added as a **new constraint / provider
-layer** without redesigning this contract. The canonical unit, decision variable, objective, evidence tiers,
+layer** without redesigning this contract. The canonical unit, decision variable, objective, orthogonal evidence axes,
 abstention semantics, and output schema stay as specified; a capacity provider adds constraints and fields.
 
 Possible future fields and constraints — **FUTURE ONLY, not implemented, not reserved as satisfied**:
@@ -1567,17 +1722,22 @@ Recorded so that no reader mistakes an artefact of the accepted evidence for a p
    eligible donors can still carry zero-threshold binding cells at other horizons. Expect a non-trivial share of
    units to demand the entire donor series, and therefore to abstain with `TRANSFER_BUDGET_INSUFFICIENT` or
    `RECEIVER_BLOCKED` on the lower budget rungs (section 21.5 item 7 makes this measurable).
-5. **Missing range evidence relaxes the receiver constraint.** See section 10.4. Receivers with unavailable
+5. **Zero-threshold receiver cells can bind immediately or be range-masked.** A baseline `NORMAL` cell with `T = 0`
+   can force `phi_max = 0` and immediate `RECEIVER_BLOCKED`. For baseline `ELEVATED` or `HIGH`, the outcome depends
+   on the accepted higher-rank sensitivity predicates; missing range evidence can make feasibility artificially
+   permissive and therefore triggers `receiver_range_masking_present`, `RANGE_LIMITED`, and
+   `RANGE_EVIDENCE_INCOMPLETE`.
+6. **Missing range evidence relaxes the receiver constraint.** See section 10.4. Receivers with unavailable
    calibrated ranges will appear more tolerant; this is missing evidence, not tolerance.
-6. **Clearing central exceedance need not clear the donor's severity or Inbox membership.** See section 6.4.
-7. **A large share of accepted hospital/profile registration forecasts are fallback-supported.** The accepted primary
+7. **Clearing central exceedance need not clear the donor's severity or Inbox membership.** See section 6.4.
+8. **A large share of accepted hospital/profile registration forecasts are fallback-supported.** The accepted primary
    Inbox is roughly one third fallback/limited-history. Both donor and receiver tiers must therefore be reported
    separately; the `DIRECT_SUPPORTED` population is materially smaller than the full Inbox.
-8. **Registration history is short.** The accepted chain rests on a 90-day registration history and a 56-day
+9. **Registration history is short.** The accepted chain rests on a 90-day registration history and a 56-day
    origin-legal threshold window; nothing in v1 extends it.
-9. **Full verification is expensive.** See section 12.5. The shortlist bound is a real constraint on coverage and
+10. **Full verification is expensive.** See section 12.5. The shortlist bound is a real constraint on coverage and
    MUST be reported.
-10. **Inherited 6B.3 P2 caveats apply unchanged**, including the calibrated-vocabulary reason codes, the
+11. **Inherited 6B.3 P2 caveats apply unchanged**, including the calibrated-vocabulary reason codes, the
     zero-threshold knife edge, and the fact that `deterministic_synthetic_inputs` describes the specifications, not
     the data.
 
@@ -1602,12 +1762,17 @@ Recorded so that no reader mistakes an artefact of the accepted evidence for a p
 
 ```text
 6B.4  Constrained Decision Alternatives Engine v1
-Status: SPECIFICATION / IN REVIEW
-Decision record: ADR 0006 (Proposed)
+Status: SPEC ACCEPTED / IMPLEMENTATION NOT STARTED
+Accepted: 2026-09-20
+Decision record: ADR 0006 (Accepted)
 Implementation: NOT STARTED
 Accepted run: NONE
 Artifacts: NONE
 ```
 
-No optimizer runtime code exists. This document is normative for the implementation that follows it, and the
-implementation may begin only after this specification and ADR 0006 are independently reviewed and accepted.
+Acceptance basis: independent science/architecture audit, corrective specification passes, final targeted review
+PASS, all known P0/P1 findings resolved.
+
+No optimizer runtime code exists. This document is normative for the implementation that follows it. Acceptance of
+this specification does not mean the optimizer runtime, real-data acceptance, backend/API integration, or
+operational feasibility exists. 6B.4 is not CLOSED.

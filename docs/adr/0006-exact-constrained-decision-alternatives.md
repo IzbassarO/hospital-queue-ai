@@ -1,8 +1,18 @@
 # ADR 0006: Use exact constrained decision alternatives over the accepted scenario surrogate instead of autonomous routing or a general-purpose solver
 
-Status: Proposed
+Status: Accepted
 Date: 2026-09-20
+Acceptance date: 2026-09-20
 Owners: BizAI
+
+## Acceptance note
+
+The final independent review of this ADR and `docs/decision-alternatives-6b4.md` returned PASS with no P0 and no
+P1 findings; all previously raised P0/P1 findings are resolved. This accepts the **specification only**: the
+algebraic-minimum formulation with safe upward binary64 certification (`ALGEBRAIC_MINIMUM_CERTIFIED_UPWARD_FLOAT64`,
+no downward tightening below the algebraic minimum), the constraint taxonomy, the contract, and the acceptance
+protocol. Runtime implementation has not started; no configuration file, optimizer code, accepted run, or real-data
+result exists, and 6B.4 is not closed.
 
 ## Context
 
@@ -21,11 +31,11 @@ recommends where to route patients — is not supportable by this evidence. The 
 - no accepted refusal-flow forecast and no identified intervention;
 - no customer decision on allowed operational actions, receiver eligibility, profile compatibility, geography,
   referral permissions, or approval workflow;
-- a registration history of roughly 90 days, a 56-day origin-legal threshold window, a large fallback-supported
-  share of hospital/profile forecast rows, and a non-trivial share of exactly-zero supported thresholds;
-- a prior read-only science audit that measured the queue-accounting alternative and found that propagating accepted
-  central forecasts through the accounting identity predicts the queue **worse** than holding the last value, and
-  concluded **PROCEED WITH RESTRICTED SCOPE**.
+- short registration history, fallback-supported hospital/profile forecasts, and supported zero thresholds, as
+  durably recorded in the accepted evidence documentation;
+- independent review evidence (not a repository-native accepted artifact) that rejected the queue-accounting
+  alternative and concluded **PROCEED WITH RESTRICTED SCOPE**. This ADR records the resulting scope decision, not
+  the review's ephemeral scratch measurements.
 
 Two failure modes were therefore both live. Overclaiming: presenting an optimizer output as an operational routing
 recommendation, implying capacity, feasibility, causal benefit, or improved patient outcomes. Over-engineering:
@@ -60,13 +70,17 @@ with the following decisions.
    threshold on the binding donor horizon cells. Donors are materially eligible primary-Inbox `REGISTRATIONS`
    signals with supported thresholds and a non-empty central-exceedance set; `WATCH`-only and range-driven-only
    signals are forbidden as targets. Direct-supported donors are the primary evidence tier; fallback/limited-history
-   donors may be evaluated only as a separately labelled lower tier; unsupported donors are forbidden.
+   donors may be evaluated only as a separately labelled lower tier; unsupported donors are forbidden. Binding
+   cells are supported by definition; unsupported non-binding horizons remain explicitly unsupported, and the donor
+   goal applies only to the supported binding set rather than requiring all 14 donor horizons to be supported.
 
 6. **Receiver constraint.** `NO_WORSE_HISTORICAL_FLOW_PROXY_STATE` — for every affected horizon the scenario
    `PressureSeverity` of the receiver must not exceed its baseline `PressureSeverity`, using the accepted 6B.3
    scenario sensitivity semantics, evaluated on **raw** severity without the product materiality floor. It is not a
    capacity constraint, not a bed constraint, and not an operational feasibility proof. Unsupported receivers are
-   rejected.
+   rejected. A baseline `NORMAL` receiver with zero threshold can bind at `phi_max = 0`; zero-threshold
+   `ELEVATED`/`HIGH` behavior depends on usable range predicates, and missing range evidence is disclosed as masking
+   rather than treated as complete evidence.
 
 7. **Algorithm: exact breakpoint enumeration, no solver.** The receiver's per-cell severity rank is monotone
    non-decreasing in `phi` and the donor's is monotone non-increasing, so the donor-goal set is the closed interval
@@ -77,33 +91,51 @@ with the following decisions.
 
    Receiver breakpoints are enumerated exactly per baseline severity state. No MILP, CP-SAT, LP, grid search,
    greedy search, metaheuristic, or learned policy is used, and no solver dependency is added. The published
-   fraction is a **certified** binary64 value under a bounded `nextafter` guard, because the accepted severity rule
-   uses strict inequalities.
+   fraction is the **algebraic minimum with safe upward binary64 certification**. Algebraic bounds are certified in
+   their safe directions before comparison: the donor lower bound upward, and receiver and policy upper bounds
+   downward. The chosen donor candidate may then move only upward under a bounded `nextafter` guard and is rechecked
+   against donor, receiver, certified upper-bound, budget, domain, and conservation constraints. It is emitted as
+   `ALGEBRAIC_MINIMUM_CERTIFIED_UPWARD_FLOAT64`, with 17 significant decimal digits plus a hexadecimal float. Guard
+   exhaustion yields `PHI_CERTIFICATION_FAILED`. Donor binding ties use the smallest horizon. Strict predicates
+   require the guard; downward tightening is not part of the optimization semantics because rounding of `(1 − phi)`
+   cannot justify a fraction below the exact algebraic boundary. The donor lower-bound check therefore uses exact
+   rational comparison of the represented inputs, or an equivalent safe directed-rounding method, in addition to
+   recomputation at the published value.
 
-8. **Central case with a mandatory sensitivity-range companion.** The decision basis is `CENTRAL_CASE`. `WATCH`
+8. **Central case with a mandatory sensitivity-range companion and orthogonal evidence axes.** The decision basis is `CENTRAL_CASE`. `WATCH`
    relief is not optimized. Every candidate additionally reports `SENSITIVITY_RANGE_CASE` with a three-valued
    deterministic label (`ROBUST_TO_TRANSFORMED_RANGE`, `NOT_ROBUST_TO_TRANSFORMED_RANGE`,
    `RANGE_EVIDENCE_INCOMPLETE`). The range is not recalibrated and carries no probability, confidence level,
-   coverage guarantee, or joint distribution. This is never called probabilistic robust optimization.
+   coverage guarantee, or joint distribution. This is never called probabilistic robust optimization. Forecast
+   support (`DIRECT_SUPPORTED` / `FALLBACK_LIMITED`) and receiver range evidence (`COMPLETE` / `RANGE_LIMITED`) are
+   independent. Range masking implies `RANGE_LIMITED` and `RANGE_EVIDENCE_INCOMPLETE`; the result may be published
+   with disclosure after full verification but is excluded from the primary direct/complete acceptance cohort.
+   Contract vocabulary is explicitly normalized: source `registrations`, `direct_supported`, and
+   `fallback_or_limited_history` map to `REGISTRATIONS`, `DIRECT_SUPPORTED`, and `FALLBACK_LIMITED`; usable complete
+   range evidence and missing/masked range evidence map to `COMPLETE` and `RANGE_LIMITED`.
 
-9. **Two layers.** A fast exact evaluator over the donor/receiver daily cells only, whose claimed fields exclude
+9. **Two layers.** A fast exact evaluator over the donor/receiver daily cells produces internal candidate evidence only, whose claimed fields exclude
    Inbox rank, materiality, hierarchy diagnostics, explanation, and complete scenario output; then full 6B.3 scenario
-   verification for shortlisted alternatives, which establishes exact hierarchy, entity aggregation, materiality,
+   verification for shortlisted internal candidates, which establishes exact hierarchy, entity aggregation, materiality,
    complete Inbox semantics, deterministic explanation, and final differences. A mandatory test proves the two agree
-   on every claimed field at tolerance `1e-9`.
+   on every claimed field at tolerance `1e-9`. Only `VERIFIED_FULL_ENGINE` objects may enter the public
+   `DecisionAlternativeSet.alternatives` array; shortlist drops and verification failures remain separate
+   non-alternative evidence records.
 
 10. **Reuse the accepted lever unchanged.** Full verification runs the accepted `inflow_transfer` lever under a
     `region_profile` scope with the certified fraction. **No accepted 6B.3, 6B.2C, or 6B.2C-2 code path is modified
     by 6B.4 v1**, and no new lever or scenario classification is introduced.
 
-11. **Output is a set of alternatives, never a recommendation.** A `DecisionAlternativeSet` contains zero or more
-    `DecisionAlternative` objects. `recommended_action`, `best_hospital`, and `optimal_patient_route` are forbidden
+11. **Output is a set of fully verified alternatives, never a recommendation.** A `DecisionAlternativeSet` contains
+    zero or more `DecisionAlternative` objects, all with `verification_state = VERIFIED_FULL_ENGINE` and non-null
+    verification-only fields. `recommended_action`, `best_hospital`, and `optimal_patient_route` are forbidden
     field names; "optimal" is illegal without a mathematical qualifier; the approved phrase is
     `minimum_transfer_under_stated_constraints`. The system does not choose among the alternatives.
 
 12. **Pareto filtering only, then deterministic display order.** Three transparent dimensions —
     `total_synthetic_flow_moved` (min), `receiver_worst_severity_after` (min), `receiver_min_central_headroom` (max)
-    — with dominance evaluated within one canonical unit and within one evidence tier. There is no weighted
+    — with dominance evaluated within one canonical unit and within one
+    `(forecast_support_tier, receiver_range_evidence)` stratum. There is no weighted
     scalarization. The display order (direct before fallback, smaller flow, lower receiver severity, larger headroom,
     stable receiver id) is a reproducibility device and is not a claim of real-world superiority.
 
@@ -123,8 +155,8 @@ with the following decisions.
     `human_review_required = true`, `capacity_checked = false`, `causal_effect_claimed = false`. No persistence, API,
     UI, migration, or live scoring is introduced.
 
-This ADR is **Proposed**. It authorizes no implementation. The 6B.4 status is
-**SPECIFICATION / IN REVIEW**.
+This ADR is **Accepted**. It accepts the specification only; runtime implementation has not started. The 6B.4
+status is **SPEC ACCEPTED / IMPLEMENTATION NOT STARTED**.
 
 ## Dependency rules
 
@@ -170,10 +202,9 @@ This ADR is **Proposed**. It authorizes no implementation. The 6B.4 status is
 - **Optimizing `WATCH` relief or the sensitivity range.** Rejected. The scenario range is a transformed,
   non-recalibrated deterministic interval with no coverage guarantee; optimizing against it would present an
   uncalibrated bound as a risk budget. It is reported as a mandatory companion instead.
-- **A queue/backlog-clearance objective.** Rejected on measured grounds: propagating accepted central forecasts
-  through the queue accounting identity predicts the queue worse than holding the last value, refusals are not
-  forecast, and a large share of registrations resolve as same-day admissions. 6B.3 already forbids a queue
-  trajectory as an output.
+- **A queue/backlog-clearance objective.** Rejected based on independent review evidence, not a repository-native
+  accepted measurement. The durable reasons are that refusals are not forecast, the queue identity is not accepted
+  predictive science, and 6B.3 already forbids a queue trajectory as an output.
 - **Patient-count (integer) transfers.** Rejected. Central forecasts are continuous expected counts; discretizing
   them would manufacture a patient-level decision object that the evidence does not support and would turn the
   problem into an integer program for presentational reasons only.
@@ -199,7 +230,7 @@ This ADR is **Proposed**. It authorizes no implementation. The 6B.4 status is
 - The two-layer design gives cheap exactness for search and full accepted-engine semantics for anything displayed,
   with a mandatory equality test between them.
 - Missing-evidence artefacts are surfaced rather than hidden: range-masking disclosure, zero-threshold binding cells,
-  and separate reporting per evidence tier.
+  and separate reporting on forecast-support and range-evidence axes.
 - A future capacity provider, multi-receiver allocation, or LP/MILP extension can be added without redesigning the
   contract.
 
@@ -243,7 +274,8 @@ No step combines implementation with a change to accepted science, and no step i
 
 ## Verification
 
-- Specification section 20 invariants 1–34 become tests; each failure is blocking.
+- Specification section 20 invariants 1–35 become tests; each failure is blocking, including the rule that every
+  published alternative is `VERIFIED_FULL_ENGINE`.
 - The fast-evaluator/full-engine equality test at tolerance `1e-9` over the claimed-field set of specification
   section 12.1 is mandatory.
 - Forbidden field names, the forbidden lexicon, and the vocabulary substitution table are enforced by test over
@@ -253,8 +285,8 @@ No step combines implementation with a change to accepted science, and no step i
   importing 6B.4 implementation.
 - Determinism: identical specification and inputs produce byte-identical scientific output and identical hashes,
   with timestamps excluded from every identity.
-- Acceptance requires the real-data protocol of specification section 21 with receiver worsening count `= 0` and a
-  full-engine verification rate of `100%` for shortlisted alternatives.
+- Acceptance requires the real-data protocol of specification section 21, split by both evidence axes, with receiver
+  worsening count `= 0` and a full-engine verification rate of `100%` for shortlisted internal candidates.
 - No model is promoted and no accepted scientific result is changed by adopting this decision.
 
 ## Revisit when
