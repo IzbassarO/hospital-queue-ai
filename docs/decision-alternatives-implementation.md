@@ -1,11 +1,12 @@
 # Constrained Decision Alternatives Engine implementation
 
-Status: **IMPLEMENTED / REAL-DATA ACCEPTANCE PENDING**
+Status: **CLOSED**
 
 The Step 6B.4 offline runtime implements the accepted
 [`decision-alternatives-6b4.md`](decision-alternatives-6b4.md) contract without changing the accepted scenario,
 pressure, or prioritization modules. ADR 0006 remains Accepted. This implementation is retrospective `EVALUATION`
-only and is not closed or accepted on real data.
+only. Real-data evidence from `decision-alternatives-6b4-real-v3` was accepted with verdict
+**ACCEPT WITH P2 ONLY**; Step 6B.4 is closed.
 
 ## Runtime architecture
 
@@ -82,8 +83,35 @@ minimums, directed rounding, zero thresholds, all receiver baseline severity sta
 masking, conservation, evidence axes, budgets, Pareto behavior, deterministic output, abstention, fast/full
 agreement, forbidden public fields, and the rule that no internal or failed candidate becomes an alternative.
 
-No real-data optimizer acceptance run was performed. The next work is independent code review followed by the
-precommitted real-data protocol, with results split by policy-budget rung and both evidence axes.
+Accepted real-data evidence:
+
+- run: `decision-alternatives-6b4-real-v3`;
+- scientific identity: `fb7410fa230d4c252c58cbbe98e4ccfbe45102800d5422ba45f8ce79d788a7a8`;
+- verdict: **ACCEPT WITH P2 ONLY** (P0: none; P1: none);
+- 115 donor units and 460 alternative sets;
+- zero full-verification failures and zero receiver worsening;
+- 100% full-verification success;
+- primary `DIRECT_SUPPORTED + COMPLETE` rate: 29/80 (36.25%) at budget 0.25 and 46/80 (57.5%) at budget 1.00;
+- 256 unique full verifications and 174 cache reuses;
+- runtime approximately 24,059 seconds and peak RSS 2154.34375 MiB.
+
+Non-blocking P2s retained with the acceptance evidence:
+
+1. laptop runtime was approximately 6.7 hours;
+2. peak RSS was slightly above the nominal 2 GiB memory budget;
+3. the shortlist bound dropped 4 alternatives at budget 0.25 and 6 at budget 1.00.
+
+Failed evidence remains part of the record and is not accepted evidence:
+
+- `decision-alternatives-6b4-real-v1` — **FAILED EVIDENCE** because real parquet `reason_codes` materialized as an
+  array-like value whose boolean truthiness was ambiguous;
+- `decision-alternatives-6b4-real-v2` — **FAILED EVIDENCE** because raw `float.hex()` containing `+` was embedded in
+  `ScenarioSpec.scenario_id` and violated its identifier contract.
+
+The accepted capability remains retrospective mathematical decision alternatives for human review. Its fixed
+boundaries are `execution_mode = EVALUATION`, `autonomous_action = false`, `human_review_required = true`,
+`capacity_checked = false`, `causal_effect_claimed = false`, and `serving_claim = false`; physical feasibility is
+not validated, and neither model-registry nor automatic promotion occurs.
 
 The direct-supported primary cohort and fallback/limited secondary-evidence cohort have separate precommitted
 limits (`top_n_primary_donors` and `top_n_fallback_donors`). Receiver exclusions caused by the v1 same-region policy

@@ -460,18 +460,19 @@ Use this chain for downstream reasoning:
 → `flow-hierarchy-6b2b3-real-v1`
 → `flow-pressure-6b2c1-real-v2`
 → `signal-prioritization-6b2c2-real-v2`
+→ `flow-scenario-6b3-real-v1`
+→ `decision-alternatives-6b4-real-v3`
 
 Do not cite older superseded pressure/prioritization runs as authoritative evidence.
 
 ---
 
-## 14. Next stage
+## 14. Constrained Decision Alternatives Engine v1
 
-Next:
 **6B.4 — Constrained Decision Alternatives Engine v1**
 (previously listed as "Constrained Optimizer / Decision Alternatives")
 
-Status: **IMPLEMENTED / REAL-DATA ACCEPTANCE PENDING** (spec accepted 2026-09-20; not CLOSED)
+Status: **CLOSED** (spec accepted 2026-09-20; real-data evidence accepted 2026-09-22)
 
 Prerequisite stages 6B.2D (serving contract) and 6B.3 (Forecast Stress-Test Engine v1, section 15)
 are CLOSED.
@@ -504,13 +505,43 @@ Implemented runtime evidence:
 - `ml/tests/test_decision_alternatives.py`;
 - `docs/decision-alternatives-implementation.md`.
 
-Still pending (real-data evidence):
-- no accepted run, artifact, or measured result;
-- no accepted 6B.3/6B.2C code change (the accepted `inflow_transfer` lever is reused unchanged).
+Accepted run:
+`decision-alternatives-6b4-real-v3`
 
-It is not an AI recommender, routing optimizer, autonomous routing, or capacity optimizer. Every output
-is retrospective `EVALUATION`, requires human review, and carries
-`feasibility_status = NOT_PHYSICAL_CAPACITY_VALIDATED` with `capacity_checked = false`.
+Scientific identity:
+`fb7410fa230d4c252c58cbbe98e4ccfbe45102800d5422ba45f8ce79d788a7a8`
+
+Acceptance verdict:
+**ACCEPT WITH P2 ONLY** (P0: none; P1: none)
+
+Core acceptance evidence:
+
+- 115 donor units and 460 alternative sets;
+- zero full-verification failures, zero receiver worsening, and 100% full-verification success;
+- primary `DIRECT_SUPPORTED + COMPLETE`: 29/80 (36.25%) at budget 0.25 and 46/80 (57.5%) at budget 1.00;
+- 256 unique full verifications and 174 cache reuses;
+- runtime approximately 24,059 seconds; peak RSS 2154.34375 MiB.
+
+Non-blocking P2s:
+
+- laptop runtime was approximately 6.7 hours;
+- peak RSS was slightly above the nominal 2 GiB memory budget;
+- shortlist-bound drops were 4 alternatives at budget 0.25 and 6 at budget 1.00.
+
+Failed evidence history is preserved and is not accepted evidence:
+
+- `decision-alternatives-6b4-real-v1` — **FAILED EVIDENCE**: real parquet `reason_codes` materialized array-like,
+  making boolean truthiness ambiguous;
+- `decision-alternatives-6b4-real-v2` — **FAILED EVIDENCE**: raw `float.hex()` containing `+` was embedded in
+  `ScenarioSpec.scenario_id` and violated the identifier contract.
+
+The closed capability is retrospective mathematical decision alternatives for human review. Every output uses
+`execution_mode = EVALUATION`, `autonomous_action = false`, `human_review_required = true`,
+`capacity_checked = false`, `causal_effect_claimed = false`, and `serving_claim = false`; physical feasibility is
+not validated, and neither model-registry nor automatic promotion occurs.
+
+Next and final ML stage: **6B.5 — Model Assurance**. Successful 6B.5 closure leads to
+**ML CORE CLOSED / ML FREEZE**.
 
 ### 6B.2D — synthesis / serving contract
 
@@ -530,8 +561,8 @@ Accepted result:
 
 After:
 - 6B.3 Forecast Stress-Test Engine v1 (CLOSED, section 15)
-- 6B.4 Constrained Decision Alternatives Engine v1 (IMPLEMENTED / REAL-DATA ACCEPTANCE PENDING)
-- 6B.5 Model Assurance
+- 6B.4 Constrained Decision Alternatives Engine v1 (CLOSED, section 14)
+- 6B.5 Model Assurance (**NEXT / final ML stage**; successful closure leads to **ML CORE CLOSED / ML FREEZE**)
 
 ---
 
@@ -640,5 +671,6 @@ This stage is CLOSED as non-causal scenario stress testing. It is not a Digital 
 intervention model, queue or backlog predictor, or physical-capacity simulator. It does not promote a
 model or implement persistence, API, UI, or live scoring.
 
-Next acceptance work: **6B.4 — Constrained Decision Alternatives Engine v1** real-data protocol and independent
-review (implementation exists; section 14; not CLOSED).
+The authoritative chain continues through the closed
+`decision-alternatives-6b4-real-v3` evidence in section 14. Next and final ML stage:
+**6B.5 — Model Assurance**; successful closure leads to **ML CORE CLOSED / ML FREEZE**.
