@@ -659,6 +659,230 @@
         "title": "AreaKpis",
         "type": "object"
       },
+      "AssuranceFreshness": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "FRESH",
+              "STALE",
+              "DEGRADED",
+              "UNKNOWN"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "reason"
+        ],
+        "title": "AssuranceFreshness",
+        "type": "object"
+      },
+      "AssuranceGovernance": {
+        "additionalProperties": false,
+        "properties": {
+          "autonomous_action": {
+            "title": "Autonomous Action",
+            "type": "boolean"
+          },
+          "capacity_checked": {
+            "title": "Capacity Checked",
+            "type": "boolean"
+          },
+          "causal_effect_claimed": {
+            "title": "Causal Effect Claimed",
+            "type": "boolean"
+          },
+          "human_review_required": {
+            "title": "Human Review Required",
+            "type": "boolean"
+          },
+          "physical_feasibility_status": {
+            "enum": [
+              "VALIDATED",
+              "NOT_VALIDATED",
+              "UNKNOWN",
+              "NOT_APPLICABLE"
+            ],
+            "title": "Physical Feasibility Status",
+            "type": "string"
+          },
+          "promotion_status": {
+            "enum": [
+              "PROMOTED",
+              "HUMAN_REVIEW_ONLY",
+              "NO_PROMOTION",
+              "NOT_APPLICABLE"
+            ],
+            "title": "Promotion Status",
+            "type": "string"
+          },
+          "serving_claim": {
+            "title": "Serving Claim",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "human_review_required",
+          "autonomous_action",
+          "capacity_checked",
+          "causal_effect_claimed",
+          "serving_claim",
+          "physical_feasibility_status",
+          "promotion_status"
+        ],
+        "title": "AssuranceGovernance",
+        "type": "object"
+      },
+      "AssuranceIdentities": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_sha256": {
+            "$ref": "#/components/schemas/AssuranceIdentityRecord"
+          },
+          "calibration_identity": {
+            "$ref": "#/components/schemas/AssuranceIdentityRecord"
+          },
+          "code_identity_sha256": {
+            "$ref": "#/components/schemas/AssuranceIdentityRecord"
+          },
+          "config_identity_sha256": {
+            "$ref": "#/components/schemas/AssuranceIdentityRecord"
+          },
+          "dataset_identity_sha256": {
+            "$ref": "#/components/schemas/AssuranceIdentityRecord"
+          },
+          "decision_alternative_identity": {
+            "$ref": "#/components/schemas/AssuranceIdentityRecord"
+          },
+          "estimand_id": {
+            "$ref": "#/components/schemas/AssuranceIdentityRecord"
+          },
+          "hierarchy_identity": {
+            "$ref": "#/components/schemas/AssuranceIdentityRecord"
+          },
+          "model_identity": {
+            "$ref": "#/components/schemas/AssuranceIdentityRecord"
+          },
+          "pressure_provider_identity": {
+            "$ref": "#/components/schemas/AssuranceIdentityRecord"
+          },
+          "prioritization_identity": {
+            "$ref": "#/components/schemas/AssuranceIdentityRecord"
+          },
+          "run_id": {
+            "$ref": "#/components/schemas/AssuranceIdentityRecord"
+          },
+          "scenario_identity": {
+            "$ref": "#/components/schemas/AssuranceIdentityRecord"
+          },
+          "scientific_identity_sha256": {
+            "$ref": "#/components/schemas/AssuranceIdentityRecord"
+          }
+        },
+        "required": [
+          "run_id",
+          "scientific_identity_sha256",
+          "artifact_sha256",
+          "dataset_identity_sha256",
+          "config_identity_sha256",
+          "code_identity_sha256",
+          "model_identity",
+          "estimand_id",
+          "calibration_identity",
+          "hierarchy_identity",
+          "pressure_provider_identity",
+          "prioritization_identity",
+          "scenario_identity",
+          "decision_alternative_identity"
+        ],
+        "title": "AssuranceIdentities",
+        "type": "object"
+      },
+      "AssuranceIdentityRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "AVAILABLE",
+              "UNKNOWN",
+              "NOT_APPLICABLE"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "status",
+          "value",
+          "reason"
+        ],
+        "title": "AssuranceIdentityRecord",
+        "type": "object"
+      },
+      "AssuranceSupport": {
+        "additionalProperties": false,
+        "properties": {
+          "range_semantics": {
+            "items": {
+              "enum": [
+                "COMPLETE",
+                "RANGE_LIMITED"
+              ],
+              "type": "string"
+            },
+            "title": "Range Semantics",
+            "type": "array"
+          },
+          "support_semantics": {
+            "items": {
+              "enum": [
+                "DIRECT_SUPPORTED",
+                "FALLBACK_LIMITED",
+                "UNSUPPORTED"
+              ],
+              "type": "string"
+            },
+            "title": "Support Semantics",
+            "type": "array"
+          }
+        },
+        "required": [
+          "support_semantics",
+          "range_semantics"
+        ],
+        "title": "AssuranceSupport",
+        "type": "object"
+      },
       "ConfigResponse": {
         "description": "Parameters the marts were built with (ml/configs/serving.yaml, copied at `make marts`).",
         "properties": {
@@ -1894,6 +2118,209 @@
           "detail"
         ],
         "title": "Message",
+        "type": "object"
+      },
+      "ModelAssuranceCapabilityResponse": {
+        "properties": {
+          "acceptance_verdict": {
+            "enum": [
+              "ACCEPT",
+              "ACCEPT_WITH_P2",
+              "DO_NOT_PROMOTE",
+              "NOT_APPLICABLE"
+            ],
+            "title": "Acceptance Verdict",
+            "type": "string"
+          },
+          "allowed_claims": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Claims",
+            "type": "array"
+          },
+          "capability_id": {
+            "title": "Capability Id",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "title": "Evidence",
+            "type": "object"
+          },
+          "evidence_status": {
+            "enum": [
+              "ACCEPTED",
+              "REJECTED",
+              "EXPERIMENTAL"
+            ],
+            "title": "Evidence Status",
+            "type": "string"
+          },
+          "forbidden_claims": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Forbidden Claims",
+            "type": "array"
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/AssuranceFreshness"
+          },
+          "governance": {
+            "$ref": "#/components/schemas/AssuranceGovernance"
+          },
+          "identities": {
+            "$ref": "#/components/schemas/AssuranceIdentities"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "product_consumption_status": {
+            "enum": [
+              "ELIGIBLE_AFTER_INGESTION",
+              "EVALUATION_ONLY",
+              "REFERENCE_ONLY",
+              "NOT_FOR_PRODUCT"
+            ],
+            "title": "Product Consumption Status",
+            "type": "string"
+          },
+          "support": {
+            "$ref": "#/components/schemas/AssuranceSupport"
+          }
+        },
+        "required": [
+          "capability_id",
+          "display_name",
+          "evidence_status",
+          "acceptance_verdict",
+          "product_consumption_status",
+          "identities",
+          "support",
+          "governance",
+          "freshness",
+          "evidence",
+          "limitations",
+          "allowed_claims",
+          "forbidden_claims"
+        ],
+        "title": "ModelAssuranceCapabilityResponse",
+        "type": "object"
+      },
+      "ModelAssuranceSnapshotResponse": {
+        "properties": {
+          "assurance_id": {
+            "title": "Assurance Id",
+            "type": "string"
+          },
+          "assurance_identity_sha256": {
+            "title": "Assurance Identity Sha256",
+            "type": "string"
+          },
+          "bundle_sha256": {
+            "title": "Bundle Sha256",
+            "type": "string"
+          },
+          "capability_count": {
+            "title": "Capability Count",
+            "type": "integer"
+          },
+          "claim_boundaries": {
+            "additionalProperties": true,
+            "title": "Claim Boundaries",
+            "type": "object"
+          },
+          "contract_version": {
+            "title": "Contract Version",
+            "type": "string"
+          },
+          "failed_evidence_history": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Failed Evidence History",
+            "type": "array"
+          },
+          "freshness_policy": {
+            "additionalProperties": true,
+            "title": "Freshness Policy",
+            "type": "object"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "ml_freeze_status": {
+            "title": "Ml Freeze Status",
+            "type": "string"
+          },
+          "monitoring_expectations": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Monitoring Expectations",
+            "type": "array"
+          },
+          "product_contract_version": {
+            "title": "Product Contract Version",
+            "type": "string"
+          },
+          "published_at": {
+            "format": "date-time",
+            "title": "Published At",
+            "type": "string"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "source_code_commit": {
+            "title": "Source Code Commit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "assurance_id",
+          "contract_version",
+          "schema_version",
+          "assurance_identity_sha256",
+          "bundle_sha256",
+          "source_code_commit",
+          "ml_freeze_status",
+          "product_contract_version",
+          "generated_at",
+          "published_at",
+          "is_active",
+          "capability_count",
+          "failed_evidence_history",
+          "claim_boundaries",
+          "monitoring_expectations",
+          "freshness_policy"
+        ],
+        "title": "ModelAssuranceSnapshotResponse",
         "type": "object"
       },
       "ModelInfo": {
@@ -4138,6 +4565,202 @@
         "summary": "Get Me",
         "tags": [
           "service"
+        ]
+      }
+    },
+    "/api/v1/model-assurance": {
+      "get": {
+        "description": "Current published Model Assurance snapshot and its frozen provenance.",
+        "operationId": "model_assurance_current_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelAssuranceSnapshotResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Model Assurance",
+        "tags": [
+          "assurance"
+        ]
+      }
+    },
+    "/api/v1/model-assurance/capabilities": {
+      "get": {
+        "description": "Candidate-independent assurance records of the current snapshot.",
+        "operationId": "model_assurance_capabilities_list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ModelAssuranceCapabilityResponse"
+                  },
+                  "title": "Response Model Assurance Capabilities List",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Model Assurance Capabilities",
+        "tags": [
+          "assurance"
+        ]
+      }
+    },
+    "/api/v1/model-assurance/capabilities/{capability_id}": {
+      "get": {
+        "description": "One current capability assurance record by stable capability ID.",
+        "operationId": "model_assurance_capability_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "capability_id",
+            "required": true,
+            "schema": {
+              "title": "Capability Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelAssuranceCapabilityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Model Assurance Capability",
+        "tags": [
+          "assurance"
         ]
       }
     },

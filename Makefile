@@ -5,7 +5,7 @@ PY           ?= $(CURDIR)/.venv/bin/python
 ML_PATH      := $(CURDIR)/ml
 API_DEV_PORT ?= 8001
 
-.PHONY: up down migrate ingest baseline psql train tournament flow-evidence flow-quantile flow-calibration flow-hierarchy flow-pressure signal-prioritization flow-scenario decision-alternatives model-assurance predict registry marts create-key backup restore api-dev test ml-test \
+.PHONY: up down migrate ingest baseline psql train tournament flow-evidence flow-quantile flow-calibration flow-hierarchy flow-pressure signal-prioritization flow-scenario decision-alternatives model-assurance assurance-publish predict registry marts create-key backup restore api-dev test ml-test \
         lint fmt audit fixture fixture-load web-install web-dev web-lint web-test web-build
 
 up:            ## build and start postgres + backend + frontend (UI http://localhost:3000, API docs http://localhost:8000/docs)
@@ -58,6 +58,10 @@ decision-alternatives: ## retrospective constrained mathematical alternatives; n
 
 model-assurance: ## deterministic assurance bundle over accepted evidence; no model fitting or science recomputation
 	PYTHONPATH=$(ML_PATH) $(PY) ml/pipelines/model_assurance.py $(ARGS)
+
+assurance-publish: migrate ## validate and transactionally publish BUNDLE=/path/to/model_assurance.json
+	@test -n "$(BUNDLE)" || { echo 'usage: make assurance-publish BUNDLE=/path/to/model_assurance.json'; exit 2; }
+	cd backend && $(PY) -m app.cli publish-assurance --bundle "$(BUNDLE)"
 
 predict: migrate ## predictions of the current models -> postgres (pred_referral, pred_daily_forecast, model_registry), then marts
 	PYTHONPATH=$(ML_PATH) $(PY) ml/pipelines/predict.py

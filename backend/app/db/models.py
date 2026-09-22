@@ -23,6 +23,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    UniqueConstraint,
     func,
     text,
 )
@@ -269,6 +270,79 @@ class ModelRegistry(Base):
     # title, intended_use, limitations, display names (artifact card.json <- ml/configs/model_cards.yaml)
     card: Mapped[dict | None] = mapped_column(JSONB)
     registered_at: Mapped[dt.datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+# -------------------------------------------------------------- model assurance
+# Published explicitly from a frozen, candidate-independent Model Assurance bundle. The backend
+# owns this read model and never imports hqai_ml or reads ML artifacts at request time.
+class ModelAssuranceSnapshot(Base):
+    __tablename__ = "model_assurance_snapshot"
+    __table_args__ = (
+        UniqueConstraint("assurance_id", name="uq_model_assurance_snapshot_assurance_id"),
+        UniqueConstraint("assurance_identity_sha256", name="uq_model_assurance_snapshot_identity"),
+        Index(
+            "ux_model_assurance_snapshot_active",
+            "is_active",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    assurance_id: Mapped[str] = mapped_column(String(128))
+    contract_version: Mapped[str] = mapped_column(String(32))
+    schema_version: Mapped[str] = mapped_column(String(64))
+    assurance_identity_sha256: Mapped[str] = mapped_column(String(64))
+    bundle_sha256: Mapped[str] = mapped_column(String(64))
+    source_code_commit: Mapped[str] = mapped_column(String(40))
+    ml_freeze_status: Mapped[str] = mapped_column(String(64))
+    product_contract_version: Mapped[str] = mapped_column(String(64))
+    generated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    published_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"), index=True)
+    capability_count: Mapped[int] = mapped_column(Integer)
+    failed_evidence_history: Mapped[list] = mapped_column(JSONB)
+    claim_boundaries: Mapped[dict] = mapped_column(JSONB)
+    monitoring_expectations: Mapped[list] = mapped_column(JSONB)
+    freshness_policy: Mapped[dict] = mapped_column(JSONB)
+
+
+class ModelAssuranceCapability(Base):
+    __tablename__ = "model_assurance_capability"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "capability_id", name="uq_model_assurance_capability_snapshot_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[int] = mapped_column(ForeignKey("model_assurance_snapshot.id", ondelete="CASCADE"), index=True)
+    capability_id: Mapped[str] = mapped_column(String(128))
+    display_name: Mapped[str] = mapped_column(Text)
+    evidence_status: Mapped[str] = mapped_column(String(16))
+    acceptance_verdict: Mapped[str] = mapped_column(String(32))
+    product_consumption_status: Mapped[str] = mapped_column(String(32))
+    run_id: Mapped[str | None] = mapped_column(String(128))
+    scientific_identity_sha256: Mapped[str | None] = mapped_column(String(64))
+    artifact_identity: Mapped[str | list | None] = mapped_column(JSONB)
+    dataset_identity_sha256: Mapped[str | None] = mapped_column(String(64))
+    config_identity_sha256: Mapped[str | None] = mapped_column(String(64))
+    code_identity_sha256: Mapped[str | None] = mapped_column(String(64))
+    model_identity: Mapped[str | list | None] = mapped_column(JSONB)
+    estimand_id: Mapped[str | None] = mapped_column(Text)
+    calibration_identity: Mapped[str | None] = mapped_column(Text)
+    hierarchy_identity: Mapped[str | None] = mapped_column(Text)
+    pressure_provider_identity: Mapped[str | None] = mapped_column(Text)
+    prioritization_identity: Mapped[str | None] = mapped_column(Text)
+    scenario_identity: Mapped[str | None] = mapped_column(Text)
+    decision_alternative_identity: Mapped[str | None] = mapped_column(Text)
+    human_review_required: Mapped[bool] = mapped_column(Boolean)
+    autonomous_action: Mapped[bool] = mapped_column(Boolean)
+    capacity_checked: Mapped[bool] = mapped_column(Boolean)
+    causal_effect_claimed: Mapped[bool] = mapped_column(Boolean)
+    serving_claim: Mapped[bool] = mapped_column(Boolean)
+    physical_feasibility_status: Mapped[str] = mapped_column(String(32))
+    promotion_status: Mapped[str] = mapped_column(String(32))
+    freshness_state: Mapped[str] = mapped_column(String(16))
+    details: Mapped[dict] = mapped_column(JSONB)
 
 
 # ------------------------------------------------------------------ serving marts

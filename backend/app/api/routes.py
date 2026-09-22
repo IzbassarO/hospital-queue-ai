@@ -14,8 +14,9 @@ from app.schemas.activity import AlertItem, Decision, DecisionCreate, Recommenda
 from app.schemas.admin import AccessLogItem, ApiKeyCreate, ApiKeyCreated, ApiKeyInfo
 from app.schemas.catalog import ConfigResponse, DictionariesResponse, HealthResponse, MeResponse, ModelInfo
 from app.schemas.common import Message, Page, Status
+from app.schemas.model_assurance import ModelAssuranceCapabilityResponse, ModelAssuranceSnapshotResponse
 from app.schemas.status import HospitalProfileCard, HospitalProfileStatus, OverviewResponse, RegionDetailResponse
-from app.services import activity, admin, catalog, export, recommend
+from app.services import activity, admin, catalog, export, model_assurance, recommend
 from app.services import status as status_service
 
 router = APIRouter()
@@ -245,6 +246,44 @@ def get_decisions(
 def get_models(session: SessionDep, _: ViewerDep) -> list[ModelInfo]:
     """Current model versions with model cards, headline metrics and baselines."""
     return catalog.models(session)
+
+
+@router.get(
+    "/model-assurance",
+    response_model=ModelAssuranceSnapshotResponse,
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="model_assurance_current_get",
+    tags=["assurance"],
+)
+def get_model_assurance(session: SessionDep, _: ViewerDep) -> ModelAssuranceSnapshotResponse:
+    """Current published Model Assurance snapshot and its frozen provenance."""
+    return model_assurance.current(session)
+
+
+@router.get(
+    "/model-assurance/capabilities",
+    response_model=list[ModelAssuranceCapabilityResponse],
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="model_assurance_capabilities_list",
+    tags=["assurance"],
+)
+def get_model_assurance_capabilities(session: SessionDep, _: ViewerDep) -> list[ModelAssuranceCapabilityResponse]:
+    """Candidate-independent assurance records of the current snapshot."""
+    return model_assurance.list_current_capabilities(session)
+
+
+@router.get(
+    "/model-assurance/capabilities/{capability_id}",
+    response_model=ModelAssuranceCapabilityResponse,
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="model_assurance_capability_get",
+    tags=["assurance"],
+)
+def get_model_assurance_capability(
+    capability_id: str, session: SessionDep, _: ViewerDep
+) -> ModelAssuranceCapabilityResponse:
+    """One current capability assurance record by stable capability ID."""
+    return model_assurance.get_current_capability(session, capability_id)
 
 
 @router.get(

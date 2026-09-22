@@ -405,6 +405,110 @@ export type AreaKpis = {
 };
 
 /**
+ * AssuranceFreshness
+ */
+export type AssuranceFreshness = {
+  /**
+   * Reason
+   */
+  reason: string;
+  /**
+   * State
+   */
+  state: "FRESH" | "STALE" | "DEGRADED" | "UNKNOWN";
+};
+
+/**
+ * AssuranceGovernance
+ */
+export type AssuranceGovernance = {
+  /**
+   * Autonomous Action
+   */
+  autonomous_action: boolean;
+  /**
+   * Capacity Checked
+   */
+  capacity_checked: boolean;
+  /**
+   * Causal Effect Claimed
+   */
+  causal_effect_claimed: boolean;
+  /**
+   * Human Review Required
+   */
+  human_review_required: boolean;
+  /**
+   * Physical Feasibility Status
+   */
+  physical_feasibility_status:
+    "VALIDATED" | "NOT_VALIDATED" | "UNKNOWN" | "NOT_APPLICABLE";
+  /**
+   * Promotion Status
+   */
+  promotion_status:
+    "PROMOTED" | "HUMAN_REVIEW_ONLY" | "NO_PROMOTION" | "NOT_APPLICABLE";
+  /**
+   * Serving Claim
+   */
+  serving_claim: boolean;
+};
+
+/**
+ * AssuranceIdentities
+ */
+export type AssuranceIdentities = {
+  artifact_sha256: AssuranceIdentityRecord;
+  calibration_identity: AssuranceIdentityRecord;
+  code_identity_sha256: AssuranceIdentityRecord;
+  config_identity_sha256: AssuranceIdentityRecord;
+  dataset_identity_sha256: AssuranceIdentityRecord;
+  decision_alternative_identity: AssuranceIdentityRecord;
+  estimand_id: AssuranceIdentityRecord;
+  hierarchy_identity: AssuranceIdentityRecord;
+  model_identity: AssuranceIdentityRecord;
+  pressure_provider_identity: AssuranceIdentityRecord;
+  prioritization_identity: AssuranceIdentityRecord;
+  run_id: AssuranceIdentityRecord;
+  scenario_identity: AssuranceIdentityRecord;
+  scientific_identity_sha256: AssuranceIdentityRecord;
+};
+
+/**
+ * AssuranceIdentityRecord
+ */
+export type AssuranceIdentityRecord = {
+  /**
+   * Reason
+   */
+  reason: string;
+  /**
+   * Status
+   */
+  status: "AVAILABLE" | "UNKNOWN" | "NOT_APPLICABLE";
+  /**
+   * Value
+   */
+  value: string | Array<string> | null;
+};
+
+/**
+ * AssuranceSupport
+ */
+export type AssuranceSupport = {
+  /**
+   * Range Semantics
+   */
+  range_semantics: Array<"COMPLETE" | "RANGE_LIMITED">;
+  /**
+   * Support Semantics
+   */
+  support_semantics: Array<
+    "DIRECT_SUPPORTED" | "FALLBACK_LIMITED" | "UNSUPPORTED"
+  >;
+};
+
+/**
  * ConfigResponse
  *
  * Parameters the marts were built with (ml/configs/serving.yaml, copied at `make marts`).
@@ -1138,6 +1242,137 @@ export type Message = {
    * Detail
    */
   detail: string;
+};
+
+/**
+ * ModelAssuranceCapabilityResponse
+ */
+export type ModelAssuranceCapabilityResponse = {
+  /**
+   * Acceptance Verdict
+   */
+  acceptance_verdict:
+    "ACCEPT" | "ACCEPT_WITH_P2" | "DO_NOT_PROMOTE" | "NOT_APPLICABLE";
+  /**
+   * Allowed Claims
+   */
+  allowed_claims: Array<string>;
+  /**
+   * Capability Id
+   */
+  capability_id: string;
+  /**
+   * Display Name
+   */
+  display_name: string;
+  /**
+   * Evidence
+   */
+  evidence: {
+    [key: string]: unknown;
+  };
+  /**
+   * Evidence Status
+   */
+  evidence_status: "ACCEPTED" | "REJECTED" | "EXPERIMENTAL";
+  /**
+   * Forbidden Claims
+   */
+  forbidden_claims: Array<string>;
+  freshness: AssuranceFreshness;
+  governance: AssuranceGovernance;
+  identities: AssuranceIdentities;
+  /**
+   * Limitations
+   */
+  limitations: Array<string>;
+  /**
+   * Product Consumption Status
+   */
+  product_consumption_status:
+    | "ELIGIBLE_AFTER_INGESTION"
+    | "EVALUATION_ONLY"
+    | "REFERENCE_ONLY"
+    | "NOT_FOR_PRODUCT";
+  support: AssuranceSupport;
+};
+
+/**
+ * ModelAssuranceSnapshotResponse
+ */
+export type ModelAssuranceSnapshotResponse = {
+  /**
+   * Assurance Id
+   */
+  assurance_id: string;
+  /**
+   * Assurance Identity Sha256
+   */
+  assurance_identity_sha256: string;
+  /**
+   * Bundle Sha256
+   */
+  bundle_sha256: string;
+  /**
+   * Capability Count
+   */
+  capability_count: number;
+  /**
+   * Claim Boundaries
+   */
+  claim_boundaries: {
+    [key: string]: unknown;
+  };
+  /**
+   * Contract Version
+   */
+  contract_version: string;
+  /**
+   * Failed Evidence History
+   */
+  failed_evidence_history: Array<{
+    [key: string]: unknown;
+  }>;
+  /**
+   * Freshness Policy
+   */
+  freshness_policy: {
+    [key: string]: unknown;
+  };
+  /**
+   * Generated At
+   */
+  generated_at: string | null;
+  /**
+   * Is Active
+   */
+  is_active: boolean;
+  /**
+   * Ml Freeze Status
+   */
+  ml_freeze_status: string;
+  /**
+   * Monitoring Expectations
+   */
+  monitoring_expectations: Array<{
+    [key: string]: unknown;
+  }>;
+  /**
+   * Product Contract Version
+   */
+  product_contract_version: string;
+  /**
+   * Published At
+   */
+  published_at: string;
+  /**
+   * Schema Version
+   */
+  schema_version: string;
+  /**
+   * Source Code Commit
+   */
+  source_code_commit: string;
 };
 
 /**
@@ -2443,6 +2678,122 @@ export type CallerGetResponses = {
 };
 
 export type CallerGetResponse = CallerGetResponses[keyof CallerGetResponses];
+
+export type ModelAssuranceCurrentGetData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/model-assurance";
+};
+
+export type ModelAssuranceCurrentGetErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+};
+
+export type ModelAssuranceCurrentGetError =
+  ModelAssuranceCurrentGetErrors[keyof ModelAssuranceCurrentGetErrors];
+
+export type ModelAssuranceCurrentGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: ModelAssuranceSnapshotResponse;
+};
+
+export type ModelAssuranceCurrentGetResponse =
+  ModelAssuranceCurrentGetResponses[keyof ModelAssuranceCurrentGetResponses];
+
+export type ModelAssuranceCapabilitiesListData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/model-assurance/capabilities";
+};
+
+export type ModelAssuranceCapabilitiesListErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+};
+
+export type ModelAssuranceCapabilitiesListError =
+  ModelAssuranceCapabilitiesListErrors[keyof ModelAssuranceCapabilitiesListErrors];
+
+export type ModelAssuranceCapabilitiesListResponses = {
+  /**
+   * Response Model Assurance Capabilities List
+   *
+   * Successful Response
+   */
+  200: Array<ModelAssuranceCapabilityResponse>;
+};
+
+export type ModelAssuranceCapabilitiesListResponse =
+  ModelAssuranceCapabilitiesListResponses[keyof ModelAssuranceCapabilitiesListResponses];
+
+export type ModelAssuranceCapabilityGetData = {
+  body?: never;
+  path: {
+    /**
+     * Capability Id
+     */
+    capability_id: string;
+  };
+  query?: never;
+  url: "/api/v1/model-assurance/capabilities/{capability_id}";
+};
+
+export type ModelAssuranceCapabilityGetErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ModelAssuranceCapabilityGetError =
+  ModelAssuranceCapabilityGetErrors[keyof ModelAssuranceCapabilityGetErrors];
+
+export type ModelAssuranceCapabilityGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: ModelAssuranceCapabilityResponse;
+};
+
+export type ModelAssuranceCapabilityGetResponse =
+  ModelAssuranceCapabilityGetResponses[keyof ModelAssuranceCapabilityGetResponses];
 
 export type ModelsListData = {
   body?: never;

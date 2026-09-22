@@ -4,17 +4,20 @@
   python -m app.cli seed-demo-key          key from DEMO_API_KEY, role specialist (backend container start)
   python -m app.cli list-keys
   python -m app.cli revoke-key --id 3
+  python -m app.cli publish-assurance --bundle /path/to/model_assurance.json
 
 create-key prints the key once; only its SHA-256 is stored.
 """
 
 import argparse
 import sys
+from pathlib import Path
 
 from app.core.config import get_settings
 from app.core.security import KEY_PREFIX, ROLES
 from app.db.session import SessionLocal
-from app.services import admin
+from app.services import admin, model_assurance
+from app.services.common import ConflictError, ValidationError
 
 DEMO_LABEL = "demo (DEMO_API_KEY)"
 
@@ -29,6 +32,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("list-keys", help="list keys (prefix, role, label, revoked)")
     revoke = sub.add_parser("revoke-key", help="revoke a key by id")
     revoke.add_argument("--id", type=int, required=True)
+    publish = sub.add_parser("publish-assurance", help="validate and publish a Model Assurance JSON bundle")
+    publish.add_argument("--bundle", type=Path, required=True)
     args = parser.parse_args(argv)
 
     with SessionLocal() as session:
@@ -55,6 +60,19 @@ def main(argv: list[str] | None = None) -> int:
             for k in admin.list_keys(session):
                 revoked = f"revoked {k.revoked_at:%Y-%m-%d %H:%M}" if k.revoked_at else "active"
                 print(f"{k.id:>4}  {k.key_prefix}…  {k.role:<10}  {revoked:<24}  {k.label}")
+            return 0
+        if args.command == "publish-assurance":
+            try:
+                parsed = model_assurance.load_assurance_bundle(args.bundle)
+                result = model_assurance.publish(session, parsed)
+            except (ValidationError, ConflictError) as exc:
+                print(f"Model Assurance publication failed: {exc}", file=sys.stderr)
+                return 2
+            state = "published" if result.created else "already published; activated"
+            print(
+                f"Model Assurance {result.assurance_id} {state} "
+                f"(snapshot {result.snapshot_id}, identity {result.assurance_identity_sha256})"
+            )
             return 0
         info = admin.revoke_key(session, args.id)
         print(f"key {info.id} ({info.label}) revoked at {info.revoked_at}")

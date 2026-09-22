@@ -761,6 +761,27 @@ three baselines (seasonal naive, 28- and 7-day means) and `beats_baselines` (bea
 ]
 ```
 
+### `GET /model-assurance`
+
+**role: viewer.** The current explicitly published Model Assurance snapshot. The scientific assurance identity,
+raw-bundle hash, source commit, contract versions, freeze state and publication timestamp provide provenance for the
+capability records. Publication is an administrative CLI boundary (`make assurance-publish BUNDLE=/absolute/path`),
+not a runtime dependency on ML files. Returns `404` until a snapshot has been published.
+
+### `GET /model-assurance/capabilities`
+
+**role: viewer.** Candidate-independent assurance records for every capability in the current snapshot, sorted by
+stable `capability_id`. Scientific/evidence status, product-consumption status, support, governance, freshness,
+identities, limitations and allowed/forbidden claims remain separate. Local manifest and lineage paths are not part
+of the response contract. Historical-flow pressure is `historical_flow_proxy_v1`, not physical capacity; decision
+alternatives are retrospective mathematical alternatives for human review.
+
+### `GET /model-assurance/capabilities/{capability_id}`
+
+**role: viewer.** One assurance record from the current snapshot. Returns `404` when no current snapshot exists or
+when the stable capability ID is absent. Governance fields explicitly retain human-review and non-autonomous-action
+boundaries.
+
 ### `GET /dictionaries`
 
 **role: viewer.** Regions (sorted by name) and all bed profiles, for dropdowns.
