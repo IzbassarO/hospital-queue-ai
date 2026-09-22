@@ -1,8 +1,8 @@
 # API — hospital-queue-ai
 
 FastAPI service that serves the specialist's scenario — *where is the load, why, what are the alternatives,
-what did a person decide* — from the Postgres tables built in steps 2–3. It never trains or scores models:
-it reads facts, aggregates, predictions and the serving marts.
+what did a person decide* — from PostgreSQL. It never trains or scores models: it reads facts, aggregates,
+predictions, serving marts and explicitly published assurance/operational-intelligence read models.
 
 - Base URL: `http://localhost:8000/api/v1` (`make up`); interactive docs `http://localhost:8000/docs`,
   OpenAPI schema `/openapi.json`. Local development: `make api-dev` → port 8001 with auto-reload.
@@ -781,6 +781,49 @@ alternatives are retrospective mathematical alternatives for human review.
 **role: viewer.** One assurance record from the current snapshot. Returns `404` when no current snapshot exists or
 when the stable capability ID is absent. Governance fields explicitly retain human-review and non-autonomous-action
 boundaries.
+
+### `GET /operational-intelligence/overview`
+
+**role: viewer.** Metadata for the current explicitly published operational-intelligence snapshot plus national and
+regional signal counts. Counts keep severity, direct/fallback/unsupported support, calibrated/unavailable
+uncertainty, preventive pressure and observed unusual flow separate. An `EMPTY` or `DEGRADED` publication is an
+explicit successful response; absence of any published snapshot returns `404`.
+
+Publication is an administrative boundary:
+`make operational-intelligence-publish BUNDLE=/absolute/path/to/operational_intelligence.json`. The backend validates
+the candidate-independent bundle and its canonical identity, verifies every source identity against the referenced
+published Model Assurance snapshot, then atomically publishes it to PostgreSQL. Publish Model Assurance first. API
+requests never inspect source artifacts.
+
+### `GET /operational-intelligence/signals?region=&org=&profile=&target=&severity=&signal_type=&support=&limit=&offset=`
+
+**role: viewer.** Deterministically ordered Signals Inbox entries from the current snapshot. Each entry exposes the
+hospital/profile/target/origin, severity, source headline and reason, materiality, support/fallback, uncertainty,
+reason codes, evidence facts, limitations and versioned provenance. These are attention/triage signals for human
+review, not recommendations or autonomous actions.
+
+### `GET /operational-intelligence/signals/{signal_id}`
+
+**role: viewer.** Structured evidence and source identities for one current signal. Preventive pressure always uses
+`historical_flow_proxy_v1`: an origin-legal historical count reference, not beds, occupancy, staffed capacity or
+physical overload. Observed unusual-flow evidence remains a distinct signal type and carries no causal claim.
+
+### `GET /operational-intelligence/regions/{region_code}`
+
+**role: viewer.** Regional signal summary, top ranked inbox entries and available forecast origin/target facets.
+Returns `404` only when the current snapshot has neither forecasts nor signals for the region.
+
+### `GET /operational-intelligence/hospitals/{org_code}/profiles/{profile_code}`
+
+**role: viewer.** Hospital/profile operational signals and available forecast-series facets. It does not invent an
+aggregate AI score; each evidence status and limitation remains explicit.
+
+### `GET /operational-intelligence/forecasts?origin=&target_date_from=&target_date_to=&level=&region=&org=&profile=&target=&limit=&offset=`
+
+**role: viewer.** Filterable forecast points for the current publication. The central value, unchanged raw
+`p10/p50/p90` evidence and calibrated uncertainty interval are separately named. Support, fallback, calibration,
+prediction-source and hierarchy semantics are candidate-independent; source run/scientific/data/config/code
+identities are returned without filesystem paths.
 
 ### `GET /dictionaries`
 

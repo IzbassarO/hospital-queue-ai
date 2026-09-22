@@ -37,6 +37,14 @@ EXPECTED_OPERATIONS = {
     ("GET", "/api/v1/model-assurance/capabilities"): "model_assurance_capabilities_list",
     ("GET", "/api/v1/model-assurance/capabilities/{capability_id}"): "model_assurance_capability_get",
     ("GET", "/api/v1/models"): "models_list",
+    ("GET", "/api/v1/operational-intelligence/forecasts"): "operational_forecasts_list",
+    ("GET", "/api/v1/operational-intelligence/hospitals/{org_code}/profiles/{profile_code}"): (
+        "operational_intelligence_hospital_profile_get"
+    ),
+    ("GET", "/api/v1/operational-intelligence/overview"): "operational_intelligence_overview_get",
+    ("GET", "/api/v1/operational-intelligence/regions/{region_code}"): "operational_intelligence_region_get",
+    ("GET", "/api/v1/operational-intelligence/signals"): "operational_signals_list",
+    ("GET", "/api/v1/operational-intelligence/signals/{signal_id}"): "operational_signal_get",
     ("GET", "/api/v1/overview"): "overview_get",
     ("GET", "/api/v1/regions/{region_code}/hospitals"): "region_hospitals_list",
     ("GET", "/api/v1/regions/{region_code}"): "region_get",

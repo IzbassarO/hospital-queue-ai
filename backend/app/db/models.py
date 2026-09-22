@@ -345,6 +345,154 @@ class ModelAssuranceCapability(Base):
     details: Mapped[dict] = mapped_column(JSONB)
 
 
+# ---------------------------------------------------- operational intelligence
+# Explicitly published product projection of accepted flow evidence. Request-time code reads only
+# these tables; source artifact locations are deliberately not part of the read model.
+class OperationalIntelligenceSnapshot(Base):
+    __tablename__ = "operational_intelligence_snapshot"
+    __table_args__ = (
+        UniqueConstraint("publication_id", name="uq_operational_intelligence_snapshot_publication_id"),
+        UniqueConstraint(
+            "publication_identity_sha256",
+            name="uq_operational_intelligence_snapshot_identity",
+        ),
+        Index(
+            "ux_operational_intelligence_snapshot_active",
+            "is_active",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    publication_id: Mapped[str] = mapped_column(String(128))
+    schema_version: Mapped[str] = mapped_column(String(64))
+    contract_version: Mapped[str] = mapped_column(String(32))
+    publication_identity_sha256: Mapped[str] = mapped_column(String(64))
+    bundle_sha256: Mapped[str] = mapped_column(String(64))
+    assurance_identity_sha256: Mapped[str] = mapped_column(String(64))
+    source_code_commit: Mapped[str] = mapped_column(String(40))
+    current_origin: Mapped[dt.date] = mapped_column(Date)
+    freshness_state: Mapped[str] = mapped_column(String(16))
+    publication_status: Mapped[str] = mapped_column(String(16))
+    generated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    published_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"), index=True)
+    forecast_count: Mapped[int] = mapped_column(Integer)
+    signal_count: Mapped[int] = mapped_column(Integer)
+    source_provenance: Mapped[dict] = mapped_column(JSONB)
+    limitations: Mapped[list] = mapped_column(JSONB)
+
+
+class OperationalForecast(Base):
+    __tablename__ = "operational_forecast"
+    __table_args__ = (
+        UniqueConstraint(
+            "snapshot_id",
+            "series_id",
+            "target",
+            "origin",
+            "target_date",
+            name="uq_operational_forecast_point",
+        ),
+        Index(
+            "ix_operational_forecast_scope",
+            "snapshot_id",
+            "origin",
+            "level",
+            "region_code",
+            "org_code",
+            "profile_code",
+            "target",
+            "target_date",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[int] = mapped_column(
+        ForeignKey("operational_intelligence_snapshot.id", ondelete="CASCADE"), index=True
+    )
+    series_id: Mapped[str] = mapped_column(String(64))
+    level: Mapped[str] = mapped_column(String(16))
+    origin: Mapped[dt.date] = mapped_column(Date)
+    target_date: Mapped[dt.date] = mapped_column(Date)
+    horizon: Mapped[int] = mapped_column(SmallInteger)
+    target: Mapped[str] = mapped_column(String(32))
+    org_code: Mapped[str | None] = mapped_column(String(8))
+    region_code: Mapped[str | None] = mapped_column(String(4))
+    profile_code: Mapped[str | None] = mapped_column(String(8))
+    central_value: Mapped[float] = mapped_column(Double)
+    central_semantics: Mapped[str] = mapped_column(String(32))
+    raw_p10: Mapped[float | None] = mapped_column(Double)
+    raw_p50: Mapped[float | None] = mapped_column(Double)
+    raw_p90: Mapped[float | None] = mapped_column(Double)
+    calibrated_lower: Mapped[float | None] = mapped_column(Double)
+    calibrated_upper: Mapped[float | None] = mapped_column(Double)
+    calibration_nominal_coverage: Mapped[float | None] = mapped_column(Double)
+    calibration_status: Mapped[str] = mapped_column(String(32))
+    calibration_support_class: Mapped[str | None] = mapped_column(String(64))
+    calibration_version: Mapped[str | None] = mapped_column(String(128))
+    prediction_source: Mapped[str] = mapped_column(String(32))
+    hierarchy_status: Mapped[str] = mapped_column(String(64))
+    support_status: Mapped[str] = mapped_column(String(32))
+    fallback_status: Mapped[str] = mapped_column(String(32))
+    uncertainty_status: Mapped[str] = mapped_column(String(32))
+    provenance_keys: Mapped[list] = mapped_column(JSONB)
+    details: Mapped[dict] = mapped_column(JSONB)
+
+
+class OperationalSignal(Base):
+    __tablename__ = "operational_signal"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "signal_id", name="uq_operational_signal_snapshot_id"),
+        Index("ix_operational_signal_order", "snapshot_id", "origin", "inbox_rank", "signal_id"),
+        Index(
+            "ix_operational_signal_scope",
+            "snapshot_id",
+            "region_code",
+            "org_code",
+            "profile_code",
+            "target",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[int] = mapped_column(
+        ForeignKey("operational_intelligence_snapshot.id", ondelete="CASCADE"), index=True
+    )
+    signal_id: Mapped[str] = mapped_column(String(128))
+    signal_type: Mapped[str] = mapped_column(String(40))
+    series_id: Mapped[str] = mapped_column(String(64))
+    origin: Mapped[dt.date] = mapped_column(Date)
+    target: Mapped[str] = mapped_column(String(32))
+    org_code: Mapped[str | None] = mapped_column(String(8))
+    region_code: Mapped[str | None] = mapped_column(String(4))
+    profile_code: Mapped[str | None] = mapped_column(String(8))
+    inbox_rank: Mapped[int | None] = mapped_column(Integer)
+    severity: Mapped[str] = mapped_column(String(16))
+    headline: Mapped[str] = mapped_column(Text)
+    concise_reason: Mapped[str] = mapped_column(Text)
+    materiality_status: Mapped[str | None] = mapped_column(String(64))
+    support_status: Mapped[str] = mapped_column(String(32))
+    fallback_status: Mapped[str] = mapped_column(String(32))
+    uncertainty_status: Mapped[str] = mapped_column(String(32))
+    pressure_basis: Mapped[str | None] = mapped_column(String(64))
+    threshold_value: Mapped[float | None] = mapped_column(Double)
+    threshold_status: Mapped[str | None] = mapped_column(String(32))
+    forecast_value: Mapped[float | None] = mapped_column(Double)
+    uncertainty_lower: Mapped[float | None] = mapped_column(Double)
+    uncertainty_upper: Mapped[float | None] = mapped_column(Double)
+    first_crossing_date: Mapped[dt.date | None] = mapped_column(Date)
+    lead_time_days: Mapped[int | None] = mapped_column(Integer)
+    observed_anomaly_status: Mapped[str | None] = mapped_column(String(32))
+    observed_anomaly_present: Mapped[bool] = mapped_column(Boolean)
+    data_freshness: Mapped[dt.date | None] = mapped_column(Date)
+    reason_codes: Mapped[list] = mapped_column(JSONB)
+    evidence_facts: Mapped[list] = mapped_column(JSONB)
+    provenance_keys: Mapped[list] = mapped_column(JSONB)
+    details: Mapped[dict] = mapped_column(JSONB)
+
+
 # ------------------------------------------------------------------ serving marts
 # Filled by ml/pipelines/build_marts.py (`make marts`, also at the end of `make predict`): one
 # transaction truncates and rebuilds all mart_* tables. No FKs to the data layer on purpose —

@@ -367,6 +367,67 @@
         "title": "Alternative",
         "type": "object"
       },
+      "AnomalyEvidence": {
+        "additionalProperties": false,
+        "properties": {
+          "causal_claim": {
+            "const": false,
+            "title": "Causal Claim",
+            "type": "boolean"
+          },
+          "observed_value": {
+            "minimum": 0.0,
+            "title": "Observed Value",
+            "type": "number"
+          },
+          "reference_mad": {
+            "minimum": 0.0,
+            "title": "Reference Mad",
+            "type": "number"
+          },
+          "reference_max_date": {
+            "format": "date",
+            "title": "Reference Max Date",
+            "type": "string"
+          },
+          "reference_median_residual": {
+            "title": "Reference Median Residual",
+            "type": "number"
+          },
+          "reference_sample_count": {
+            "minimum": 0.0,
+            "title": "Reference Sample Count",
+            "type": "integer"
+          },
+          "robust_z": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Robust Z"
+          },
+          "weekly_residual": {
+            "title": "Weekly Residual",
+            "type": "number"
+          }
+        },
+        "required": [
+          "observed_value",
+          "weekly_residual",
+          "reference_median_residual",
+          "reference_mad",
+          "robust_z",
+          "reference_sample_count",
+          "reference_max_date",
+          "causal_claim"
+        ],
+        "title": "AnomalyEvidence",
+        "type": "object"
+      },
       "ApiKeyCreate": {
         "properties": {
           "label": {
@@ -881,6 +942,53 @@
           "range_semantics"
         ],
         "title": "AssuranceSupport",
+        "type": "object"
+      },
+      "CalibratedUncertainty": {
+        "additionalProperties": false,
+        "properties": {
+          "calibration_status": {
+            "const": "CALIBRATED",
+            "title": "Calibration Status",
+            "type": "string"
+          },
+          "calibration_version": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Calibration Version",
+            "type": "string"
+          },
+          "lower": {
+            "minimum": 0.0,
+            "title": "Lower",
+            "type": "number"
+          },
+          "nominal_coverage": {
+            "exclusiveMaximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Nominal Coverage",
+            "type": "number"
+          },
+          "support_class": {
+            "minLength": 1,
+            "title": "Support Class",
+            "type": "string"
+          },
+          "upper": {
+            "minimum": 0.0,
+            "title": "Upper",
+            "type": "number"
+          }
+        },
+        "required": [
+          "lower",
+          "upper",
+          "nominal_coverage",
+          "calibration_status",
+          "support_class",
+          "calibration_version"
+        ],
+        "title": "CalibratedUncertainty",
         "type": "object"
       },
       "ConfigResponse": {
@@ -2434,6 +2542,920 @@
         "title": "ModelInfo",
         "type": "object"
       },
+      "OperationalCounts": {
+        "properties": {
+          "calibrated": {
+            "default": 0,
+            "title": "Calibrated",
+            "type": "integer"
+          },
+          "direct_supported": {
+            "default": 0,
+            "title": "Direct Supported",
+            "type": "integer"
+          },
+          "elevated": {
+            "default": 0,
+            "title": "Elevated",
+            "type": "integer"
+          },
+          "fallback_limited": {
+            "default": 0,
+            "title": "Fallback Limited",
+            "type": "integer"
+          },
+          "high": {
+            "default": 0,
+            "title": "High",
+            "type": "integer"
+          },
+          "normal": {
+            "default": 0,
+            "title": "Normal",
+            "type": "integer"
+          },
+          "observed_unusual_flow": {
+            "default": 0,
+            "title": "Observed Unusual Flow",
+            "type": "integer"
+          },
+          "preventive_pressure": {
+            "default": 0,
+            "title": "Preventive Pressure",
+            "type": "integer"
+          },
+          "total_signals": {
+            "default": 0,
+            "title": "Total Signals",
+            "type": "integer"
+          },
+          "uncertainty_limited_or_unavailable": {
+            "default": 0,
+            "title": "Uncertainty Limited Or Unavailable",
+            "type": "integer"
+          },
+          "unsupported_severity": {
+            "default": 0,
+            "title": "Unsupported Severity",
+            "type": "integer"
+          },
+          "unsupported_support": {
+            "default": 0,
+            "title": "Unsupported Support",
+            "type": "integer"
+          },
+          "watch": {
+            "default": 0,
+            "title": "Watch",
+            "type": "integer"
+          }
+        },
+        "title": "OperationalCounts",
+        "type": "object"
+      },
+      "OperationalForecastResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "calibrated_uncertainty": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CalibratedUncertainty"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "calibration_status": {
+            "enum": [
+              "CALIBRATED",
+              "INSUFFICIENT_SUPPORT",
+              "NOT_APPLICABLE"
+            ],
+            "title": "Calibration Status",
+            "type": "string"
+          },
+          "central_semantics": {
+            "enum": [
+              "P50",
+              "POINT_FORECAST",
+              "BOTTOM_UP_CENTRAL"
+            ],
+            "title": "Central Semantics",
+            "type": "string"
+          },
+          "central_value": {
+            "minimum": 0.0,
+            "title": "Central Value",
+            "type": "number"
+          },
+          "evidence_facts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Facts",
+            "type": "array"
+          },
+          "fallback_status": {
+            "enum": [
+              "NOT_APPLICABLE",
+              "REGION_PROFILE_FALLBACK",
+              "OTHER_FALLBACK",
+              "UNSUPPORTED"
+            ],
+            "title": "Fallback Status",
+            "type": "string"
+          },
+          "hierarchy_status": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Hierarchy Status",
+            "type": "string"
+          },
+          "horizon": {
+            "maximum": 366.0,
+            "minimum": 1.0,
+            "title": "Horizon",
+            "type": "integer"
+          },
+          "level": {
+            "enum": [
+              "hospital",
+              "region",
+              "national"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "org_code": {
+            "anyOf": [
+              {
+                "maxLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Code"
+          },
+          "origin": {
+            "format": "date",
+            "title": "Origin",
+            "type": "string"
+          },
+          "prediction_source": {
+            "enum": [
+              "DIRECT",
+              "REGION_PROFILE_FALLBACK",
+              "BOTTOM_UP_AGGREGATE",
+              "UNSUPPORTED"
+            ],
+            "title": "Prediction Source",
+            "type": "string"
+          },
+          "profile_code": {
+            "anyOf": [
+              {
+                "maxLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Code"
+          },
+          "provenance_keys": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Provenance Keys",
+            "type": "array"
+          },
+          "publication_identity_sha256": {
+            "title": "Publication Identity Sha256",
+            "type": "string"
+          },
+          "raw_quantiles": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RawQuantiles"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "region_code": {
+            "anyOf": [
+              {
+                "maxLength": 4,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Code"
+          },
+          "series_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Series Id",
+            "type": "string"
+          },
+          "source_provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SourceProvenance"
+            },
+            "title": "Source Provenance",
+            "type": "object"
+          },
+          "support_status": {
+            "enum": [
+              "DIRECT_SUPPORTED",
+              "FALLBACK_LIMITED",
+              "UNSUPPORTED"
+            ],
+            "title": "Support Status",
+            "type": "string"
+          },
+          "target": {
+            "enum": [
+              "registrations",
+              "cohort_hospitalizations"
+            ],
+            "title": "Target",
+            "type": "string"
+          },
+          "target_date": {
+            "format": "date",
+            "title": "Target Date",
+            "type": "string"
+          },
+          "uncertainty_status": {
+            "enum": [
+              "CALIBRATED",
+              "INSUFFICIENT_CALIBRATION_SUPPORT",
+              "UNAVAILABLE"
+            ],
+            "title": "Uncertainty Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "series_id",
+          "level",
+          "origin",
+          "target_date",
+          "horizon",
+          "target",
+          "central_value",
+          "central_semantics",
+          "calibration_status",
+          "prediction_source",
+          "hierarchy_status",
+          "support_status",
+          "fallback_status",
+          "uncertainty_status",
+          "provenance_keys",
+          "publication_identity_sha256",
+          "source_provenance"
+        ],
+        "title": "OperationalForecastResponse",
+        "type": "object"
+      },
+      "OperationalHospitalProfileResponse": {
+        "properties": {
+          "available_origins": {
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "title": "Available Origins",
+            "type": "array"
+          },
+          "available_targets": {
+            "items": {
+              "enum": [
+                "registrations",
+                "cohort_hospitalizations"
+              ],
+              "type": "string"
+            },
+            "title": "Available Targets",
+            "type": "array"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/OperationalCounts"
+          },
+          "forecast_point_count": {
+            "title": "Forecast Point Count",
+            "type": "integer"
+          },
+          "org_code": {
+            "title": "Org Code",
+            "type": "string"
+          },
+          "profile_code": {
+            "title": "Profile Code",
+            "type": "string"
+          },
+          "region_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Code"
+          },
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/OperationalSignalResponse"
+            },
+            "title": "Signals",
+            "type": "array"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/OperationalSnapshotResponse"
+          }
+        },
+        "required": [
+          "snapshot",
+          "org_code",
+          "region_code",
+          "profile_code",
+          "counts",
+          "signals",
+          "forecast_point_count",
+          "available_origins",
+          "available_targets"
+        ],
+        "title": "OperationalHospitalProfileResponse",
+        "type": "object"
+      },
+      "OperationalOverviewResponse": {
+        "properties": {
+          "national": {
+            "$ref": "#/components/schemas/OperationalCounts"
+          },
+          "regions": {
+            "items": {
+              "$ref": "#/components/schemas/OperationalRegionSummary"
+            },
+            "title": "Regions",
+            "type": "array"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/OperationalSnapshotResponse"
+          }
+        },
+        "required": [
+          "snapshot",
+          "national",
+          "regions"
+        ],
+        "title": "OperationalOverviewResponse",
+        "type": "object"
+      },
+      "OperationalRegionResponse": {
+        "properties": {
+          "available_origins": {
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "title": "Available Origins",
+            "type": "array"
+          },
+          "available_targets": {
+            "items": {
+              "enum": [
+                "registrations",
+                "cohort_hospitalizations"
+              ],
+              "type": "string"
+            },
+            "title": "Available Targets",
+            "type": "array"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/OperationalCounts"
+          },
+          "forecast_point_count": {
+            "title": "Forecast Point Count",
+            "type": "integer"
+          },
+          "region_code": {
+            "title": "Region Code",
+            "type": "string"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/OperationalSnapshotResponse"
+          },
+          "top_signals": {
+            "items": {
+              "$ref": "#/components/schemas/OperationalSignalResponse"
+            },
+            "title": "Top Signals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "snapshot",
+          "region_code",
+          "counts",
+          "top_signals",
+          "forecast_point_count",
+          "available_origins",
+          "available_targets"
+        ],
+        "title": "OperationalRegionResponse",
+        "type": "object"
+      },
+      "OperationalRegionSummary": {
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/OperationalCounts"
+          },
+          "region_code": {
+            "title": "Region Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "region_code",
+          "counts"
+        ],
+        "title": "OperationalRegionSummary",
+        "type": "object"
+      },
+      "OperationalSignalResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "anomaly_evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnomalyEvidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "concise_reason": {
+            "minLength": 1,
+            "title": "Concise Reason",
+            "type": "string"
+          },
+          "data_freshness": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Freshness"
+          },
+          "evidence_facts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Facts",
+            "type": "array"
+          },
+          "fallback_status": {
+            "enum": [
+              "NOT_APPLICABLE",
+              "REGION_PROFILE_FALLBACK",
+              "OTHER_FALLBACK",
+              "UNSUPPORTED"
+            ],
+            "title": "Fallback Status",
+            "type": "string"
+          },
+          "first_crossing_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Crossing Date"
+          },
+          "forecast_value": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forecast Value"
+          },
+          "headline": {
+            "minLength": 1,
+            "title": "Headline",
+            "type": "string"
+          },
+          "inbox_rank": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inbox Rank"
+          },
+          "lead_time_days": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead Time Days"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "materiality_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Materiality Status"
+          },
+          "observed_anomaly_present": {
+            "default": false,
+            "title": "Observed Anomaly Present",
+            "type": "boolean"
+          },
+          "observed_anomaly_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Anomaly Status"
+          },
+          "org_code": {
+            "anyOf": [
+              {
+                "maxLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Code"
+          },
+          "origin": {
+            "format": "date",
+            "title": "Origin",
+            "type": "string"
+          },
+          "pressure_basis": {
+            "anyOf": [
+              {
+                "const": "historical_flow_proxy_v1",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pressure Basis"
+          },
+          "profile_code": {
+            "anyOf": [
+              {
+                "maxLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Code"
+          },
+          "provenance_keys": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Provenance Keys",
+            "type": "array"
+          },
+          "publication_identity_sha256": {
+            "title": "Publication Identity Sha256",
+            "type": "string"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Reason Codes",
+            "type": "array"
+          },
+          "region_code": {
+            "anyOf": [
+              {
+                "maxLength": 4,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Code"
+          },
+          "series_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Series Id",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "HIGH",
+              "ELEVATED",
+              "WATCH",
+              "NORMAL",
+              "UNSUPPORTED"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "signal_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Signal Id",
+            "type": "string"
+          },
+          "signal_type": {
+            "enum": [
+              "preventive_flow_pressure",
+              "observed_unusual_flow"
+            ],
+            "title": "Signal Type",
+            "type": "string"
+          },
+          "source_provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SourceProvenance"
+            },
+            "title": "Source Provenance",
+            "type": "object"
+          },
+          "support_status": {
+            "enum": [
+              "DIRECT_SUPPORTED",
+              "FALLBACK_LIMITED",
+              "UNSUPPORTED"
+            ],
+            "title": "Support Status",
+            "type": "string"
+          },
+          "target": {
+            "enum": [
+              "registrations",
+              "cohort_hospitalizations"
+            ],
+            "title": "Target",
+            "type": "string"
+          },
+          "threshold_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold Status"
+          },
+          "threshold_value": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold Value"
+          },
+          "uncertainty_lower": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uncertainty Lower"
+          },
+          "uncertainty_status": {
+            "enum": [
+              "CALIBRATED",
+              "INSUFFICIENT_CALIBRATION_SUPPORT",
+              "UNAVAILABLE"
+            ],
+            "title": "Uncertainty Status",
+            "type": "string"
+          },
+          "uncertainty_upper": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uncertainty Upper"
+          }
+        },
+        "required": [
+          "signal_id",
+          "signal_type",
+          "series_id",
+          "origin",
+          "target",
+          "severity",
+          "headline",
+          "concise_reason",
+          "support_status",
+          "fallback_status",
+          "uncertainty_status",
+          "reason_codes",
+          "provenance_keys",
+          "publication_identity_sha256",
+          "source_provenance"
+        ],
+        "title": "OperationalSignalResponse",
+        "type": "object"
+      },
+      "OperationalSnapshotResponse": {
+        "properties": {
+          "assurance_identity_sha256": {
+            "title": "Assurance Identity Sha256",
+            "type": "string"
+          },
+          "bundle_sha256": {
+            "title": "Bundle Sha256",
+            "type": "string"
+          },
+          "contract_version": {
+            "title": "Contract Version",
+            "type": "string"
+          },
+          "current_origin": {
+            "format": "date",
+            "title": "Current Origin",
+            "type": "string"
+          },
+          "forecast_count": {
+            "title": "Forecast Count",
+            "type": "integer"
+          },
+          "freshness_state": {
+            "enum": [
+              "FRESH",
+              "STALE",
+              "DEGRADED",
+              "UNKNOWN"
+            ],
+            "title": "Freshness State",
+            "type": "string"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "string"
+          },
+          "publication_identity_sha256": {
+            "title": "Publication Identity Sha256",
+            "type": "string"
+          },
+          "publication_status": {
+            "enum": [
+              "AVAILABLE",
+              "DEGRADED",
+              "EMPTY"
+            ],
+            "title": "Publication Status",
+            "type": "string"
+          },
+          "published_at": {
+            "format": "date-time",
+            "title": "Published At",
+            "type": "string"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "signal_count": {
+            "title": "Signal Count",
+            "type": "integer"
+          },
+          "source_code_commit": {
+            "title": "Source Code Commit",
+            "type": "string"
+          },
+          "source_provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SourceProvenance"
+            },
+            "title": "Source Provenance",
+            "type": "object"
+          }
+        },
+        "required": [
+          "publication_id",
+          "schema_version",
+          "contract_version",
+          "publication_identity_sha256",
+          "bundle_sha256",
+          "assurance_identity_sha256",
+          "source_code_commit",
+          "current_origin",
+          "freshness_state",
+          "publication_status",
+          "generated_at",
+          "published_at",
+          "forecast_count",
+          "signal_count",
+          "source_provenance",
+          "limitations"
+        ],
+        "title": "OperationalSnapshotResponse",
+        "type": "object"
+      },
       "OverviewResponse": {
         "properties": {
           "as_of_date": {
@@ -2598,6 +3620,70 @@
         "title": "Page[HospitalProfileStatus]",
         "type": "object"
       },
+      "Page_OperationalForecastResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OperationalForecastResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "description": "rows matching the filters, before limit/offset",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[OperationalForecastResponse]",
+        "type": "object"
+      },
+      "Page_OperationalSignalResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OperationalSignalResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "description": "rows matching the filters, before limit/offset",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[OperationalSignalResponse]",
+        "type": "object"
+      },
       "Page_ReferralItem_": {
         "properties": {
           "items": {
@@ -2651,6 +3737,39 @@
           "is_day_hospital"
         ],
         "title": "ProfileItem",
+        "type": "object"
+      },
+      "RawQuantiles": {
+        "additionalProperties": false,
+        "properties": {
+          "p10": {
+            "minimum": 0.0,
+            "title": "P10",
+            "type": "number"
+          },
+          "p50": {
+            "minimum": 0.0,
+            "title": "P50",
+            "type": "number"
+          },
+          "p90": {
+            "minimum": 0.0,
+            "title": "P90",
+            "type": "number"
+          },
+          "semantics": {
+            "const": "UNCHANGED_MODEL_EVIDENCE",
+            "title": "Semantics",
+            "type": "string"
+          }
+        },
+        "required": [
+          "p10",
+          "p50",
+          "p90",
+          "semantics"
+        ],
+        "title": "RawQuantiles",
         "type": "object"
       },
       "RecommendationResponse": {
@@ -3134,6 +4253,79 @@
           "load_index_max_hospital"
         ],
         "title": "RegionProfileStatus",
+        "type": "object"
+      },
+      "SourceProvenance": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Artifact Sha256"
+          },
+          "code_identity_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code Identity Sha256"
+          },
+          "config_identity_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Identity Sha256"
+          },
+          "dataset_identity_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Identity Sha256"
+          },
+          "run_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Run Id",
+            "type": "string"
+          },
+          "scientific_identity_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Scientific Identity Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "scientific_identity_sha256",
+          "artifact_sha256"
+        ],
+        "title": "SourceProvenance",
         "type": "object"
       },
       "StatusThresholdsConfig": {
@@ -4812,6 +6004,782 @@
         "summary": "Get Models",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/api/v1/operational-intelligence/forecasts": {
+      "get": {
+        "description": "Central forecasts with raw quantiles and calibrated uncertainty kept separate.",
+        "operationId": "operational_forecasts_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target Date From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target Date To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "level",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "hospital",
+                    "region",
+                    "national"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Level"
+            }
+          },
+          {
+            "description": "region code; all regions if omitted",
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "region code; all regions if omitted",
+              "title": "Region"
+            }
+          },
+          {
+            "description": "hospital code; all hospitals if omitted",
+            "in": "query",
+            "name": "org",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "hospital code; all hospitals if omitted",
+              "title": "Org"
+            }
+          },
+          {
+            "description": "profile code; all profiles if omitted",
+            "in": "query",
+            "name": "profile",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "profile code; all profiles if omitted",
+              "title": "Profile"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "registrations",
+                    "cohort_hospitalizations"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target"
+            }
+          },
+          {
+            "description": "page size",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "page size",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_OperationalForecastResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Operational Forecasts",
+        "tags": [
+          "operational-intelligence"
+        ]
+      }
+    },
+    "/api/v1/operational-intelligence/hospitals/{org_code}/profiles/{profile_code}": {
+      "get": {
+        "description": "Hospital/profile signals and available forecast-series facets.",
+        "operationId": "operational_intelligence_hospital_profile_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_code",
+            "required": true,
+            "schema": {
+              "title": "Org Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "profile_code",
+            "required": true,
+            "schema": {
+              "title": "Profile Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalHospitalProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Operational Intelligence Hospital Profile",
+        "tags": [
+          "operational-intelligence"
+        ]
+      }
+    },
+    "/api/v1/operational-intelligence/overview": {
+      "get": {
+        "description": "Current publication metadata and national/regional operational-signal counts.",
+        "operationId": "operational_intelligence_overview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalOverviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Operational Intelligence Overview",
+        "tags": [
+          "operational-intelligence"
+        ]
+      }
+    },
+    "/api/v1/operational-intelligence/regions/{region_code}": {
+      "get": {
+        "description": "Regional operational-signal summary and top deterministic inbox entries.",
+        "operationId": "operational_intelligence_region_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "region_code",
+            "required": true,
+            "schema": {
+              "title": "Region Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalRegionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Operational Intelligence Region",
+        "tags": [
+          "operational-intelligence"
+        ]
+      }
+    },
+    "/api/v1/operational-intelligence/signals": {
+      "get": {
+        "description": "Deterministically ranked attention signals with support, evidence, and provenance.",
+        "operationId": "operational_signals_list",
+        "parameters": [
+          {
+            "description": "region code; all regions if omitted",
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "region code; all regions if omitted",
+              "title": "Region"
+            }
+          },
+          {
+            "description": "hospital code; all hospitals if omitted",
+            "in": "query",
+            "name": "org",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "hospital code; all hospitals if omitted",
+              "title": "Org"
+            }
+          },
+          {
+            "description": "profile code; all profiles if omitted",
+            "in": "query",
+            "name": "profile",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "profile code; all profiles if omitted",
+              "title": "Profile"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "registrations",
+                    "cohort_hospitalizations"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target"
+            }
+          },
+          {
+            "in": "query",
+            "name": "severity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "HIGH",
+                    "ELEVATED",
+                    "WATCH",
+                    "NORMAL",
+                    "UNSUPPORTED"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Severity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signal_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "preventive_flow_pressure",
+                    "observed_unusual_flow"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signal Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "support",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "DIRECT_SUPPORTED",
+                    "FALLBACK_LIMITED",
+                    "UNSUPPORTED"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Support"
+            }
+          },
+          {
+            "description": "page size",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "page size",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_OperationalSignalResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Operational Signals",
+        "tags": [
+          "operational-intelligence"
+        ]
+      }
+    },
+    "/api/v1/operational-intelligence/signals/{signal_id}": {
+      "get": {
+        "description": "One signal's structured evidence and versioned source provenance.",
+        "operationId": "operational_signal_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "signal_id",
+            "required": true,
+            "schema": {
+              "title": "Signal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalSignalResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Operational Signal",
+        "tags": [
+          "operational-intelligence"
         ]
       }
     },

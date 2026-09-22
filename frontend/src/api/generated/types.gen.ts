@@ -219,6 +219,44 @@ export type Alternative = {
 };
 
 /**
+ * AnomalyEvidence
+ */
+export type AnomalyEvidence = {
+  /**
+   * Causal Claim
+   */
+  causal_claim: false;
+  /**
+   * Observed Value
+   */
+  observed_value: number;
+  /**
+   * Reference Mad
+   */
+  reference_mad: number;
+  /**
+   * Reference Max Date
+   */
+  reference_max_date: string;
+  /**
+   * Reference Median Residual
+   */
+  reference_median_residual: number;
+  /**
+   * Reference Sample Count
+   */
+  reference_sample_count: number;
+  /**
+   * Robust Z
+   */
+  robust_z: number | null;
+  /**
+   * Weekly Residual
+   */
+  weekly_residual: number;
+};
+
+/**
  * ApiKeyCreate
  */
 export type ApiKeyCreate = {
@@ -506,6 +544,36 @@ export type AssuranceSupport = {
   support_semantics: Array<
     "DIRECT_SUPPORTED" | "FALLBACK_LIMITED" | "UNSUPPORTED"
   >;
+};
+
+/**
+ * CalibratedUncertainty
+ */
+export type CalibratedUncertainty = {
+  /**
+   * Calibration Status
+   */
+  calibration_status: "CALIBRATED";
+  /**
+   * Calibration Version
+   */
+  calibration_version: string;
+  /**
+   * Lower
+   */
+  lower: number;
+  /**
+   * Nominal Coverage
+   */
+  nominal_coverage: number;
+  /**
+   * Support Class
+   */
+  support_class: string;
+  /**
+   * Upper
+   */
+  upper: number;
 };
 
 /**
@@ -1450,6 +1518,476 @@ export type ModelInfo = {
 };
 
 /**
+ * OperationalCounts
+ */
+export type OperationalCounts = {
+  /**
+   * Calibrated
+   */
+  calibrated?: number;
+  /**
+   * Direct Supported
+   */
+  direct_supported?: number;
+  /**
+   * Elevated
+   */
+  elevated?: number;
+  /**
+   * Fallback Limited
+   */
+  fallback_limited?: number;
+  /**
+   * High
+   */
+  high?: number;
+  /**
+   * Normal
+   */
+  normal?: number;
+  /**
+   * Observed Unusual Flow
+   */
+  observed_unusual_flow?: number;
+  /**
+   * Preventive Pressure
+   */
+  preventive_pressure?: number;
+  /**
+   * Total Signals
+   */
+  total_signals?: number;
+  /**
+   * Uncertainty Limited Or Unavailable
+   */
+  uncertainty_limited_or_unavailable?: number;
+  /**
+   * Unsupported Severity
+   */
+  unsupported_severity?: number;
+  /**
+   * Unsupported Support
+   */
+  unsupported_support?: number;
+  /**
+   * Watch
+   */
+  watch?: number;
+};
+
+/**
+ * OperationalForecastResponse
+ */
+export type OperationalForecastResponse = {
+  calibrated_uncertainty?: CalibratedUncertainty | null;
+  /**
+   * Calibration Status
+   */
+  calibration_status: "CALIBRATED" | "INSUFFICIENT_SUPPORT" | "NOT_APPLICABLE";
+  /**
+   * Central Semantics
+   */
+  central_semantics: "P50" | "POINT_FORECAST" | "BOTTOM_UP_CENTRAL";
+  /**
+   * Central Value
+   */
+  central_value: number;
+  /**
+   * Evidence Facts
+   */
+  evidence_facts?: Array<string>;
+  /**
+   * Fallback Status
+   */
+  fallback_status:
+    | "NOT_APPLICABLE"
+    | "REGION_PROFILE_FALLBACK"
+    | "OTHER_FALLBACK"
+    | "UNSUPPORTED";
+  /**
+   * Hierarchy Status
+   */
+  hierarchy_status: string;
+  /**
+   * Horizon
+   */
+  horizon: number;
+  /**
+   * Level
+   */
+  level: "hospital" | "region" | "national";
+  /**
+   * Limitations
+   */
+  limitations?: Array<string>;
+  /**
+   * Org Code
+   */
+  org_code?: string | null;
+  /**
+   * Origin
+   */
+  origin: string;
+  /**
+   * Prediction Source
+   */
+  prediction_source:
+    | "DIRECT"
+    | "REGION_PROFILE_FALLBACK"
+    | "BOTTOM_UP_AGGREGATE"
+    | "UNSUPPORTED";
+  /**
+   * Profile Code
+   */
+  profile_code?: string | null;
+  /**
+   * Provenance Keys
+   */
+  provenance_keys: Array<string>;
+  /**
+   * Publication Identity Sha256
+   */
+  publication_identity_sha256: string;
+  raw_quantiles?: RawQuantiles | null;
+  /**
+   * Region Code
+   */
+  region_code?: string | null;
+  /**
+   * Series Id
+   */
+  series_id: string;
+  /**
+   * Source Provenance
+   */
+  source_provenance: {
+    [key: string]: SourceProvenance;
+  };
+  /**
+   * Support Status
+   */
+  support_status: "DIRECT_SUPPORTED" | "FALLBACK_LIMITED" | "UNSUPPORTED";
+  /**
+   * Target
+   */
+  target: "registrations" | "cohort_hospitalizations";
+  /**
+   * Target Date
+   */
+  target_date: string;
+  /**
+   * Uncertainty Status
+   */
+  uncertainty_status:
+    "CALIBRATED" | "INSUFFICIENT_CALIBRATION_SUPPORT" | "UNAVAILABLE";
+};
+
+/**
+ * OperationalHospitalProfileResponse
+ */
+export type OperationalHospitalProfileResponse = {
+  /**
+   * Available Origins
+   */
+  available_origins: Array<string>;
+  /**
+   * Available Targets
+   */
+  available_targets: Array<"registrations" | "cohort_hospitalizations">;
+  counts: OperationalCounts;
+  /**
+   * Forecast Point Count
+   */
+  forecast_point_count: number;
+  /**
+   * Org Code
+   */
+  org_code: string;
+  /**
+   * Profile Code
+   */
+  profile_code: string;
+  /**
+   * Region Code
+   */
+  region_code: string | null;
+  /**
+   * Signals
+   */
+  signals: Array<OperationalSignalResponse>;
+  snapshot: OperationalSnapshotResponse;
+};
+
+/**
+ * OperationalOverviewResponse
+ */
+export type OperationalOverviewResponse = {
+  national: OperationalCounts;
+  /**
+   * Regions
+   */
+  regions: Array<OperationalRegionSummary>;
+  snapshot: OperationalSnapshotResponse;
+};
+
+/**
+ * OperationalRegionResponse
+ */
+export type OperationalRegionResponse = {
+  /**
+   * Available Origins
+   */
+  available_origins: Array<string>;
+  /**
+   * Available Targets
+   */
+  available_targets: Array<"registrations" | "cohort_hospitalizations">;
+  counts: OperationalCounts;
+  /**
+   * Forecast Point Count
+   */
+  forecast_point_count: number;
+  /**
+   * Region Code
+   */
+  region_code: string;
+  snapshot: OperationalSnapshotResponse;
+  /**
+   * Top Signals
+   */
+  top_signals: Array<OperationalSignalResponse>;
+};
+
+/**
+ * OperationalRegionSummary
+ */
+export type OperationalRegionSummary = {
+  counts: OperationalCounts;
+  /**
+   * Region Code
+   */
+  region_code: string;
+};
+
+/**
+ * OperationalSignalResponse
+ */
+export type OperationalSignalResponse = {
+  anomaly_evidence?: AnomalyEvidence | null;
+  /**
+   * Concise Reason
+   */
+  concise_reason: string;
+  /**
+   * Data Freshness
+   */
+  data_freshness?: string | null;
+  /**
+   * Evidence Facts
+   */
+  evidence_facts?: Array<string>;
+  /**
+   * Fallback Status
+   */
+  fallback_status:
+    | "NOT_APPLICABLE"
+    | "REGION_PROFILE_FALLBACK"
+    | "OTHER_FALLBACK"
+    | "UNSUPPORTED";
+  /**
+   * First Crossing Date
+   */
+  first_crossing_date?: string | null;
+  /**
+   * Forecast Value
+   */
+  forecast_value?: number | null;
+  /**
+   * Headline
+   */
+  headline: string;
+  /**
+   * Inbox Rank
+   */
+  inbox_rank?: number | null;
+  /**
+   * Lead Time Days
+   */
+  lead_time_days?: number | null;
+  /**
+   * Limitations
+   */
+  limitations?: Array<string>;
+  /**
+   * Materiality Status
+   */
+  materiality_status?: string | null;
+  /**
+   * Observed Anomaly Present
+   */
+  observed_anomaly_present?: boolean;
+  /**
+   * Observed Anomaly Status
+   */
+  observed_anomaly_status?: string | null;
+  /**
+   * Org Code
+   */
+  org_code?: string | null;
+  /**
+   * Origin
+   */
+  origin: string;
+  /**
+   * Pressure Basis
+   */
+  pressure_basis?: "historical_flow_proxy_v1" | null;
+  /**
+   * Profile Code
+   */
+  profile_code?: string | null;
+  /**
+   * Provenance Keys
+   */
+  provenance_keys: Array<string>;
+  /**
+   * Publication Identity Sha256
+   */
+  publication_identity_sha256: string;
+  /**
+   * Reason Codes
+   */
+  reason_codes: Array<string>;
+  /**
+   * Region Code
+   */
+  region_code?: string | null;
+  /**
+   * Series Id
+   */
+  series_id: string;
+  /**
+   * Severity
+   */
+  severity: "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED";
+  /**
+   * Signal Id
+   */
+  signal_id: string;
+  /**
+   * Signal Type
+   */
+  signal_type: "preventive_flow_pressure" | "observed_unusual_flow";
+  /**
+   * Source Provenance
+   */
+  source_provenance: {
+    [key: string]: SourceProvenance;
+  };
+  /**
+   * Support Status
+   */
+  support_status: "DIRECT_SUPPORTED" | "FALLBACK_LIMITED" | "UNSUPPORTED";
+  /**
+   * Target
+   */
+  target: "registrations" | "cohort_hospitalizations";
+  /**
+   * Threshold Status
+   */
+  threshold_status?: string | null;
+  /**
+   * Threshold Value
+   */
+  threshold_value?: number | null;
+  /**
+   * Uncertainty Lower
+   */
+  uncertainty_lower?: number | null;
+  /**
+   * Uncertainty Status
+   */
+  uncertainty_status:
+    "CALIBRATED" | "INSUFFICIENT_CALIBRATION_SUPPORT" | "UNAVAILABLE";
+  /**
+   * Uncertainty Upper
+   */
+  uncertainty_upper?: number | null;
+};
+
+/**
+ * OperationalSnapshotResponse
+ */
+export type OperationalSnapshotResponse = {
+  /**
+   * Assurance Identity Sha256
+   */
+  assurance_identity_sha256: string;
+  /**
+   * Bundle Sha256
+   */
+  bundle_sha256: string;
+  /**
+   * Contract Version
+   */
+  contract_version: string;
+  /**
+   * Current Origin
+   */
+  current_origin: string;
+  /**
+   * Forecast Count
+   */
+  forecast_count: number;
+  /**
+   * Freshness State
+   */
+  freshness_state: "FRESH" | "STALE" | "DEGRADED" | "UNKNOWN";
+  /**
+   * Generated At
+   */
+  generated_at: string | null;
+  /**
+   * Limitations
+   */
+  limitations: Array<string>;
+  /**
+   * Publication Id
+   */
+  publication_id: string;
+  /**
+   * Publication Identity Sha256
+   */
+  publication_identity_sha256: string;
+  /**
+   * Publication Status
+   */
+  publication_status: "AVAILABLE" | "DEGRADED" | "EMPTY";
+  /**
+   * Published At
+   */
+  published_at: string;
+  /**
+   * Schema Version
+   */
+  schema_version: string;
+  /**
+   * Signal Count
+   */
+  signal_count: number;
+  /**
+   * Source Code Commit
+   */
+  source_code_commit: string;
+  /**
+   * Source Provenance
+   */
+  source_provenance: {
+    [key: string]: SourceProvenance;
+  };
+};
+
+/**
  * OverviewResponse
  */
 export type OverviewResponse = {
@@ -1566,6 +2104,54 @@ export type PageHospitalProfileStatus = {
 };
 
 /**
+ * Page[OperationalForecastResponse]
+ */
+export type PageOperationalForecastResponse = {
+  /**
+   * Items
+   */
+  items: Array<OperationalForecastResponse>;
+  /**
+   * Limit
+   */
+  limit: number;
+  /**
+   * Offset
+   */
+  offset: number;
+  /**
+   * Total
+   *
+   * rows matching the filters, before limit/offset
+   */
+  total: number;
+};
+
+/**
+ * Page[OperationalSignalResponse]
+ */
+export type PageOperationalSignalResponse = {
+  /**
+   * Items
+   */
+  items: Array<OperationalSignalResponse>;
+  /**
+   * Limit
+   */
+  limit: number;
+  /**
+   * Offset
+   */
+  offset: number;
+  /**
+   * Total
+   *
+   * rows matching the filters, before limit/offset
+   */
+  total: number;
+};
+
+/**
  * Page[ReferralItem]
  */
 export type PageReferralItem = {
@@ -1605,6 +2191,28 @@ export type ProfileItem = {
    * Name
    */
   name: string;
+};
+
+/**
+ * RawQuantiles
+ */
+export type RawQuantiles = {
+  /**
+   * P10
+   */
+  p10: number;
+  /**
+   * P50
+   */
+  p50: number;
+  /**
+   * P90
+   */
+  p90: number;
+  /**
+   * Semantics
+   */
+  semantics: "UNCHANGED_MODEL_EVIDENCE";
 };
 
 /**
@@ -1915,6 +2523,36 @@ export type RegionProfileStatus = {
    * Status Label
    */
   status_label: string;
+};
+
+/**
+ * SourceProvenance
+ */
+export type SourceProvenance = {
+  /**
+   * Artifact Sha256
+   */
+  artifact_sha256: string | Array<string>;
+  /**
+   * Code Identity Sha256
+   */
+  code_identity_sha256?: string | null;
+  /**
+   * Config Identity Sha256
+   */
+  config_identity_sha256?: string | null;
+  /**
+   * Dataset Identity Sha256
+   */
+  dataset_identity_sha256?: string | null;
+  /**
+   * Run Id
+   */
+  run_id: string;
+  /**
+   * Scientific Identity Sha256
+   */
+  scientific_identity_sha256: string;
 };
 
 /**
@@ -2825,6 +3463,353 @@ export type ModelsListResponses = {
 };
 
 export type ModelsListResponse = ModelsListResponses[keyof ModelsListResponses];
+
+export type OperationalForecastsListData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Origin
+     */
+    origin?: string | null;
+    /**
+     * Target Date From
+     */
+    target_date_from?: string | null;
+    /**
+     * Target Date To
+     */
+    target_date_to?: string | null;
+    /**
+     * Level
+     */
+    level?: "hospital" | "region" | "national" | null;
+    /**
+     * Region
+     *
+     * region code; all regions if omitted
+     */
+    region?: string | null;
+    /**
+     * Org
+     *
+     * hospital code; all hospitals if omitted
+     */
+    org?: string | null;
+    /**
+     * Profile
+     *
+     * profile code; all profiles if omitted
+     */
+    profile?: string | null;
+    /**
+     * Target
+     */
+    target?: "registrations" | "cohort_hospitalizations" | null;
+    /**
+     * Limit
+     *
+     * page size
+     */
+    limit?: number;
+    /**
+     * Offset
+     *
+     * rows to skip
+     */
+    offset?: number;
+  };
+  url: "/api/v1/operational-intelligence/forecasts";
+};
+
+export type OperationalForecastsListErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type OperationalForecastsListError =
+  OperationalForecastsListErrors[keyof OperationalForecastsListErrors];
+
+export type OperationalForecastsListResponses = {
+  /**
+   * Successful Response
+   */
+  200: PageOperationalForecastResponse;
+};
+
+export type OperationalForecastsListResponse =
+  OperationalForecastsListResponses[keyof OperationalForecastsListResponses];
+
+export type OperationalIntelligenceHospitalProfileGetData = {
+  body?: never;
+  path: {
+    /**
+     * Org Code
+     */
+    org_code: string;
+    /**
+     * Profile Code
+     */
+    profile_code: string;
+  };
+  query?: never;
+  url: "/api/v1/operational-intelligence/hospitals/{org_code}/profiles/{profile_code}";
+};
+
+export type OperationalIntelligenceHospitalProfileGetErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type OperationalIntelligenceHospitalProfileGetError =
+  OperationalIntelligenceHospitalProfileGetErrors[keyof OperationalIntelligenceHospitalProfileGetErrors];
+
+export type OperationalIntelligenceHospitalProfileGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: OperationalHospitalProfileResponse;
+};
+
+export type OperationalIntelligenceHospitalProfileGetResponse =
+  OperationalIntelligenceHospitalProfileGetResponses[keyof OperationalIntelligenceHospitalProfileGetResponses];
+
+export type OperationalIntelligenceOverviewGetData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/operational-intelligence/overview";
+};
+
+export type OperationalIntelligenceOverviewGetErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+};
+
+export type OperationalIntelligenceOverviewGetError =
+  OperationalIntelligenceOverviewGetErrors[keyof OperationalIntelligenceOverviewGetErrors];
+
+export type OperationalIntelligenceOverviewGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: OperationalOverviewResponse;
+};
+
+export type OperationalIntelligenceOverviewGetResponse =
+  OperationalIntelligenceOverviewGetResponses[keyof OperationalIntelligenceOverviewGetResponses];
+
+export type OperationalIntelligenceRegionGetData = {
+  body?: never;
+  path: {
+    /**
+     * Region Code
+     */
+    region_code: string;
+  };
+  query?: never;
+  url: "/api/v1/operational-intelligence/regions/{region_code}";
+};
+
+export type OperationalIntelligenceRegionGetErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type OperationalIntelligenceRegionGetError =
+  OperationalIntelligenceRegionGetErrors[keyof OperationalIntelligenceRegionGetErrors];
+
+export type OperationalIntelligenceRegionGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: OperationalRegionResponse;
+};
+
+export type OperationalIntelligenceRegionGetResponse =
+  OperationalIntelligenceRegionGetResponses[keyof OperationalIntelligenceRegionGetResponses];
+
+export type OperationalSignalsListData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Region
+     *
+     * region code; all regions if omitted
+     */
+    region?: string | null;
+    /**
+     * Org
+     *
+     * hospital code; all hospitals if omitted
+     */
+    org?: string | null;
+    /**
+     * Profile
+     *
+     * profile code; all profiles if omitted
+     */
+    profile?: string | null;
+    /**
+     * Target
+     */
+    target?: "registrations" | "cohort_hospitalizations" | null;
+    /**
+     * Severity
+     */
+    severity?: "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED" | null;
+    /**
+     * Signal Type
+     */
+    signal_type?: "preventive_flow_pressure" | "observed_unusual_flow" | null;
+    /**
+     * Support
+     */
+    support?: "DIRECT_SUPPORTED" | "FALLBACK_LIMITED" | "UNSUPPORTED" | null;
+    /**
+     * Limit
+     *
+     * page size
+     */
+    limit?: number;
+    /**
+     * Offset
+     *
+     * rows to skip
+     */
+    offset?: number;
+  };
+  url: "/api/v1/operational-intelligence/signals";
+};
+
+export type OperationalSignalsListErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type OperationalSignalsListError =
+  OperationalSignalsListErrors[keyof OperationalSignalsListErrors];
+
+export type OperationalSignalsListResponses = {
+  /**
+   * Successful Response
+   */
+  200: PageOperationalSignalResponse;
+};
+
+export type OperationalSignalsListResponse =
+  OperationalSignalsListResponses[keyof OperationalSignalsListResponses];
+
+export type OperationalSignalGetData = {
+  body?: never;
+  path: {
+    /**
+     * Signal Id
+     */
+    signal_id: string;
+  };
+  query?: never;
+  url: "/api/v1/operational-intelligence/signals/{signal_id}";
+};
+
+export type OperationalSignalGetErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type OperationalSignalGetError =
+  OperationalSignalGetErrors[keyof OperationalSignalGetErrors];
+
+export type OperationalSignalGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: OperationalSignalResponse;
+};
+
+export type OperationalSignalGetResponse =
+  OperationalSignalGetResponses[keyof OperationalSignalGetResponses];
 
 export type OverviewGetData = {
   body?: never;

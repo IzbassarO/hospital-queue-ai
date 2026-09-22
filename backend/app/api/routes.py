@@ -3,6 +3,7 @@
 Every endpoint except GET /health declares ViewerDep, SpecialistDep or AdminDep (checked by tools/audit.py).
 """
 
+import datetime as dt
 from typing import Annotated, Literal
 from urllib.parse import quote
 
@@ -15,8 +16,20 @@ from app.schemas.admin import AccessLogItem, ApiKeyCreate, ApiKeyCreated, ApiKey
 from app.schemas.catalog import ConfigResponse, DictionariesResponse, HealthResponse, MeResponse, ModelInfo
 from app.schemas.common import Message, Page, Status
 from app.schemas.model_assurance import ModelAssuranceCapabilityResponse, ModelAssuranceSnapshotResponse
+from app.schemas.operational_intelligence import (
+    ForecastLevel,
+    ForecastTarget,
+    OperationalForecastResponse,
+    OperationalHospitalProfileResponse,
+    OperationalOverviewResponse,
+    OperationalRegionResponse,
+    OperationalSignalResponse,
+    Severity,
+    SignalType,
+    SupportStatus,
+)
 from app.schemas.status import HospitalProfileCard, HospitalProfileStatus, OverviewResponse, RegionDetailResponse
-from app.services import activity, admin, catalog, export, model_assurance, recommend
+from app.services import activity, admin, catalog, export, model_assurance, operational_intelligence, recommend
 from app.services import status as status_service
 
 router = APIRouter()
@@ -284,6 +297,132 @@ def get_model_assurance_capability(
 ) -> ModelAssuranceCapabilityResponse:
     """One current capability assurance record by stable capability ID."""
     return model_assurance.get_current_capability(session, capability_id)
+
+
+# -------------------------------------------------------------------------- operational intelligence
+@router.get(
+    "/operational-intelligence/overview",
+    response_model=OperationalOverviewResponse,
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="operational_intelligence_overview_get",
+    tags=["operational-intelligence"],
+)
+def get_operational_intelligence_overview(session: SessionDep, _: ViewerDep) -> OperationalOverviewResponse:
+    """Current publication metadata and national/regional operational-signal counts."""
+    return operational_intelligence.overview(session)
+
+
+@router.get(
+    "/operational-intelligence/signals",
+    response_model=Page[OperationalSignalResponse],
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="operational_signals_list",
+    tags=["operational-intelligence"],
+)
+def get_operational_signals(
+    session: SessionDep,
+    page: PaginationDep,
+    _: ViewerDep,
+    region: Annotated[str | None, Query(description="region code; all regions if omitted")] = None,
+    org: Annotated[str | None, Query(description="hospital code; all hospitals if omitted")] = None,
+    profile: Annotated[str | None, Query(description="profile code; all profiles if omitted")] = None,
+    target: ForecastTarget | None = None,
+    severity: Severity | None = None,
+    signal_type: SignalType | None = None,
+    support: SupportStatus | None = None,
+) -> Page[OperationalSignalResponse]:
+    """Deterministically ranked attention signals with support, evidence, and provenance."""
+    return operational_intelligence.list_signals(
+        session,
+        region_code=region,
+        org_code=org,
+        profile_code=profile,
+        target=target,
+        severity=severity,
+        signal_type=signal_type,
+        support_status=support,
+        limit=page.limit,
+        offset=page.offset,
+    )
+
+
+@router.get(
+    "/operational-intelligence/signals/{signal_id}",
+    response_model=OperationalSignalResponse,
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="operational_signal_get",
+    tags=["operational-intelligence"],
+)
+def get_operational_signal(signal_id: str, session: SessionDep, _: ViewerDep) -> OperationalSignalResponse:
+    """One signal's structured evidence and versioned source provenance."""
+    return operational_intelligence.get_signal(session, signal_id)
+
+
+@router.get(
+    "/operational-intelligence/regions/{region_code}",
+    response_model=OperationalRegionResponse,
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="operational_intelligence_region_get",
+    tags=["operational-intelligence"],
+)
+def get_operational_intelligence_region(
+    region_code: str, session: SessionDep, _: ViewerDep
+) -> OperationalRegionResponse:
+    """Regional operational-signal summary and top deterministic inbox entries."""
+    return operational_intelligence.region(session, region_code)
+
+
+@router.get(
+    "/operational-intelligence/hospitals/{org_code}/profiles/{profile_code}",
+    response_model=OperationalHospitalProfileResponse,
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="operational_intelligence_hospital_profile_get",
+    tags=["operational-intelligence"],
+)
+def get_operational_intelligence_hospital_profile(
+    org_code: str,
+    profile_code: str,
+    session: SessionDep,
+    _: ViewerDep,
+) -> OperationalHospitalProfileResponse:
+    """Hospital/profile signals and available forecast-series facets."""
+    return operational_intelligence.hospital_profile(session, org_code, profile_code)
+
+
+@router.get(
+    "/operational-intelligence/forecasts",
+    response_model=Page[OperationalForecastResponse],
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="operational_forecasts_list",
+    tags=["operational-intelligence"],
+)
+def get_operational_forecasts(
+    session: SessionDep,
+    page: PaginationDep,
+    _: ViewerDep,
+    origin: dt.date | None = None,
+    target_date_from: dt.date | None = None,
+    target_date_to: dt.date | None = None,
+    level: ForecastLevel | None = None,
+    region: Annotated[str | None, Query(description="region code; all regions if omitted")] = None,
+    org: Annotated[str | None, Query(description="hospital code; all hospitals if omitted")] = None,
+    profile: Annotated[str | None, Query(description="profile code; all profiles if omitted")] = None,
+    target: ForecastTarget | None = None,
+) -> Page[OperationalForecastResponse]:
+    """Central forecasts with raw quantiles and calibrated uncertainty kept separate."""
+    return operational_intelligence.list_forecasts(
+        session,
+        origin=origin,
+        target_date_from=target_date_from,
+        target_date_to=target_date_to,
+        level=level,
+        region_code=region,
+        org_code=org,
+        profile_code=profile,
+        target=target,
+        limit=page.limit,
+        offset=page.offset,
+    )
 
 
 @router.get(

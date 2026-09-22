@@ -5,6 +5,7 @@
   python -m app.cli list-keys
   python -m app.cli revoke-key --id 3
   python -m app.cli publish-assurance --bundle /path/to/model_assurance.json
+  python -m app.cli publish-operational-intelligence --bundle /path/to/operational_intelligence.json
 
 create-key prints the key once; only its SHA-256 is stored.
 """
@@ -34,6 +35,11 @@ def main(argv: list[str] | None = None) -> int:
     revoke.add_argument("--id", type=int, required=True)
     publish = sub.add_parser("publish-assurance", help="validate and publish a Model Assurance JSON bundle")
     publish.add_argument("--bundle", type=Path, required=True)
+    publish_operational = sub.add_parser(
+        "publish-operational-intelligence",
+        help="validate and publish an operational-intelligence JSON bundle",
+    )
+    publish_operational.add_argument("--bundle", type=Path, required=True)
     args = parser.parse_args(argv)
 
     with SessionLocal() as session:
@@ -72,6 +78,21 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 f"Model Assurance {result.assurance_id} {state} "
                 f"(snapshot {result.snapshot_id}, identity {result.assurance_identity_sha256})"
+            )
+            return 0
+        if args.command == "publish-operational-intelligence":
+            from app.services import operational_intelligence
+
+            try:
+                parsed = operational_intelligence.load_bundle(args.bundle)
+                result = operational_intelligence.publish(session, parsed)
+            except (ValidationError, ConflictError) as exc:
+                print(f"Operational-intelligence publication failed: {exc}", file=sys.stderr)
+                return 2
+            state = "published" if result.created else "already published; activated"
+            print(
+                f"Operational intelligence {result.publication_id} {state} "
+                f"(snapshot {result.snapshot_id}, identity {result.publication_identity_sha256})"
             )
             return 0
         info = admin.revoke_key(session, args.id)
