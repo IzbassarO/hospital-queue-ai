@@ -15,6 +15,7 @@ from app.schemas.activity import AlertItem, Decision, DecisionCreate, Recommenda
 from app.schemas.admin import AccessLogItem, ApiKeyCreate, ApiKeyCreated, ApiKeyInfo
 from app.schemas.catalog import ConfigResponse, DictionariesResponse, HealthResponse, MeResponse, ModelInfo
 from app.schemas.common import Message, Page, Status
+from app.schemas.explanations import SignalExplanationResponse
 from app.schemas.model_assurance import ModelAssuranceCapabilityResponse, ModelAssuranceSnapshotResponse
 from app.schemas.operational_intelligence import (
     ForecastLevel,
@@ -29,7 +30,16 @@ from app.schemas.operational_intelligence import (
     SupportStatus,
 )
 from app.schemas.status import HospitalProfileCard, HospitalProfileStatus, OverviewResponse, RegionDetailResponse
-from app.services import activity, admin, catalog, export, model_assurance, operational_intelligence, recommend
+from app.services import (
+    activity,
+    admin,
+    catalog,
+    explanations,
+    export,
+    model_assurance,
+    operational_intelligence,
+    recommend,
+)
 from app.services import status as status_service
 
 router = APIRouter()
@@ -356,6 +366,22 @@ def get_operational_signals(
 def get_operational_signal(signal_id: str, session: SessionDep, _: ViewerDep) -> OperationalSignalResponse:
     """One signal's structured evidence and versioned source provenance."""
     return operational_intelligence.get_signal(session, signal_id)
+
+
+@router.get(
+    "/operational-intelligence/signals/{signal_id}/explanation",
+    response_model=SignalExplanationResponse,
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="operational_signal_explanation_get",
+    tags=["operational-intelligence"],
+)
+def get_operational_signal_explanation(
+    signal_id: str,
+    session: SessionDep,
+    _: ViewerDep,
+) -> SignalExplanationResponse:
+    """Evidence-grounded explanation of one published operational signal."""
+    return explanations.explain_signal(session, signal_id)
 
 
 @router.get(

@@ -1551,6 +1551,92 @@
         "title": "DictionaryItem",
         "type": "object"
       },
+      "ExplanationCapabilityFact": {
+        "properties": {
+          "acceptance_verdict": {
+            "title": "Acceptance Verdict",
+            "type": "string"
+          },
+          "autonomous_action": {
+            "title": "Autonomous Action",
+            "type": "boolean"
+          },
+          "capability_id": {
+            "title": "Capability Id",
+            "type": "string"
+          },
+          "capacity_checked": {
+            "title": "Capacity Checked",
+            "type": "boolean"
+          },
+          "causal_effect_claimed": {
+            "title": "Causal Effect Claimed",
+            "type": "boolean"
+          },
+          "evidence_status": {
+            "title": "Evidence Status",
+            "type": "string"
+          },
+          "human_review_required": {
+            "title": "Human Review Required",
+            "type": "boolean"
+          },
+          "product_consumption_status": {
+            "title": "Product Consumption Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "capability_id",
+          "evidence_status",
+          "acceptance_verdict",
+          "product_consumption_status",
+          "human_review_required",
+          "autonomous_action",
+          "capacity_checked",
+          "causal_effect_claimed"
+        ],
+        "title": "ExplanationCapabilityFact",
+        "type": "object"
+      },
+      "ExplanationEvidenceItem": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "statement": {
+            "title": "Statement",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "code",
+          "statement"
+        ],
+        "title": "ExplanationEvidenceItem",
+        "type": "object"
+      },
       "ExplanationFactor": {
         "properties": {
           "direction": {
@@ -1623,6 +1709,147 @@
         "title": "ExplanationFactor",
         "type": "object"
       },
+      "ExplanationProvenance": {
+        "properties": {
+          "assurance_identity_sha256": {
+            "title": "Assurance Identity Sha256",
+            "type": "string"
+          },
+          "model_assurance_capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/ExplanationCapabilityFact"
+            },
+            "title": "Model Assurance Capabilities",
+            "type": "array"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "string"
+          },
+          "publication_identity_sha256": {
+            "title": "Publication Identity Sha256",
+            "type": "string"
+          },
+          "source_provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SourceProvenance"
+            },
+            "title": "Source Provenance",
+            "type": "object"
+          }
+        },
+        "required": [
+          "publication_id",
+          "publication_identity_sha256",
+          "assurance_identity_sha256",
+          "source_provenance",
+          "model_assurance_capabilities"
+        ],
+        "title": "ExplanationProvenance",
+        "type": "object"
+      },
+      "ExplanationSubject": {
+        "properties": {
+          "inbox_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inbox Rank"
+          },
+          "org_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Code"
+          },
+          "origin": {
+            "format": "date",
+            "title": "Origin",
+            "type": "string"
+          },
+          "profile_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Code"
+          },
+          "region_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Code"
+          },
+          "series_id": {
+            "title": "Series Id",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "HIGH",
+              "ELEVATED",
+              "WATCH",
+              "NORMAL",
+              "UNSUPPORTED"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "signal_id": {
+            "title": "Signal Id",
+            "type": "string"
+          },
+          "signal_type": {
+            "enum": [
+              "preventive_flow_pressure",
+              "observed_unusual_flow"
+            ],
+            "title": "Signal Type",
+            "type": "string"
+          },
+          "target": {
+            "enum": [
+              "registrations",
+              "cohort_hospitalizations"
+            ],
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signal_id",
+          "signal_type",
+          "series_id",
+          "target",
+          "origin",
+          "org_code",
+          "region_code",
+          "profile_code",
+          "severity",
+          "inbox_rank"
+        ],
+        "title": "ExplanationSubject",
+        "type": "object"
+      },
       "ExplanationSummary": {
         "properties": {
           "n_referrals": {
@@ -1650,6 +1877,183 @@
           "refusal_risk"
         ],
         "title": "ExplanationSummary",
+        "type": "object"
+      },
+      "ExplanationSupport": {
+        "properties": {
+          "fallback_status": {
+            "enum": [
+              "NOT_APPLICABLE",
+              "REGION_PROFILE_FALLBACK",
+              "OTHER_FALLBACK",
+              "UNSUPPORTED"
+            ],
+            "title": "Fallback Status",
+            "type": "string"
+          },
+          "narrative": {
+            "title": "Narrative",
+            "type": "string"
+          },
+          "prediction_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prediction Source"
+          },
+          "status": {
+            "enum": [
+              "DIRECT_SUPPORTED",
+              "FALLBACK_LIMITED",
+              "UNSUPPORTED"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "fallback_status",
+          "prediction_source",
+          "narrative"
+        ],
+        "title": "ExplanationSupport",
+        "type": "object"
+      },
+      "ExplanationUncertainty": {
+        "properties": {
+          "calibrated_lower": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibrated Lower"
+          },
+          "calibrated_upper": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibrated Upper"
+          },
+          "calibration_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Status"
+          },
+          "central_semantics": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Central Semantics"
+          },
+          "central_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Central Value"
+          },
+          "horizon_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon Days"
+          },
+          "narrative": {
+            "title": "Narrative",
+            "type": "string"
+          },
+          "nominal_coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nominal Coverage"
+          },
+          "raw_quantiles": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RawQuantiles"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "CALIBRATED",
+              "INSUFFICIENT_CALIBRATION_SUPPORT",
+              "UNAVAILABLE"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "target_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Date"
+          }
+        },
+        "required": [
+          "status",
+          "narrative",
+          "central_value",
+          "central_semantics",
+          "target_date",
+          "horizon_days",
+          "raw_quantiles",
+          "calibrated_lower",
+          "calibrated_upper",
+          "nominal_coverage",
+          "calibration_status"
+        ],
+        "title": "ExplanationUncertainty",
         "type": "object"
       },
       "Forecast": {
@@ -4255,6 +4659,77 @@
         "title": "RegionProfileStatus",
         "type": "object"
       },
+      "SignalExplanationResponse": {
+        "properties": {
+          "generation_mode": {
+            "enum": [
+              "DETERMINISTIC",
+              "NARRATED",
+              "DETERMINISTIC_FALLBACK"
+            ],
+            "title": "Generation Mode",
+            "type": "string"
+          },
+          "key_evidence": {
+            "items": {
+              "$ref": "#/components/schemas/ExplanationEvidenceItem"
+            },
+            "title": "Key Evidence",
+            "type": "array"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/ExplanationProvenance"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/ExplanationSubject"
+          },
+          "suggested_review_questions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggested Review Questions",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "support": {
+            "$ref": "#/components/schemas/ExplanationSupport"
+          },
+          "uncertainty": {
+            "$ref": "#/components/schemas/ExplanationUncertainty"
+          },
+          "why_flagged": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Why Flagged",
+            "type": "array"
+          }
+        },
+        "required": [
+          "subject",
+          "summary",
+          "why_flagged",
+          "key_evidence",
+          "uncertainty",
+          "support",
+          "limitations",
+          "suggested_review_questions",
+          "provenance",
+          "generation_mode"
+        ],
+        "title": "SignalExplanationResponse",
+        "type": "object"
+      },
       "SourceProvenance": {
         "additionalProperties": false,
         "properties": {
@@ -6778,6 +7253,84 @@
           }
         ],
         "summary": "Get Operational Signal",
+        "tags": [
+          "operational-intelligence"
+        ]
+      }
+    },
+    "/api/v1/operational-intelligence/signals/{signal_id}/explanation": {
+      "get": {
+        "description": "Evidence-grounded explanation of one published operational signal.",
+        "operationId": "operational_signal_explanation_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "signal_id",
+            "required": true,
+            "schema": {
+              "title": "Signal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignalExplanationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Operational Signal Explanation",
         "tags": [
           "operational-intelligence"
         ]

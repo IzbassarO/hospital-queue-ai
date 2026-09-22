@@ -45,6 +45,7 @@ EXPECTED_OPERATIONS = {
     ("GET", "/api/v1/operational-intelligence/regions/{region_code}"): "operational_intelligence_region_get",
     ("GET", "/api/v1/operational-intelligence/signals"): "operational_signals_list",
     ("GET", "/api/v1/operational-intelligence/signals/{signal_id}"): "operational_signal_get",
+    ("GET", "/api/v1/operational-intelligence/signals/{signal_id}/explanation"): ("operational_signal_explanation_get"),
     ("GET", "/api/v1/overview"): "overview_get",
     ("GET", "/api/v1/regions/{region_code}/hospitals"): "region_hospitals_list",
     ("GET", "/api/v1/regions/{region_code}"): "region_get",

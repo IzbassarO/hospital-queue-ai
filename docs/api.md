@@ -808,6 +808,14 @@ review, not recommendations or autonomous actions.
 `historical_flow_proxy_v1`: an origin-legal historical count reference, not beds, occupancy, staffed capacity or
 physical overload. Observed unusual-flow evidence remains a distinct signal type and carries no causal claim.
 
+### `GET /operational-intelligence/signals/{signal_id}/explanation`
+
+**role: viewer.** A deterministic, evidence-grounded explanation built only from the current PostgreSQL operational
+publication and its referenced Model Assurance snapshot. The response separates why the signal was flagged, key
+evidence, uncertainty, support, limitations, human review questions and provenance. An optional bounded narrator may
+rewrite the summary and reasons, but invalid, invented or prohibited claims fall back to the deterministic result.
+Pressure remains `historical_flow_proxy_v1`; the endpoint gives no recommendation or autonomous action.
+
 ### `GET /operational-intelligence/regions/{region_code}`
 
 **role: viewer.** Regional signal summary, top ranked inbox entries and available forecast origin/target facets.

@@ -882,6 +882,62 @@ export type DictionaryItem = {
 };
 
 /**
+ * ExplanationCapabilityFact
+ */
+export type ExplanationCapabilityFact = {
+  /**
+   * Acceptance Verdict
+   */
+  acceptance_verdict: string;
+  /**
+   * Autonomous Action
+   */
+  autonomous_action: boolean;
+  /**
+   * Capability Id
+   */
+  capability_id: string;
+  /**
+   * Capacity Checked
+   */
+  capacity_checked: boolean;
+  /**
+   * Causal Effect Claimed
+   */
+  causal_effect_claimed: boolean;
+  /**
+   * Evidence Status
+   */
+  evidence_status: string;
+  /**
+   * Human Review Required
+   */
+  human_review_required: boolean;
+  /**
+   * Product Consumption Status
+   */
+  product_consumption_status: string;
+};
+
+/**
+ * ExplanationEvidenceItem
+ */
+export type ExplanationEvidenceItem = {
+  /**
+   * Code
+   */
+  code: string;
+  /**
+   * Statement
+   */
+  statement: string;
+  /**
+   * Value
+   */
+  value?: string | number | number | boolean | null;
+};
+
+/**
  * ExplanationFactor
  */
 export type ExplanationFactor = {
@@ -942,6 +998,80 @@ export type ExplanationFactor = {
 };
 
 /**
+ * ExplanationProvenance
+ */
+export type ExplanationProvenance = {
+  /**
+   * Assurance Identity Sha256
+   */
+  assurance_identity_sha256: string;
+  /**
+   * Model Assurance Capabilities
+   */
+  model_assurance_capabilities: Array<ExplanationCapabilityFact>;
+  /**
+   * Publication Id
+   */
+  publication_id: string;
+  /**
+   * Publication Identity Sha256
+   */
+  publication_identity_sha256: string;
+  /**
+   * Source Provenance
+   */
+  source_provenance: {
+    [key: string]: SourceProvenance;
+  };
+};
+
+/**
+ * ExplanationSubject
+ */
+export type ExplanationSubject = {
+  /**
+   * Inbox Rank
+   */
+  inbox_rank: number | null;
+  /**
+   * Org Code
+   */
+  org_code: string | null;
+  /**
+   * Origin
+   */
+  origin: string;
+  /**
+   * Profile Code
+   */
+  profile_code: string | null;
+  /**
+   * Region Code
+   */
+  region_code: string | null;
+  /**
+   * Series Id
+   */
+  series_id: string;
+  /**
+   * Severity
+   */
+  severity: "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED";
+  /**
+   * Signal Id
+   */
+  signal_id: string;
+  /**
+   * Signal Type
+   */
+  signal_type: "preventive_flow_pressure" | "observed_unusual_flow";
+  /**
+   * Target
+   */
+  target: "registrations" | "cohort_hospitalizations";
+};
+
+/**
  * ExplanationSummary
  */
 export type ExplanationSummary = {
@@ -957,6 +1087,79 @@ export type ExplanationSummary = {
    * Wait Time
    */
   wait_time: Array<ExplanationFactor>;
+};
+
+/**
+ * ExplanationSupport
+ */
+export type ExplanationSupport = {
+  /**
+   * Fallback Status
+   */
+  fallback_status:
+    | "NOT_APPLICABLE"
+    | "REGION_PROFILE_FALLBACK"
+    | "OTHER_FALLBACK"
+    | "UNSUPPORTED";
+  /**
+   * Narrative
+   */
+  narrative: string;
+  /**
+   * Prediction Source
+   */
+  prediction_source: string | null;
+  /**
+   * Status
+   */
+  status: "DIRECT_SUPPORTED" | "FALLBACK_LIMITED" | "UNSUPPORTED";
+};
+
+/**
+ * ExplanationUncertainty
+ */
+export type ExplanationUncertainty = {
+  /**
+   * Calibrated Lower
+   */
+  calibrated_lower: number | null;
+  /**
+   * Calibrated Upper
+   */
+  calibrated_upper: number | null;
+  /**
+   * Calibration Status
+   */
+  calibration_status: string | null;
+  /**
+   * Central Semantics
+   */
+  central_semantics: string | null;
+  /**
+   * Central Value
+   */
+  central_value: number | null;
+  /**
+   * Horizon Days
+   */
+  horizon_days: number | null;
+  /**
+   * Narrative
+   */
+  narrative: string;
+  /**
+   * Nominal Coverage
+   */
+  nominal_coverage: number | null;
+  raw_quantiles: RawQuantiles | null;
+  /**
+   * Status
+   */
+  status: "CALIBRATED" | "INSUFFICIENT_CALIBRATION_SUPPORT" | "UNAVAILABLE";
+  /**
+   * Target Date
+   */
+  target_date: string | null;
 };
 
 /**
@@ -2526,6 +2729,40 @@ export type RegionProfileStatus = {
 };
 
 /**
+ * SignalExplanationResponse
+ */
+export type SignalExplanationResponse = {
+  /**
+   * Generation Mode
+   */
+  generation_mode: "DETERMINISTIC" | "NARRATED" | "DETERMINISTIC_FALLBACK";
+  /**
+   * Key Evidence
+   */
+  key_evidence: Array<ExplanationEvidenceItem>;
+  /**
+   * Limitations
+   */
+  limitations: Array<string>;
+  provenance: ExplanationProvenance;
+  subject: ExplanationSubject;
+  /**
+   * Suggested Review Questions
+   */
+  suggested_review_questions: Array<string>;
+  /**
+   * Summary
+   */
+  summary: string;
+  support: ExplanationSupport;
+  uncertainty: ExplanationUncertainty;
+  /**
+   * Why Flagged
+   */
+  why_flagged: Array<string>;
+};
+
+/**
  * SourceProvenance
  */
 export type SourceProvenance = {
@@ -3810,6 +4047,50 @@ export type OperationalSignalGetResponses = {
 
 export type OperationalSignalGetResponse =
   OperationalSignalGetResponses[keyof OperationalSignalGetResponses];
+
+export type OperationalSignalExplanationGetData = {
+  body?: never;
+  path: {
+    /**
+     * Signal Id
+     */
+    signal_id: string;
+  };
+  query?: never;
+  url: "/api/v1/operational-intelligence/signals/{signal_id}/explanation";
+};
+
+export type OperationalSignalExplanationGetErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type OperationalSignalExplanationGetError =
+  OperationalSignalExplanationGetErrors[keyof OperationalSignalExplanationGetErrors];
+
+export type OperationalSignalExplanationGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: SignalExplanationResponse;
+};
+
+export type OperationalSignalExplanationGetResponse =
+  OperationalSignalExplanationGetResponses[keyof OperationalSignalExplanationGetResponses];
 
 export type OverviewGetData = {
   body?: never;
