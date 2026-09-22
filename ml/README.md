@@ -24,6 +24,7 @@ ml/
     signal_prioritization.py deterministic entity/origin Signals Inbox from accepted pressure artifacts
     flow_scenario.py deterministic offline registration forecast stress tests from the accepted chain
     decision_alternatives.py exact retrospective constrained alternatives with mandatory full-engine verification
+    model_assurance.py deterministic candidate-independent assurance bundle over accepted evidence
     predict.py    make predict  → pred_referral, pred_daily_forecast, model_registry (then build_marts.py)
     build_marts.py make marts   → mart_hospital_profile_status, mart_region_profile_status, mart_area_status
   configs/
@@ -37,6 +38,7 @@ ml/
     signal_prioritization.yaml reviewed lexicographic Inbox ranking and governance contract
     flow_scenario.yaml reviewed scenario contract, accepted lineage, and standard sensitivity cases
     decision_alternatives.yaml precommitted donor cohort, policy-budget ladder, and verification bound
+    model_assurance.yaml versioned accepted capability, identity, claims, governance, and monitoring registry
 ```
 
 Pipelines are run with `PYTHONPATH=ml` (the Makefile sets it).
@@ -94,7 +96,16 @@ require human review and keep physical feasibility unknown. Inspect the precommi
 make decision-alternatives PROFILE=laptop ARGS="--plan"
 ```
 
-No real-data 6B.4 acceptance run has been performed. See `docs/decision-alternatives-implementation.md`.
+The accepted 6B.4 run is `decision-alternatives-6b4-real-v3`; v1/v2 remain failed evidence rather than scientific
+rejections. See `docs/decision-alternatives-implementation.md` and `docs/project-evidence-index.md`.
+
+## Model Assurance / ML freeze
+
+`make model-assurance` performs no fitting and requires no long real-data job. It normalizes the versioned assurance
+registry, checks locally available accepted run manifests, and writes one deterministic bundle under
+`artifacts/model_assurance/model-assurance-6b5-v1/model_assurance.json`. Pass
+`ARGS="--require-evidence-files"` for strict publication-time verification of all ignored source manifests. Audit
+timestamps do not participate in the assurance identity. See `docs/model-assurance-6b5.md`.
 
 ## Patient-journey tournament
 

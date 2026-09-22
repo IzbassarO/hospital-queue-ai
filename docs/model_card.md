@@ -1,5 +1,9 @@
 # Model card — hospital-queue-ai
 
+> This is a legacy per-model document. The canonical cross-capability acceptance, identity, governance, claim,
+> support, freshness, and product-eligibility source is Step 6B.5: `docs/model-assurance-6b5.md` and the versioned
+> `model_assurance_v1` contract.
+
 Three models trained on Ministry of Health open data (GovTech Camp 2026, Case 1). Full tables,
 per-region and per-profile breakdowns, calibration and backtests: `reports/02_models.md`, generated
 by `make train` (the report is not committed; the numbers below come from the versions trained on

@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hospital-queue-ai.local/contracts/model-assurance-v1.schema.json",
+  "title": "Hospital Queue AI Model Assurance Contract v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "contract_version",
+    "assurance_id",
+    "assurance_identity_sha256",
+    "source_code_commit",
+    "ml_freeze_status",
+    "capabilities",
+    "failed_evidence_history",
+    "claim_boundaries",
+    "monitoring_expectations",
+    "freshness_policy",
+    "product_contract_version"
+  ],
+  "properties": {
+    "schema_version": {"const": "model_assurance_v1"},
+    "contract_version": {"type": "string", "const": "1.0.0"},
+    "assurance_id": {"type": "string", "minLength": 1},
+    "assurance_identity_sha256": {"$ref": "#/$defs/sha256"},
+    "source_code_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "ml_freeze_status": {"const": "ML_CORE_CLOSED_FROZEN"},
+    "product_contract_version": {"type": "string", "minLength": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/capability"}
+    },
+    "failed_evidence_history": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/failedEvidence"}
+    },
+    "claim_boundaries": {"type": "object"},
+    "monitoring_expectations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "implementation_status", "expectation"],
+        "properties": {
+          "id": {"type": "string"},
+          "implementation_status": {"const": "FUTURE_EXPECTATION"},
+          "expectation": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "freshness_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed_states", "sla_thresholds", "sla_unresolved_reason", "semantics"],
+      "properties": {
+        "allowed_states": {
+          "type": "array",
+          "prefixItems": [
+            {"const": "FRESH"}, {"const": "STALE"}, {"const": "DEGRADED"}, {"const": "UNKNOWN"}
+          ],
+          "items": false
+        },
+        "sla_thresholds": {"type": "null"},
+        "sla_unresolved_reason": {"type": "string", "minLength": 1},
+        "semantics": {"type": "object"}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "identityRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "value", "reason"],
+      "properties": {
+        "status": {"enum": ["AVAILABLE", "UNKNOWN", "NOT_APPLICABLE"]},
+        "value": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "minLength": 1},
+            {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+          ]
+        },
+        "reason": {"type": "string", "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "AVAILABLE"}}},
+          "then": {"properties": {"value": {"not": {"type": "null"}}}}
+        },
+        {
+          "if": {"properties": {"status": {"enum": ["UNKNOWN", "NOT_APPLICABLE"]}}},
+          "then": {"properties": {"value": {"type": "null"}}}
+        }
+      ]
+    },
+    "identities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id", "scientific_identity_sha256", "artifact_sha256", "dataset_identity_sha256",
+        "config_identity_sha256", "code_identity_sha256", "model_identity", "estimand_id",
+        "calibration_identity", "hierarchy_identity", "pressure_provider_identity",
+        "prioritization_identity", "scenario_identity", "decision_alternative_identity"
+      ],
+      "properties": {
+        "run_id": {"$ref": "#/$defs/identityRecord"},
+        "scientific_identity_sha256": {"$ref": "#/$defs/identityRecord"},
+        "artifact_sha256": {"$ref": "#/$defs/identityRecord"},
+        "dataset_identity_sha256": {"$ref": "#/$defs/identityRecord"},
+        "config_identity_sha256": {"$ref": "#/$defs/identityRecord"},
+        "code_identity_sha256": {"$ref": "#/$defs/identityRecord"},
+        "model_identity": {"$ref": "#/$defs/identityRecord"},
+        "estimand_id": {"$ref": "#/$defs/identityRecord"},
+        "calibration_identity": {"$ref": "#/$defs/identityRecord"},
+        "hierarchy_identity": {"$ref": "#/$defs/identityRecord"},
+        "pressure_provider_identity": {"$ref": "#/$defs/identityRecord"},
+        "prioritization_identity": {"$ref": "#/$defs/identityRecord"},
+        "scenario_identity": {"$ref": "#/$defs/identityRecord"},
+        "decision_alternative_identity": {"$ref": "#/$defs/identityRecord"}
+      }
+    },
+    "governance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "human_review_required", "autonomous_action", "capacity_checked", "causal_effect_claimed",
+        "serving_claim", "physical_feasibility_status", "promotion_status"
+      ],
+      "properties": {
+        "human_review_required": {"type": "boolean"},
+        "autonomous_action": {"const": false},
+        "capacity_checked": {"const": false},
+        "causal_effect_claimed": {"const": false},
+        "serving_claim": {"const": false},
+        "physical_feasibility_status": {"enum": ["VALIDATED", "NOT_VALIDATED", "UNKNOWN", "NOT_APPLICABLE"]},
+        "promotion_status": {"enum": ["PROMOTED", "HUMAN_REVIEW_ONLY", "NO_PROMOTION", "NOT_APPLICABLE"]}
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability_id", "display_name", "evidence_status", "acceptance_verdict",
+        "product_consumption_status", "identities", "evidence", "support", "governance",
+        "freshness", "source_lineage", "limitations", "allowed_claims", "forbidden_claims"
+      ],
+      "properties": {
+        "capability_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "display_name": {"type": "string", "minLength": 1},
+        "evidence_status": {"enum": ["ACCEPTED", "REJECTED", "EXPERIMENTAL"]},
+        "acceptance_verdict": {"enum": ["ACCEPT", "ACCEPT_WITH_P2", "DO_NOT_PROMOTE", "NOT_APPLICABLE"]},
+        "product_consumption_status": {"enum": ["ELIGIBLE_AFTER_INGESTION", "EVALUATION_ONLY", "REFERENCE_ONLY", "NOT_FOR_PRODUCT"]},
+        "run_manifest": {"type": "string"},
+        "identities": {"$ref": "#/$defs/identities"},
+        "evidence": {"type": "object"},
+        "support": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["support_semantics", "range_semantics"],
+          "properties": {
+            "support_semantics": {"type": "array", "items": {"enum": ["DIRECT_SUPPORTED", "FALLBACK_LIMITED", "UNSUPPORTED"]}},
+            "range_semantics": {"type": "array", "items": {"enum": ["COMPLETE", "RANGE_LIMITED"]}}
+          }
+        },
+        "governance": {"$ref": "#/$defs/governance"},
+        "freshness": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "reason"],
+          "properties": {
+            "state": {"enum": ["FRESH", "STALE", "DEGRADED", "UNKNOWN"]},
+            "reason": {"type": "string", "minLength": 1}
+          }
+        },
+        "source_lineage": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "limitations": {"type": "array", "items": {"type": "string"}},
+        "allowed_claims": {"type": "array", "items": {"type": "string"}},
+        "forbidden_claims": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "failedEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "classification", "scientific_rejection", "reason", "source"],
+      "properties": {
+        "run_id": {"type": "string"},
+        "classification": {"const": "FAILED_EVIDENCE"},
+        "scientific_rejection": {"const": false},
+        "reason": {"type": "string"},
+        "source": {"type": "string"}
+      }
+    }
+  }
+}

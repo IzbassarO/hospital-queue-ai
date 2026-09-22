@@ -540,8 +540,8 @@ The closed capability is retrospective mathematical decision alternatives for hu
 `capacity_checked = false`, `causal_effect_claimed = false`, and `serving_claim = false`; physical feasibility is
 not validated, and neither model-registry nor automatic promotion occurs.
 
-Next and final ML stage: **6B.5 — Model Assurance**. Successful 6B.5 closure leads to
-**ML CORE CLOSED / ML FREEZE**.
+Final ML stage **6B.5 — Model Assurance** is CLOSED (section 16).
+**ML CORE — CLOSED / FROZEN**.
 
 ### 6B.2D — synthesis / serving contract
 
@@ -562,7 +562,7 @@ Accepted result:
 After:
 - 6B.3 Forecast Stress-Test Engine v1 (CLOSED, section 15)
 - 6B.4 Constrained Decision Alternatives Engine v1 (CLOSED, section 14)
-- 6B.5 Model Assurance (**NEXT / final ML stage**; successful closure leads to **ML CORE CLOSED / ML FREEZE**)
+- 6B.5 Model Assurance (**CLOSED / final ML stage**, section 16)
 
 ---
 
@@ -672,5 +672,55 @@ intervention model, queue or backlog predictor, or physical-capacity simulator. 
 model or implement persistence, API, UI, or live scoring.
 
 The authoritative chain continues through the closed
-`decision-alternatives-6b4-real-v3` evidence in section 14. Next and final ML stage:
-**6B.5 — Model Assurance**; successful closure leads to **ML CORE CLOSED / ML FREEZE**.
+`decision-alternatives-6b4-real-v3` evidence in section 14 and the closed assurance layer in section 16.
+
+---
+
+## 16. Model Assurance / ML freeze
+
+### 6B.5
+
+Status: **CLOSED**
+
+ML status: **ML CORE — CLOSED / FROZEN**
+
+Canonical implementation:
+- `docs/model-assurance-6b5.md`;
+- `docs/model-assurance-contract-v1.schema.json`;
+- `ml/configs/model_assurance.yaml`;
+- `ml/hqai_ml/assurance.py`;
+- `ml/pipelines/model_assurance.py`;
+- `ml/tests/test_model_assurance.py`.
+
+Assurance ID:
+`model-assurance-6b5-v1`
+
+Assurance identity:
+`f504defefdd87bcbb01c670b68469ba4c0e016be7f40ca89452baf69b73f39f5`
+
+Accepted evidence baseline commit:
+`1dcda96b8d8bf760e481c61357b98d98c914b9ed`
+
+Closure result:
+- 13 canonical capability records cover Patient Journey estimands, the accepted flow chain, observed anomaly,
+  the rejected ML competing-risk challenger, scenarios, and decision alternatives;
+- scientific acceptance and product-consumption eligibility remain separate;
+- all identity fields are explicit as available, unknown with reason, or not applicable with reason;
+- direct/fallback/unsupported support and complete/range-limited evidence remain separate;
+- audit timestamps do not affect canonical assurance identity;
+- pressure remains `historical_flow_proxy_v1`, not physical capacity;
+- scenario remains non-causal stress testing, not a Digital Twin;
+- decision alternatives remain retrospective mathematics for human review, not routing or recommendation;
+- freshness supports FRESH / STALE / DEGRADED / UNKNOWN without inventing an unresolved customer SLA;
+- future monitoring requirements are specified without claiming a live monitor;
+- generated output stays under ignored `artifacts/model_assurance/<assurance-id>/model_assurance.json`;
+- no backend runtime import, PostgreSQL migration, API/OpenAPI, generated transport, or frontend change was made.
+
+Failed evidence history remains visible:
+- `decision-alternatives-6b4-real-v1` — FAILED EVIDENCE;
+- `decision-alternatives-6b4-real-v2` — FAILED EVIDENCE.
+
+Next work is production integration, outside the ML freeze:
+PostgreSQL assurance read models → repositories/use cases → API/OpenAPI → generated TypeScript → frontend Control
+Tower. The backend must ingest the candidate-independent bundle and must not runtime-import `hqai_ml`; the frontend
+must not read artifact JSON directly.
