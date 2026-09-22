@@ -120,9 +120,33 @@ def test_failed_execution_history_is_not_scientific_rejection() -> None:
     assert all(item["scientific_rejection"] is False for item in history)
 
 
-def test_existing_run_manifests_match_versioned_identity_snapshot() -> None:
-    result = verify_evidence_sources(ROOT, bundle(), require_present=True)
-    assert result == {"verified_run_manifests": 13, "absent_run_manifests": 0}
+def test_available_run_manifests_match_versioned_identity_snapshot() -> None:
+    payload = bundle()
+    expected_manifest_count = sum(1 for capability in payload["capabilities"] if capability.get("run_manifest"))
+    assert expected_manifest_count == 13
+
+    result = verify_evidence_sources(ROOT, payload, require_present=False)
+
+    assert result["verified_run_manifests"] + result["absent_run_manifests"] == expected_manifest_count
+
+
+def test_strict_source_verification_rejects_absent_manifest(
+    tmp_path: Path,
+) -> None:
+    one = copy.deepcopy(bundle()["capabilities"][0])
+    one["run_manifest"] = "artifacts/runs/definitely-missing/run.json"
+
+    minimal = {"capabilities": [one]}
+
+    with pytest.raises(
+        AssuranceContractError,
+        match="missing evidence source",
+    ):
+        verify_evidence_sources(
+            tmp_path,
+            minimal,
+            require_present=True,
+        )
 
 
 def test_source_mismatch_fails_closed(tmp_path: Path) -> None:
