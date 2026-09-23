@@ -352,11 +352,33 @@ export const modelInfoSchema = object({
 export type ModelInfo = Infer<typeof modelInfoSchema>;
 export const modelsSchema = array(modelInfoSchema);
 
-export const dictionariesSchema = object({
-  national_code: str,
-  regions: array(object({ code: str, name: str })),
-  profiles: array(object({ code: str, name: str, is_day_hospital: bool })),
-});
+const organizationsSchema = array(
+  object({ code: str, name: str, region_code: nullable(str) }),
+);
+/** `organizations` is a later addition of the contract: absent in older responses/fixtures → []. */
+const optionalOrganizations: Schema<Infer<typeof organizationsSchema>> = {
+  parse: (value, path) =>
+    value === undefined ? [] : organizationsSchema.parse(value, path),
+};
+export const dictionariesSchema = {
+  ...object({
+    national_code: str,
+    regions: array(object({ code: str, name: str })),
+    profiles: array(object({ code: str, name: str, is_day_hospital: bool })),
+  }),
+  parse(value: unknown, path?: string) {
+    const base = object({
+      national_code: str,
+      regions: array(object({ code: str, name: str })),
+      profiles: array(object({ code: str, name: str, is_day_hospital: bool })),
+    }).parse(value, path);
+    const organizations = optionalOrganizations.parse(
+      (value as { organizations?: unknown }).organizations,
+      `${path ?? "$"}.organizations`,
+    );
+    return { ...base, organizations };
+  },
+};
 export type Dictionaries = Infer<typeof dictionariesSchema>;
 
 export const configSchema = object({

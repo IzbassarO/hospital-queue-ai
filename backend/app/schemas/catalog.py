@@ -41,10 +41,19 @@ class ProfileItem(DictionaryItem):
     is_day_hospital: bool
 
 
+class OrganizationItem(BaseModel):
+    code: str
+    name: str
+    region_code: str | None
+
+
 class DictionariesResponse(BaseModel):
     national_code: str
     regions: list[DictionaryItem]
     profiles: list[ProfileItem]
+    organizations: list[OrganizationItem] = Field(
+        default_factory=list, description="medical organizations (hospital codes with names) for display"
+    )
 
 
 class LoadIndexWeights(BaseModel):

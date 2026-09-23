@@ -833,9 +833,54 @@ aggregate AI score; each evidence status and limitation remains explicit.
 prediction-source and hierarchy semantics are candidate-independent; source run/scientific/data/config/code
 identities are returned without filesystem paths.
 
+### `GET /review-evidence/overview`
+
+**role: viewer.** Metadata for the current explicitly published review-evidence snapshot: the accepted forecast
+stress-test scenario catalog (identity reproduction plus the standard ×0.90 / ×1.10 / ×1.20 registration
+multipliers with their population-level severity-change counts) and the decision-alternative population summary
+copied from Model Assurance. Review evidence projects two `EVALUATION_ONLY` capabilities for human review. It is
+not an operational signal, a recommendation, routing, optimization, capacity planning, a Digital Twin or a causal
+claim. Absence of a published snapshot returns `404`.
+
+Publication is an administrative boundary: `make review-evidence-bundle` projects the checksummed accepted
+scenario and decision-alternative artifacts (every primary-Inbox registrations entity at the explicit final-test
+origin; every accepted alternative set), then
+`make review-evidence-publish BUNDLE=/absolute/path/to/review_evidence.json` validates the bundle identity,
+verifies both sources against the referenced published Model Assurance snapshot, requires the referenced
+operational publication identity, checks that the identity scenario reproduces the published central forecasts
+exactly, and publishes atomically. API requests never inspect source artifacts.
+
+### `GET /review-evidence/signals/{signal_id}/stress-test`
+
+**role: viewer.** Stress-test outcomes for the series behind one published signal: for every standard scenario the
+entity severity before/after, Inbox rank before/after, central delta, first crossing and the fourteen daily cells
+with the accepted baseline central/calibrated bounds and the scenario central/derived sensitivity range. The
+derived range is an additive shift of the accepted calibrated bounds: not re-calibrated, no coverage guarantee.
+`404` when the signal's series is not part of the published stress-test population.
+
+### `GET /review-evidence/signals/{signal_id}/decision-alternatives`
+
+**role: viewer.** Every published alternative set (one per policy budget) whose donor is the given signal, including
+abstention codes, receiver candidate counts and the verified alternatives with their donor/receiver states. An
+abstained set is a first-class result: the engine found no admissible same-profile peer series with modelled
+headroom under the historical-flow proxy. `404` when the signal was not a donor unit of the accepted run.
+
+### `GET /review-evidence/decision-alternatives?origin=&region=&org=&profile=&with_alternatives=&limit=&offset=`
+
+**role: viewer.** Donor/budget alternative-set summaries (retrospective mathematical alternatives for human
+review) with filters; ordered by origin, donor signal and budget. Never a ranking of actions.
+
+### `GET /review-evidence/decision-alternatives/{set_id}`
+
+**role: viewer.** One alternative set with its alternatives, transfer schedule, before/after states, verification
+result, mandatory non-claims (`NOT_PHYSICAL_CAPACITY_VALIDATED`, `THRESHOLD_COMPARATOR_ASSUMPTION`,
+`PHYSICAL_FEASIBILITY_UNKNOWN`) and versioned provenance.
+
 ### `GET /dictionaries`
 
-**role: viewer.** Regions (sorted by name) and all bed profiles, for dropdowns.
+**role: viewer.** Regions (sorted by name), all bed profiles, and `organizations` (medical organization codes with
+registry names and region codes) for dropdowns and human-readable labels. Older responses may omit `organizations`;
+clients treat it as an empty list.
 
 ```json
 {

@@ -126,6 +126,20 @@ export function signalView(d: OperationalSignalResponse) {
     evidence: d.evidence_facts ?? [],
     limitations: d.limitations ?? [],
     identity: d.publication_identity_sha256,
+    // Raw published numbers for visual compositions (formatting happens in the view, never recomputation).
+    rawForecast: d.forecast_value,
+    rawInterval:
+      d.uncertainty_status === "CALIBRATED" &&
+      d.uncertainty_lower != null &&
+      d.uncertainty_upper != null
+        ? ([d.uncertainty_lower, d.uncertainty_upper] as [number, number])
+        : null,
+    rawThreshold: d.threshold_value,
+    rawThresholdStatus: d.threshold_status,
+    rawLeadDays: d.lead_time_days,
+    rawCrossing: d.first_crossing_date,
+    rawMateriality: d.materiality_status,
+    rawDataFreshness: d.data_freshness,
     facts: [
       { label: t.tower.origin, value: fmtDate(d.origin) },
       { label: t.tower.target, value: label(d.target) },
@@ -324,6 +338,7 @@ export function capabilityView(d: ModelAssuranceCapabilityResponse) {
     freshnessReason: d.freshness.reason,
     limitations: d.limitations,
     claims: d.allowed_claims,
+    evidence: d.evidence,
     governance: [
       d.governance.human_review_required ? t.tower.human : null,
       !d.governance.autonomous_action ? t.tower.noAutonomy : null,

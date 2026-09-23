@@ -367,6 +367,626 @@
         "title": "Alternative",
         "type": "object"
       },
+      "AlternativeRow": {
+        "additionalProperties": false,
+        "properties": {
+          "alternative_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Alternative Id",
+            "type": "string"
+          },
+          "baseline_donor_state": {
+            "$ref": "#/components/schemas/SeriesState"
+          },
+          "baseline_receiver_state": {
+            "$ref": "#/components/schemas/SeriesState"
+          },
+          "budget_constraint_satisfied": {
+            "const": true,
+            "title": "Budget Constraint Satisfied",
+            "type": "boolean"
+          },
+          "capacity_checked": {
+            "const": false,
+            "title": "Capacity Checked",
+            "type": "boolean"
+          },
+          "causal_effect_claimed": {
+            "const": false,
+            "title": "Causal Effect Claimed",
+            "type": "boolean"
+          },
+          "conservation_satisfied": {
+            "const": true,
+            "title": "Conservation Satisfied",
+            "type": "boolean"
+          },
+          "donor": {
+            "$ref": "#/components/schemas/SeriesRef"
+          },
+          "donor_binding_cell": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Donor Binding Cell"
+          },
+          "donor_binding_horizons": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Donor Binding Horizons",
+            "type": "array"
+          },
+          "donor_inbox": {
+            "$ref": "#/components/schemas/InboxOutcome"
+          },
+          "donor_severity_after": {
+            "enum": [
+              "HIGH",
+              "ELEVATED",
+              "WATCH",
+              "NORMAL",
+              "UNSUPPORTED"
+            ],
+            "title": "Donor Severity After",
+            "type": "string"
+          },
+          "donor_severity_before": {
+            "enum": [
+              "HIGH",
+              "ELEVATED",
+              "WATCH",
+              "NORMAL",
+              "UNSUPPORTED"
+            ],
+            "title": "Donor Severity Before",
+            "type": "string"
+          },
+          "donor_support_class": {
+            "enum": [
+              "DIRECT_SUPPORTED",
+              "FALLBACK_LIMITED",
+              "UNSUPPORTED"
+            ],
+            "title": "Donor Support Class",
+            "type": "string"
+          },
+          "explanation_text": {
+            "minLength": 1,
+            "title": "Explanation Text",
+            "type": "string"
+          },
+          "feasibility_status": {
+            "const": "NOT_PHYSICAL_CAPACITY_VALIDATED",
+            "title": "Feasibility Status",
+            "type": "string"
+          },
+          "forecast_support_tier": {
+            "enum": [
+              "DIRECT_SUPPORTED",
+              "FALLBACK_LIMITED",
+              "UNSUPPORTED"
+            ],
+            "title": "Forecast Support Tier",
+            "type": "string"
+          },
+          "hierarchy_coherent": {
+            "title": "Hierarchy Coherent",
+            "type": "boolean"
+          },
+          "human_review_required": {
+            "const": true,
+            "title": "Human Review Required",
+            "type": "boolean"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Limitations",
+            "type": "array"
+          },
+          "non_claims": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Non Claims",
+            "type": "array"
+          },
+          "receiver": {
+            "$ref": "#/components/schemas/SeriesRef"
+          },
+          "receiver_binding_cell": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receiver Binding Cell"
+          },
+          "receiver_inbox": {
+            "$ref": "#/components/schemas/InboxOutcome"
+          },
+          "receiver_min_central_headroom": {
+            "title": "Receiver Min Central Headroom",
+            "type": "number"
+          },
+          "receiver_no_worse_constraint_satisfied": {
+            "const": true,
+            "title": "Receiver No Worse Constraint Satisfied",
+            "type": "boolean"
+          },
+          "receiver_range_evidence": {
+            "enum": [
+              "COMPLETE",
+              "RANGE_LIMITED"
+            ],
+            "title": "Receiver Range Evidence",
+            "type": "string"
+          },
+          "receiver_severity_after": {
+            "enum": [
+              "HIGH",
+              "ELEVATED",
+              "WATCH",
+              "NORMAL",
+              "UNSUPPORTED"
+            ],
+            "title": "Receiver Severity After",
+            "type": "string"
+          },
+          "receiver_severity_before": {
+            "enum": [
+              "HIGH",
+              "ELEVATED",
+              "WATCH",
+              "NORMAL",
+              "UNSUPPORTED"
+            ],
+            "title": "Receiver Severity Before",
+            "type": "string"
+          },
+          "receiver_support_class": {
+            "enum": [
+              "DIRECT_SUPPORTED",
+              "FALLBACK_LIMITED",
+              "UNSUPPORTED"
+            ],
+            "title": "Receiver Support Class",
+            "type": "string"
+          },
+          "scenario_donor_state": {
+            "$ref": "#/components/schemas/SeriesState"
+          },
+          "scenario_receiver_state": {
+            "$ref": "#/components/schemas/SeriesState"
+          },
+          "sensitivity_range_result": {
+            "enum": [
+              "ROBUST_TO_TRANSFORMED_RANGE",
+              "NOT_ROBUST_TO_TRANSFORMED_RANGE",
+              "RANGE_EVIDENCE_INCOMPLETE"
+            ],
+            "title": "Sensitivity Range Result",
+            "type": "string"
+          },
+          "source_central_goal_satisfied": {
+            "const": true,
+            "title": "Source Central Goal Satisfied",
+            "type": "boolean"
+          },
+          "transfer_fraction": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.0,
+            "title": "Transfer Fraction",
+            "type": "number"
+          },
+          "transfer_fraction_certification": {
+            "minLength": 1,
+            "title": "Transfer Fraction Certification",
+            "type": "string"
+          },
+          "transferred_by_horizon": {
+            "items": {
+              "$ref": "#/components/schemas/TransferByHorizon"
+            },
+            "minItems": 1,
+            "title": "Transferred By Horizon",
+            "type": "array"
+          },
+          "transferred_total": {
+            "minimum": 0.0,
+            "title": "Transferred Total",
+            "type": "number"
+          },
+          "verification_state": {
+            "enum": [
+              "VERIFIED_FULL_ENGINE",
+              "FAST_PATH_ONLY",
+              "VERIFICATION_FAILED"
+            ],
+            "title": "Verification State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "alternative_id",
+          "donor",
+          "receiver",
+          "transfer_fraction",
+          "transfer_fraction_certification",
+          "transferred_total",
+          "transferred_by_horizon",
+          "donor_severity_before",
+          "donor_severity_after",
+          "receiver_severity_before",
+          "receiver_severity_after",
+          "donor_binding_horizons",
+          "receiver_min_central_headroom",
+          "receiver_no_worse_constraint_satisfied",
+          "conservation_satisfied",
+          "budget_constraint_satisfied",
+          "source_central_goal_satisfied",
+          "verification_state",
+          "forecast_support_tier",
+          "donor_support_class",
+          "receiver_support_class",
+          "receiver_range_evidence",
+          "sensitivity_range_result",
+          "feasibility_status",
+          "capacity_checked",
+          "causal_effect_claimed",
+          "human_review_required",
+          "hierarchy_coherent",
+          "donor_inbox",
+          "receiver_inbox",
+          "explanation_text",
+          "non_claims",
+          "limitations",
+          "baseline_donor_state",
+          "scenario_donor_state",
+          "baseline_receiver_state",
+          "scenario_receiver_state"
+        ],
+        "title": "AlternativeRow",
+        "type": "object"
+      },
+      "AlternativeSetResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "abstained": {
+            "title": "Abstained",
+            "type": "boolean"
+          },
+          "abstention_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Abstention Codes",
+            "type": "array"
+          },
+          "alternatives": {
+            "items": {
+              "$ref": "#/components/schemas/AlternativeRow"
+            },
+            "title": "Alternatives",
+            "type": "array"
+          },
+          "budget": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.0,
+            "title": "Budget",
+            "type": "number"
+          },
+          "canonical_unit_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Canonical Unit Id",
+            "type": "string"
+          },
+          "donor": {
+            "$ref": "#/components/schemas/DonorRef"
+          },
+          "donor_minimum_transfer_fraction": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Donor Minimum Transfer Fraction"
+          },
+          "execution_mode": {
+            "const": "EVALUATION",
+            "title": "Execution Mode",
+            "type": "string"
+          },
+          "human_review_required": {
+            "const": true,
+            "title": "Human Review Required",
+            "type": "boolean"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Limitations",
+            "type": "array"
+          },
+          "origin": {
+            "format": "date",
+            "title": "Origin",
+            "type": "string"
+          },
+          "publication_identity_sha256": {
+            "title": "Publication Identity Sha256",
+            "type": "string"
+          },
+          "receiver_candidates_considered": {
+            "minimum": 0.0,
+            "title": "Receiver Candidates Considered",
+            "type": "integer"
+          },
+          "receiver_candidates_eligible": {
+            "minimum": 0.0,
+            "title": "Receiver Candidates Eligible",
+            "type": "integer"
+          },
+          "rejected_receiver_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Rejected Receiver Counts",
+            "type": "object"
+          },
+          "scientific_output_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Scientific Output Sha256",
+            "type": "string"
+          },
+          "serving_claim": {
+            "const": false,
+            "title": "Serving Claim",
+            "type": "boolean"
+          },
+          "set_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Set Id",
+            "type": "string"
+          },
+          "shortlist_bound": {
+            "minimum": 1.0,
+            "title": "Shortlist Bound",
+            "type": "integer"
+          },
+          "source_provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SourceProvenance"
+            },
+            "title": "Source Provenance",
+            "type": "object"
+          },
+          "target": {
+            "enum": [
+              "registrations",
+              "cohort_hospitalizations"
+            ],
+            "title": "Target",
+            "type": "string"
+          },
+          "verification_failure_count": {
+            "minimum": 0.0,
+            "title": "Verification Failure Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "set_id",
+          "canonical_unit_id",
+          "origin",
+          "target",
+          "donor",
+          "budget",
+          "abstained",
+          "abstention_codes",
+          "rejected_receiver_counts",
+          "receiver_candidates_considered",
+          "receiver_candidates_eligible",
+          "shortlist_bound",
+          "alternatives",
+          "verification_failure_count",
+          "scientific_output_sha256",
+          "execution_mode",
+          "human_review_required",
+          "serving_claim",
+          "limitations",
+          "publication_identity_sha256",
+          "source_provenance"
+        ],
+        "title": "AlternativeSetResponse",
+        "type": "object"
+      },
+      "AlternativeSetSummaryResponse": {
+        "properties": {
+          "abstained": {
+            "title": "Abstained",
+            "type": "boolean"
+          },
+          "abstention_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Abstention Codes",
+            "type": "array"
+          },
+          "alternative_count": {
+            "title": "Alternative Count",
+            "type": "integer"
+          },
+          "budget": {
+            "title": "Budget",
+            "type": "number"
+          },
+          "canonical_unit_id": {
+            "title": "Canonical Unit Id",
+            "type": "string"
+          },
+          "donor": {
+            "$ref": "#/components/schemas/DonorRef"
+          },
+          "donor_minimum_transfer_fraction": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Donor Minimum Transfer Fraction"
+          },
+          "origin": {
+            "format": "date",
+            "title": "Origin",
+            "type": "string"
+          },
+          "publication_identity_sha256": {
+            "title": "Publication Identity Sha256",
+            "type": "string"
+          },
+          "receiver_candidates_considered": {
+            "title": "Receiver Candidates Considered",
+            "type": "integer"
+          },
+          "receiver_candidates_eligible": {
+            "title": "Receiver Candidates Eligible",
+            "type": "integer"
+          },
+          "set_id": {
+            "title": "Set Id",
+            "type": "string"
+          },
+          "target": {
+            "enum": [
+              "registrations",
+              "cohort_hospitalizations"
+            ],
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "set_id",
+          "canonical_unit_id",
+          "origin",
+          "target",
+          "donor",
+          "budget",
+          "abstained",
+          "abstention_codes",
+          "receiver_candidates_considered",
+          "receiver_candidates_eligible",
+          "donor_minimum_transfer_fraction",
+          "alternative_count",
+          "publication_identity_sha256"
+        ],
+        "title": "AlternativeSetSummaryResponse",
+        "type": "object"
+      },
+      "AlternativesSummary": {
+        "additionalProperties": false,
+        "description": "Accepted population metrics copied from Model Assurance evidence; not recomputed here.",
+        "properties": {
+          "alternative_count": {
+            "minimum": 0.0,
+            "title": "Alternative Count",
+            "type": "integer"
+          },
+          "evaluation_population": {
+            "minLength": 1,
+            "title": "Evaluation Population",
+            "type": "string"
+          },
+          "full_verification_success_rate": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Full Verification Success Rate",
+            "type": "number"
+          },
+          "origins": {
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "title": "Origins",
+            "type": "array"
+          },
+          "receiver_worsening_count": {
+            "minimum": 0.0,
+            "title": "Receiver Worsening Count",
+            "type": "integer"
+          },
+          "set_count": {
+            "minimum": 0.0,
+            "title": "Set Count",
+            "type": "integer"
+          },
+          "sets_with_alternatives": {
+            "minimum": 0.0,
+            "title": "Sets With Alternatives",
+            "type": "integer"
+          },
+          "transfer_budget_ladder": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Transfer Budget Ladder",
+            "type": "array"
+          },
+          "unit_count": {
+            "minimum": 0.0,
+            "title": "Unit Count",
+            "type": "integer"
+          },
+          "verification_failure_count": {
+            "minimum": 0.0,
+            "title": "Verification Failure Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "set_count",
+          "unit_count",
+          "sets_with_alternatives",
+          "alternative_count",
+          "receiver_worsening_count",
+          "verification_failure_count",
+          "full_verification_success_rate",
+          "transfer_budget_ladder",
+          "origins",
+          "evaluation_population"
+        ],
+        "title": "AlternativesSummary",
+        "type": "object"
+      },
       "AnomalyEvidence": {
         "additionalProperties": false,
         "properties": {
@@ -1510,6 +2130,14 @@
             "title": "National Code",
             "type": "string"
           },
+          "organizations": {
+            "description": "medical organizations (hospital codes with names) for display",
+            "items": {
+              "$ref": "#/components/schemas/OrganizationItem"
+            },
+            "title": "Organizations",
+            "type": "array"
+          },
           "profiles": {
             "items": {
               "$ref": "#/components/schemas/ProfileItem"
@@ -1549,6 +2177,96 @@
           "name"
         ],
         "title": "DictionaryItem",
+        "type": "object"
+      },
+      "DonorRef": {
+        "additionalProperties": false,
+        "properties": {
+          "binding_horizons": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Binding Horizons",
+            "type": "array"
+          },
+          "displayed_severity": {
+            "enum": [
+              "HIGH",
+              "ELEVATED",
+              "WATCH",
+              "NORMAL",
+              "UNSUPPORTED"
+            ],
+            "title": "Displayed Severity",
+            "type": "string"
+          },
+          "inbox_rank": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inbox Rank"
+          },
+          "materiality_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Materiality Status"
+          },
+          "org_code": {
+            "maxLength": 8,
+            "title": "Org Code",
+            "type": "string"
+          },
+          "priority_support_class": {
+            "minLength": 1,
+            "title": "Priority Support Class",
+            "type": "string"
+          },
+          "profile_code": {
+            "maxLength": 8,
+            "title": "Profile Code",
+            "type": "string"
+          },
+          "region_code": {
+            "maxLength": 4,
+            "title": "Region Code",
+            "type": "string"
+          },
+          "series_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Series Id",
+            "type": "string"
+          },
+          "signal_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Signal Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signal_id",
+          "org_code",
+          "profile_code",
+          "region_code",
+          "series_id",
+          "displayed_severity",
+          "priority_support_class",
+          "binding_horizons"
+        ],
+        "title": "DonorRef",
         "type": "object"
       },
       "ExplanationCapabilityFact": {
@@ -2489,6 +3207,73 @@
           "in_region_top"
         ],
         "title": "HospitalProfileStatus",
+        "type": "object"
+      },
+      "InboxOutcome": {
+        "additionalProperties": false,
+        "properties": {
+          "baseline_inbox_rank": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Inbox Rank"
+          },
+          "baseline_severity": {
+            "enum": [
+              "HIGH",
+              "ELEVATED",
+              "WATCH",
+              "NORMAL",
+              "UNSUPPORTED"
+            ],
+            "title": "Baseline Severity",
+            "type": "string"
+          },
+          "entered_primary_inbox": {
+            "title": "Entered Primary Inbox",
+            "type": "boolean"
+          },
+          "left_primary_inbox": {
+            "title": "Left Primary Inbox",
+            "type": "boolean"
+          },
+          "scenario_inbox_rank": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Inbox Rank"
+          },
+          "scenario_severity": {
+            "enum": [
+              "HIGH",
+              "ELEVATED",
+              "WATCH",
+              "NORMAL",
+              "UNSUPPORTED"
+            ],
+            "title": "Scenario Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "baseline_severity",
+          "scenario_severity",
+          "entered_primary_inbox",
+          "left_primary_inbox"
+        ],
+        "title": "InboxOutcome",
         "type": "object"
       },
       "LoadIndexComponents": {
@@ -3860,6 +4645,36 @@
         "title": "OperationalSnapshotResponse",
         "type": "object"
       },
+      "OrganizationItem": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "region_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Code"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "region_code"
+        ],
+        "title": "OrganizationItem",
+        "type": "object"
+      },
       "OverviewResponse": {
         "properties": {
           "as_of_date": {
@@ -3958,6 +4773,38 @@
           "offset"
         ],
         "title": "Page[AlertItem]",
+        "type": "object"
+      },
+      "Page_AlternativeSetSummaryResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AlternativeSetSummaryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "description": "rows matching the filters, before limit/offset",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[AlternativeSetSummaryResponse]",
         "type": "object"
       },
       "Page_Decision_": {
@@ -4147,17 +4994,14 @@
         "additionalProperties": false,
         "properties": {
           "p10": {
-            "minimum": 0.0,
             "title": "P10",
             "type": "number"
           },
           "p50": {
-            "minimum": 0.0,
             "title": "P50",
             "type": "number"
           },
           "p90": {
-            "minimum": 0.0,
             "title": "P90",
             "type": "number"
           },
@@ -4659,6 +5503,843 @@
         "title": "RegionProfileStatus",
         "type": "object"
       },
+      "ReviewOverviewResponse": {
+        "properties": {
+          "alternatives_summary": {
+            "$ref": "#/components/schemas/AlternativesSummary"
+          },
+          "scenarios": {
+            "items": {
+              "$ref": "#/components/schemas/ScenarioCatalogResponse"
+            },
+            "title": "Scenarios",
+            "type": "array"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/ReviewSnapshotResponse"
+          }
+        },
+        "required": [
+          "snapshot",
+          "scenarios",
+          "alternatives_summary"
+        ],
+        "title": "ReviewOverviewResponse",
+        "type": "object"
+      },
+      "ReviewSnapshotResponse": {
+        "properties": {
+          "alternative_count": {
+            "title": "Alternative Count",
+            "type": "integer"
+          },
+          "alternative_set_count": {
+            "title": "Alternative Set Count",
+            "type": "integer"
+          },
+          "assurance_identity_sha256": {
+            "title": "Assurance Identity Sha256",
+            "type": "string"
+          },
+          "bundle_sha256": {
+            "title": "Bundle Sha256",
+            "type": "string"
+          },
+          "contract_version": {
+            "title": "Contract Version",
+            "type": "string"
+          },
+          "current_origin": {
+            "format": "date",
+            "title": "Current Origin",
+            "type": "string"
+          },
+          "freshness_state": {
+            "enum": [
+              "FRESH",
+              "STALE",
+              "DEGRADED",
+              "UNKNOWN"
+            ],
+            "title": "Freshness State",
+            "type": "string"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "operational_publication_identity_sha256": {
+            "title": "Operational Publication Identity Sha256",
+            "type": "string"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "string"
+          },
+          "publication_identity_sha256": {
+            "title": "Publication Identity Sha256",
+            "type": "string"
+          },
+          "publication_status": {
+            "enum": [
+              "AVAILABLE",
+              "EMPTY"
+            ],
+            "title": "Publication Status",
+            "type": "string"
+          },
+          "published_at": {
+            "format": "date-time",
+            "title": "Published At",
+            "type": "string"
+          },
+          "scenario_cell_count": {
+            "title": "Scenario Cell Count",
+            "type": "integer"
+          },
+          "scenario_count": {
+            "title": "Scenario Count",
+            "type": "integer"
+          },
+          "scenario_entity_count": {
+            "title": "Scenario Entity Count",
+            "type": "integer"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "source_code_commit": {
+            "title": "Source Code Commit",
+            "type": "string"
+          },
+          "source_provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SourceProvenance"
+            },
+            "title": "Source Provenance",
+            "type": "object"
+          }
+        },
+        "required": [
+          "publication_id",
+          "schema_version",
+          "contract_version",
+          "publication_identity_sha256",
+          "bundle_sha256",
+          "assurance_identity_sha256",
+          "operational_publication_identity_sha256",
+          "source_code_commit",
+          "current_origin",
+          "freshness_state",
+          "publication_status",
+          "generated_at",
+          "published_at",
+          "scenario_count",
+          "scenario_entity_count",
+          "scenario_cell_count",
+          "alternative_set_count",
+          "alternative_count",
+          "source_provenance",
+          "limitations"
+        ],
+        "title": "ReviewSnapshotResponse",
+        "type": "object"
+      },
+      "ScenarioCatalogResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "baseline_reproduction": {
+            "anyOf": [
+              {
+                "const": "PASS",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Reproduction"
+          },
+          "causal_effect_claimed": {
+            "const": false,
+            "title": "Causal Effect Claimed",
+            "type": "boolean"
+          },
+          "classification": {
+            "enum": [
+              "SAFE_NON_CAUSAL_STRESS_TEST",
+              "MECHANISTIC_ACCOUNTING_SCENARIO"
+            ],
+            "title": "Classification",
+            "type": "string"
+          },
+          "coverage_guarantee": {
+            "const": false,
+            "title": "Coverage Guarantee",
+            "type": "boolean"
+          },
+          "evidence_facts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Facts",
+            "type": "array"
+          },
+          "horizon_end": {
+            "maximum": 366.0,
+            "minimum": 1.0,
+            "title": "Horizon End",
+            "type": "integer"
+          },
+          "horizon_start": {
+            "maximum": 366.0,
+            "minimum": 1.0,
+            "title": "Horizon Start",
+            "type": "integer"
+          },
+          "lever_type": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Lever Type",
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "multiplier": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Multiplier"
+          },
+          "network_summary": {
+            "$ref": "#/components/schemas/ScenarioNetworkSummary"
+          },
+          "scenario_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Scenario Id",
+            "type": "string"
+          },
+          "scenario_type": {
+            "enum": [
+              "identity",
+              "demand_multiplier"
+            ],
+            "title": "Scenario Type",
+            "type": "string"
+          },
+          "scope_type": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Scope Type",
+            "type": "string"
+          },
+          "serving_claim": {
+            "const": false,
+            "title": "Serving Claim",
+            "type": "boolean"
+          },
+          "target": {
+            "enum": [
+              "registrations",
+              "cohort_hospitalizations"
+            ],
+            "title": "Target",
+            "type": "string"
+          },
+          "uncertainty_label": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Uncertainty Label",
+            "type": "string"
+          },
+          "uncertainty_method": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Uncertainty Method",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scenario_id",
+          "scenario_type",
+          "classification",
+          "lever_type",
+          "scope_type",
+          "horizon_start",
+          "horizon_end",
+          "target",
+          "uncertainty_method",
+          "uncertainty_label",
+          "coverage_guarantee",
+          "causal_effect_claimed",
+          "serving_claim",
+          "network_summary"
+        ],
+        "title": "ScenarioCatalogResponse",
+        "type": "object"
+      },
+      "ScenarioCellResponse": {
+        "properties": {
+          "baseline_central": {
+            "title": "Baseline Central",
+            "type": "number"
+          },
+          "baseline_lower": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Lower"
+          },
+          "baseline_severity": {
+            "enum": [
+              "HIGH",
+              "ELEVATED",
+              "WATCH",
+              "NORMAL",
+              "UNSUPPORTED"
+            ],
+            "title": "Baseline Severity",
+            "type": "string"
+          },
+          "baseline_upper": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Upper"
+          },
+          "horizon": {
+            "title": "Horizon",
+            "type": "integer"
+          },
+          "scenario_central": {
+            "title": "Scenario Central",
+            "type": "number"
+          },
+          "scenario_lower": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Lower"
+          },
+          "scenario_severity": {
+            "enum": [
+              "HIGH",
+              "ELEVATED",
+              "WATCH",
+              "NORMAL",
+              "UNSUPPORTED"
+            ],
+            "title": "Scenario Severity",
+            "type": "string"
+          },
+          "scenario_uncertainty_status": {
+            "enum": [
+              "TRANSFORMED_BASELINE_UNCERTAINTY_RANGE",
+              "UNAVAILABLE",
+              "NOT_SCENARIO_ADJUSTED"
+            ],
+            "title": "Scenario Uncertainty Status",
+            "type": "string"
+          },
+          "scenario_upper": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Upper"
+          },
+          "severity_changed": {
+            "title": "Severity Changed",
+            "type": "boolean"
+          },
+          "source_reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Reason Code"
+          },
+          "target_date": {
+            "format": "date",
+            "title": "Target Date",
+            "type": "string"
+          },
+          "threshold_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold Status"
+          },
+          "threshold_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold Value"
+          }
+        },
+        "required": [
+          "target_date",
+          "horizon",
+          "baseline_central",
+          "baseline_lower",
+          "baseline_upper",
+          "baseline_severity",
+          "scenario_central",
+          "scenario_lower",
+          "scenario_upper",
+          "scenario_severity",
+          "threshold_value",
+          "threshold_status",
+          "scenario_uncertainty_status",
+          "severity_changed",
+          "source_reason_code"
+        ],
+        "title": "ScenarioCellResponse",
+        "type": "object"
+      },
+      "ScenarioNetworkSummary": {
+        "additionalProperties": false,
+        "description": "Population-level counts copied from the accepted scenario summary; never recomputed.",
+        "properties": {
+          "daily_cells_total": {
+            "minimum": 0.0,
+            "title": "Daily Cells Total",
+            "type": "integer"
+          },
+          "entity_count": {
+            "minimum": 0.0,
+            "title": "Entity Count",
+            "type": "integer"
+          },
+          "entity_severity_changed_count": {
+            "minimum": 0.0,
+            "title": "Entity Severity Changed Count",
+            "type": "integer"
+          },
+          "severity_changed_count": {
+            "minimum": 0.0,
+            "title": "Severity Changed Count",
+            "type": "integer"
+          },
+          "severity_changed_share": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Severity Changed Share",
+            "type": "number"
+          },
+          "severity_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Severity Counts",
+            "type": "object"
+          }
+        },
+        "required": [
+          "daily_cells_total",
+          "severity_changed_count",
+          "severity_changed_share",
+          "severity_counts",
+          "entity_count",
+          "entity_severity_changed_count"
+        ],
+        "title": "ScenarioNetworkSummary",
+        "type": "object"
+      },
+      "ScenarioOutcomeResponse": {
+        "properties": {
+          "absolute_delta": {
+            "title": "Absolute Delta",
+            "type": "number"
+          },
+          "baseline_central": {
+            "title": "Baseline Central",
+            "type": "number"
+          },
+          "baseline_inbox_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Inbox Rank"
+          },
+          "baseline_severity": {
+            "enum": [
+              "HIGH",
+              "ELEVATED",
+              "WATCH",
+              "NORMAL",
+              "UNSUPPORTED"
+            ],
+            "title": "Baseline Severity",
+            "type": "string"
+          },
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/ScenarioCellResponse"
+            },
+            "title": "Cells",
+            "type": "array"
+          },
+          "entered_primary_inbox": {
+            "title": "Entered Primary Inbox",
+            "type": "boolean"
+          },
+          "first_crossing_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Crossing Date"
+          },
+          "lead_time_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead Time Days"
+          },
+          "left_primary_inbox": {
+            "title": "Left Primary Inbox",
+            "type": "boolean"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "materiality_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Materiality Status"
+          },
+          "relative_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relative Delta"
+          },
+          "scenario": {
+            "$ref": "#/components/schemas/ScenarioCatalogResponse"
+          },
+          "scenario_central": {
+            "title": "Scenario Central",
+            "type": "number"
+          },
+          "scenario_headline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Headline"
+          },
+          "scenario_inbox_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Inbox Rank"
+          },
+          "scenario_range_available": {
+            "title": "Scenario Range Available",
+            "type": "boolean"
+          },
+          "scenario_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Reason"
+          },
+          "scenario_severity": {
+            "enum": [
+              "HIGH",
+              "ELEVATED",
+              "WATCH",
+              "NORMAL",
+              "UNSUPPORTED"
+            ],
+            "title": "Scenario Severity",
+            "type": "string"
+          },
+          "severity_changed": {
+            "title": "Severity Changed",
+            "type": "boolean"
+          },
+          "threshold_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold Value"
+          }
+        },
+        "required": [
+          "scenario",
+          "baseline_severity",
+          "scenario_severity",
+          "baseline_inbox_rank",
+          "scenario_inbox_rank",
+          "baseline_central",
+          "scenario_central",
+          "threshold_value",
+          "absolute_delta",
+          "relative_delta",
+          "severity_changed",
+          "entered_primary_inbox",
+          "left_primary_inbox",
+          "first_crossing_date",
+          "lead_time_days",
+          "materiality_status",
+          "scenario_headline",
+          "scenario_reason",
+          "scenario_range_available",
+          "limitations",
+          "cells"
+        ],
+        "title": "ScenarioOutcomeResponse",
+        "type": "object"
+      },
+      "SeriesRef": {
+        "additionalProperties": false,
+        "properties": {
+          "org_code": {
+            "maxLength": 8,
+            "title": "Org Code",
+            "type": "string"
+          },
+          "profile_code": {
+            "maxLength": 8,
+            "title": "Profile Code",
+            "type": "string"
+          },
+          "region_code": {
+            "maxLength": 4,
+            "title": "Region Code",
+            "type": "string"
+          },
+          "series_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Series Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "org_code",
+          "profile_code",
+          "region_code",
+          "series_id"
+        ],
+        "title": "SeriesRef",
+        "type": "object"
+      },
+      "SeriesState": {
+        "additionalProperties": false,
+        "properties": {
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/StateCell"
+            },
+            "minItems": 1,
+            "title": "Cells",
+            "type": "array"
+          },
+          "displayed_severity": {
+            "enum": [
+              "HIGH",
+              "ELEVATED",
+              "WATCH",
+              "NORMAL",
+              "UNSUPPORTED"
+            ],
+            "title": "Displayed Severity",
+            "type": "string"
+          },
+          "max_severity_14d": {
+            "enum": [
+              "HIGH",
+              "ELEVATED",
+              "WATCH",
+              "NORMAL",
+              "UNSUPPORTED"
+            ],
+            "title": "Max Severity 14D",
+            "type": "string"
+          },
+          "max_severity_7d": {
+            "enum": [
+              "HIGH",
+              "ELEVATED",
+              "WATCH",
+              "NORMAL",
+              "UNSUPPORTED"
+            ],
+            "title": "Max Severity 7D",
+            "type": "string"
+          },
+          "severity_evidence_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity Evidence Date"
+          },
+          "severity_evidence_horizon": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity Evidence Horizon"
+          }
+        },
+        "required": [
+          "displayed_severity",
+          "max_severity_7d",
+          "max_severity_14d",
+          "cells"
+        ],
+        "title": "SeriesState",
+        "type": "object"
+      },
+      "SignalDecisionAlternativesResponse": {
+        "properties": {
+          "sets": {
+            "items": {
+              "$ref": "#/components/schemas/AlternativeSetResponse"
+            },
+            "title": "Sets",
+            "type": "array"
+          },
+          "signal_id": {
+            "title": "Signal Id",
+            "type": "string"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/ReviewSnapshotResponse"
+          }
+        },
+        "required": [
+          "snapshot",
+          "signal_id",
+          "sets"
+        ],
+        "title": "SignalDecisionAlternativesResponse",
+        "type": "object"
+      },
       "SignalExplanationResponse": {
         "properties": {
           "generation_mode": {
@@ -4728,6 +6409,66 @@
           "generation_mode"
         ],
         "title": "SignalExplanationResponse",
+        "type": "object"
+      },
+      "SignalStressTestResponse": {
+        "properties": {
+          "org_code": {
+            "title": "Org Code",
+            "type": "string"
+          },
+          "origin": {
+            "format": "date",
+            "title": "Origin",
+            "type": "string"
+          },
+          "outcomes": {
+            "items": {
+              "$ref": "#/components/schemas/ScenarioOutcomeResponse"
+            },
+            "title": "Outcomes",
+            "type": "array"
+          },
+          "profile_code": {
+            "title": "Profile Code",
+            "type": "string"
+          },
+          "region_code": {
+            "title": "Region Code",
+            "type": "string"
+          },
+          "series_id": {
+            "title": "Series Id",
+            "type": "string"
+          },
+          "signal_id": {
+            "title": "Signal Id",
+            "type": "string"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/ReviewSnapshotResponse"
+          },
+          "target": {
+            "enum": [
+              "registrations",
+              "cohort_hospitalizations"
+            ],
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "snapshot",
+          "signal_id",
+          "series_id",
+          "origin",
+          "target",
+          "org_code",
+          "region_code",
+          "profile_code",
+          "outcomes"
+        ],
+        "title": "SignalStressTestResponse",
         "type": "object"
       },
       "SourceProvenance": {
@@ -4803,6 +6544,93 @@
         "title": "SourceProvenance",
         "type": "object"
       },
+      "StateCell": {
+        "additionalProperties": false,
+        "properties": {
+          "central": {
+            "minimum": 0.0,
+            "title": "Central",
+            "type": "number"
+          },
+          "horizon": {
+            "maximum": 366.0,
+            "minimum": 1.0,
+            "title": "Horizon",
+            "type": "integer"
+          },
+          "lower": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lower"
+          },
+          "severity": {
+            "enum": [
+              "HIGH",
+              "ELEVATED",
+              "WATCH",
+              "NORMAL",
+              "UNSUPPORTED"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "target_date": {
+            "format": "date",
+            "title": "Target Date",
+            "type": "string"
+          },
+          "threshold_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold Status"
+          },
+          "threshold_value": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold Value"
+          },
+          "upper": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upper"
+          }
+        },
+        "required": [
+          "horizon",
+          "target_date",
+          "central",
+          "severity"
+        ],
+        "title": "StateCell",
+        "type": "object"
+      },
       "StatusThresholdsConfig": {
         "properties": {
           "elevated": {
@@ -4855,6 +6683,34 @@
           "queue_trend_national_median_4w"
         ],
         "title": "Thresholds",
+        "type": "object"
+      },
+      "TransferByHorizon": {
+        "additionalProperties": false,
+        "properties": {
+          "horizon": {
+            "maximum": 366.0,
+            "minimum": 1.0,
+            "title": "Horizon",
+            "type": "integer"
+          },
+          "moved": {
+            "minimum": 0.0,
+            "title": "Moved",
+            "type": "number"
+          },
+          "target_date": {
+            "format": "date",
+            "title": "Target Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "horizon",
+          "target_date",
+          "moved"
+        ],
+        "title": "TransferByHorizon",
         "type": "object"
       },
       "ValidationError": {
@@ -7611,6 +9467,482 @@
         "summary": "Get Region Hospitals",
         "tags": [
           "monitoring"
+        ]
+      }
+    },
+    "/api/v1/review-evidence/decision-alternatives": {
+      "get": {
+        "description": "Donor/budget alternative-set summaries for human review; never a ranking of actions.",
+        "operationId": "review_decision_alternatives_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          },
+          {
+            "description": "region code; all regions if omitted",
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "region code; all regions if omitted",
+              "title": "Region"
+            }
+          },
+          {
+            "description": "donor hospital code; all hospitals if omitted",
+            "in": "query",
+            "name": "org",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "donor hospital code; all hospitals if omitted",
+              "title": "Org"
+            }
+          },
+          {
+            "description": "profile code; all profiles if omitted",
+            "in": "query",
+            "name": "profile",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "profile code; all profiles if omitted",
+              "title": "Profile"
+            }
+          },
+          {
+            "description": "true: sets with published alternatives; false: abstained sets",
+            "in": "query",
+            "name": "with_alternatives",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "true: sets with published alternatives; false: abstained sets",
+              "title": "With Alternatives"
+            }
+          },
+          {
+            "description": "page size",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "page size",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AlternativeSetSummaryResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Review Decision Alternatives",
+        "tags": [
+          "review-evidence"
+        ]
+      }
+    },
+    "/api/v1/review-evidence/decision-alternatives/{set_id}": {
+      "get": {
+        "description": "One alternative set with its verified alternatives, states, non-claims and provenance.",
+        "operationId": "review_decision_alternative_set_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "set_id",
+            "required": true,
+            "schema": {
+              "title": "Set Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlternativeSetResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Review Decision Alternative Set",
+        "tags": [
+          "review-evidence"
+        ]
+      }
+    },
+    "/api/v1/review-evidence/overview": {
+      "get": {
+        "description": "Current review-evidence publication: stress-test scenario catalog and decision-alternative population.",
+        "operationId": "review_evidence_overview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewOverviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Review Evidence Overview",
+        "tags": [
+          "review-evidence"
+        ]
+      }
+    },
+    "/api/v1/review-evidence/signals/{signal_id}/decision-alternatives": {
+      "get": {
+        "description": "Retrospective mathematical alternative sets (or abstention) evaluated for one donor signal.",
+        "operationId": "review_signal_decision_alternatives_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "signal_id",
+            "required": true,
+            "schema": {
+              "title": "Signal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignalDecisionAlternativesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Review Signal Decision Alternatives",
+        "tags": [
+          "review-evidence"
+        ]
+      }
+    },
+    "/api/v1/review-evidence/signals/{signal_id}/stress-test": {
+      "get": {
+        "description": "Accepted non-causal stress-test outcomes and daily cells for one published signal's series.",
+        "operationId": "review_signal_stress_test_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "signal_id",
+            "required": true,
+            "schema": {
+              "title": "Signal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignalStressTestResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Review Signal Stress Test",
+        "tags": [
+          "review-evidence"
         ]
       }
     }

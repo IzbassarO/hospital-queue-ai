@@ -80,7 +80,7 @@ export function Facts({ items }: { items: Fact[] }) {
 }
 export function Lines({ items }: { items: string[] }) {
   return (
-    <ul className="list-disc space-y-1 pl-5">
+    <ul className="evidence-lines list-disc space-y-1 pl-5">
       {items.map((line, i) => (
         <li key={i}>{line}</li>
       ))}

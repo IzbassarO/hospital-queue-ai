@@ -6,6 +6,7 @@
   python -m app.cli revoke-key --id 3
   python -m app.cli publish-assurance --bundle /path/to/model_assurance.json
   python -m app.cli publish-operational-intelligence --bundle /path/to/operational_intelligence.json
+  python -m app.cli publish-review-evidence --bundle /path/to/review_evidence.json
 
 create-key prints the key once; only its SHA-256 is stored.
 """
@@ -40,6 +41,11 @@ def main(argv: list[str] | None = None) -> int:
         help="validate and publish an operational-intelligence JSON bundle",
     )
     publish_operational.add_argument("--bundle", type=Path, required=True)
+    publish_review = sub.add_parser(
+        "publish-review-evidence",
+        help="validate and publish a review-evidence JSON bundle (stress tests, decision alternatives)",
+    )
+    publish_review.add_argument("--bundle", type=Path, required=True)
     args = parser.parse_args(argv)
 
     with SessionLocal() as session:
@@ -92,6 +98,21 @@ def main(argv: list[str] | None = None) -> int:
             state = "published" if result.created else "already published; activated"
             print(
                 f"Operational intelligence {result.publication_id} {state} "
+                f"(snapshot {result.snapshot_id}, identity {result.publication_identity_sha256})"
+            )
+            return 0
+        if args.command == "publish-review-evidence":
+            from app.services import review_evidence
+
+            try:
+                parsed = review_evidence.load_bundle(args.bundle)
+                result = review_evidence.publish(session, parsed)
+            except (ValidationError, ConflictError) as exc:
+                print(f"Review-evidence publication failed: {exc}", file=sys.stderr)
+                return 2
+            state = "published" if result.created else "already published; activated"
+            print(
+                f"Review evidence {result.publication_id} {state} "
                 f"(snapshot {result.snapshot_id}, identity {result.publication_identity_sha256})"
             )
             return 0

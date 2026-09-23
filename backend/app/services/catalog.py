@@ -5,7 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.security import ROLE_LABELS, Principal
-from app.db.models import DimProfile, DimRegion, MartBuildInfo, ModelRegistry
+from app.db.models import DimOrganization, DimProfile, DimRegion, MartBuildInfo, ModelRegistry
 from app.schemas.catalog import (
     ConfigResponse,
     DictionariesResponse,
@@ -13,6 +13,7 @@ from app.schemas.catalog import (
     HealthResponse,
     MeResponse,
     ModelInfo,
+    OrganizationItem,
     ProfileItem,
 )
 from app.services.common import build_info, rnd
@@ -93,12 +94,17 @@ def dictionaries(session: Session) -> DictionariesResponse:
     info = build_info(session)
     regions = session.scalars(select(DimRegion).order_by(DimRegion.region_name)).all()
     profiles = session.scalars(select(DimProfile).order_by(DimProfile.profile_code)).all()
+    organizations = session.scalars(select(DimOrganization).order_by(DimOrganization.org_code)).all()
     return DictionariesResponse(
         national_code=info.national_code,
         regions=[DictionaryItem(code=r.region_code, name=r.region_name) for r in regions],
         profiles=[
             ProfileItem(code=p.profile_code, name=p.profile_name or p.profile_code, is_day_hospital=p.is_day_hospital)
             for p in profiles
+        ],
+        organizations=[
+            OrganizationItem(code=o.org_code, name=o.org_name or o.org_code, region_code=o.region_code)
+            for o in organizations
         ],
     )
 

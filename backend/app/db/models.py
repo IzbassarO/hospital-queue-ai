@@ -493,6 +493,222 @@ class OperationalSignal(Base):
     details: Mapped[dict] = mapped_column(JSONB)
 
 
+# ------------------------------------------------------------------- review evidence
+# Explicitly published projection of the two accepted EVALUATION_ONLY capabilities (forecast stress
+# tests and constrained decision alternatives). Human-review evidence only: never operational signals,
+# recommendations, routing, capacity checks or causal claims. Request-time code reads only these tables.
+class ReviewEvidenceSnapshot(Base):
+    __tablename__ = "review_evidence_snapshot"
+    __table_args__ = (
+        UniqueConstraint("publication_id", name="uq_review_evidence_snapshot_publication_id"),
+        UniqueConstraint("publication_identity_sha256", name="uq_review_evidence_snapshot_identity"),
+        Index(
+            "ux_review_evidence_snapshot_active",
+            "is_active",
+            unique=True,
+            postgresql_where=text("is_active"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    publication_id: Mapped[str] = mapped_column(String(128))
+    schema_version: Mapped[str] = mapped_column(String(64))
+    contract_version: Mapped[str] = mapped_column(String(32))
+    publication_identity_sha256: Mapped[str] = mapped_column(String(64))
+    bundle_sha256: Mapped[str] = mapped_column(String(64))
+    assurance_identity_sha256: Mapped[str] = mapped_column(String(64))
+    operational_publication_identity_sha256: Mapped[str] = mapped_column(String(64))
+    source_code_commit: Mapped[str] = mapped_column(String(40))
+    current_origin: Mapped[dt.date] = mapped_column(Date)
+    freshness_state: Mapped[str] = mapped_column(String(16))
+    publication_status: Mapped[str] = mapped_column(String(16))
+    generated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    published_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"), index=True)
+    scenario_count: Mapped[int] = mapped_column(Integer)
+    scenario_entity_count: Mapped[int] = mapped_column(Integer)
+    scenario_cell_count: Mapped[int] = mapped_column(Integer)
+    alternative_set_count: Mapped[int] = mapped_column(Integer)
+    alternative_count: Mapped[int] = mapped_column(Integer)
+    source_provenance: Mapped[dict] = mapped_column(JSONB)
+    limitations: Mapped[list] = mapped_column(JSONB)
+    alternatives_summary: Mapped[dict] = mapped_column(JSONB)
+
+
+class ReviewScenario(Base):
+    __tablename__ = "review_scenario"
+    __table_args__ = (UniqueConstraint("snapshot_id", "scenario_id", name="uq_review_scenario_snapshot_id"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[int] = mapped_column(ForeignKey("review_evidence_snapshot.id", ondelete="CASCADE"), index=True)
+    scenario_id: Mapped[str] = mapped_column(String(128))
+    scenario_type: Mapped[str] = mapped_column(String(32))
+    classification: Mapped[str] = mapped_column(String(48))
+    lever_type: Mapped[str] = mapped_column(String(64))
+    multiplier: Mapped[float | None] = mapped_column(Double)
+    scope_type: Mapped[str] = mapped_column(String(64))
+    horizon_start: Mapped[int] = mapped_column(SmallInteger)
+    horizon_end: Mapped[int] = mapped_column(SmallInteger)
+    target: Mapped[str] = mapped_column(String(32))
+    uncertainty_method: Mapped[str] = mapped_column(String(64))
+    uncertainty_label: Mapped[str] = mapped_column(String(64))
+    coverage_guarantee: Mapped[bool] = mapped_column(Boolean)
+    causal_effect_claimed: Mapped[bool] = mapped_column(Boolean)
+    serving_claim: Mapped[bool] = mapped_column(Boolean)
+    baseline_reproduction: Mapped[str | None] = mapped_column(String(16))
+    details: Mapped[dict] = mapped_column(JSONB)
+
+
+class ReviewScenarioEntity(Base):
+    __tablename__ = "review_scenario_entity"
+    __table_args__ = (
+        UniqueConstraint(
+            "snapshot_id",
+            "scenario_id",
+            "series_id",
+            "target",
+            "origin",
+            name="uq_review_scenario_entity",
+        ),
+        Index("ix_review_scenario_entity_signal", "snapshot_id", "signal_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[int] = mapped_column(ForeignKey("review_evidence_snapshot.id", ondelete="CASCADE"), index=True)
+    scenario_id: Mapped[str] = mapped_column(String(128))
+    series_id: Mapped[str] = mapped_column(String(64))
+    origin: Mapped[dt.date] = mapped_column(Date)
+    target: Mapped[str] = mapped_column(String(32))
+    org_code: Mapped[str] = mapped_column(String(8))
+    region_code: Mapped[str] = mapped_column(String(4))
+    profile_code: Mapped[str] = mapped_column(String(8))
+    signal_id: Mapped[str] = mapped_column(String(128))
+    baseline_severity: Mapped[str] = mapped_column(String(16))
+    scenario_severity: Mapped[str] = mapped_column(String(16))
+    baseline_inbox_rank: Mapped[int | None] = mapped_column(Integer)
+    scenario_inbox_rank: Mapped[int | None] = mapped_column(Integer)
+    baseline_central: Mapped[float] = mapped_column(Double)
+    scenario_central: Mapped[float] = mapped_column(Double)
+    threshold_value: Mapped[float | None] = mapped_column(Double)
+    absolute_delta: Mapped[float] = mapped_column(Double)
+    relative_delta: Mapped[float | None] = mapped_column(Double)
+    severity_changed: Mapped[bool] = mapped_column(Boolean)
+    entered_primary_inbox: Mapped[bool] = mapped_column(Boolean)
+    left_primary_inbox: Mapped[bool] = mapped_column(Boolean)
+    first_crossing_date: Mapped[dt.date | None] = mapped_column(Date)
+    lead_time_days: Mapped[int | None] = mapped_column(Integer)
+    materiality_status: Mapped[str | None] = mapped_column(String(64))
+    scenario_headline: Mapped[str | None] = mapped_column(Text)
+    scenario_reason: Mapped[str | None] = mapped_column(Text)
+    scenario_range_available: Mapped[bool] = mapped_column(Boolean)
+    details: Mapped[dict] = mapped_column(JSONB)
+
+
+class ReviewScenarioCell(Base):
+    __tablename__ = "review_scenario_cell"
+    __table_args__ = (
+        UniqueConstraint(
+            "snapshot_id",
+            "scenario_id",
+            "series_id",
+            "target",
+            "origin",
+            "target_date",
+            name="uq_review_scenario_cell",
+        ),
+        Index("ix_review_scenario_cell_series", "snapshot_id", "series_id", "target", "origin", "scenario_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[int] = mapped_column(ForeignKey("review_evidence_snapshot.id", ondelete="CASCADE"), index=True)
+    scenario_id: Mapped[str] = mapped_column(String(128))
+    series_id: Mapped[str] = mapped_column(String(64))
+    origin: Mapped[dt.date] = mapped_column(Date)
+    target: Mapped[str] = mapped_column(String(32))
+    target_date: Mapped[dt.date] = mapped_column(Date)
+    horizon: Mapped[int] = mapped_column(SmallInteger)
+    baseline_central: Mapped[float] = mapped_column(Double)
+    baseline_lower: Mapped[float | None] = mapped_column(Double)
+    baseline_upper: Mapped[float | None] = mapped_column(Double)
+    baseline_severity: Mapped[str] = mapped_column(String(16))
+    scenario_central: Mapped[float] = mapped_column(Double)
+    scenario_lower: Mapped[float | None] = mapped_column(Double)
+    scenario_upper: Mapped[float | None] = mapped_column(Double)
+    scenario_severity: Mapped[str] = mapped_column(String(16))
+    threshold_value: Mapped[float | None] = mapped_column(Double)
+    threshold_status: Mapped[str | None] = mapped_column(String(32))
+    scenario_uncertainty_status: Mapped[str] = mapped_column(String(48))
+    severity_changed: Mapped[bool] = mapped_column(Boolean)
+    source_reason_code: Mapped[str | None] = mapped_column(String(96))
+
+
+class ReviewAlternativeSet(Base):
+    __tablename__ = "review_alternative_set"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "set_id", name="uq_review_alternative_set_snapshot_id"),
+        Index("ix_review_alternative_set_signal", "snapshot_id", "signal_id"),
+        Index("ix_review_alternative_set_scope", "snapshot_id", "origin", "region_code", "org_code", "profile_code"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[int] = mapped_column(ForeignKey("review_evidence_snapshot.id", ondelete="CASCADE"), index=True)
+    set_id: Mapped[str] = mapped_column(String(128))
+    canonical_unit_id: Mapped[str] = mapped_column(String(128))
+    origin: Mapped[dt.date] = mapped_column(Date)
+    target: Mapped[str] = mapped_column(String(32))
+    signal_id: Mapped[str] = mapped_column(String(128))
+    org_code: Mapped[str] = mapped_column(String(8))
+    profile_code: Mapped[str] = mapped_column(String(8))
+    region_code: Mapped[str] = mapped_column(String(4))
+    series_id: Mapped[str] = mapped_column(String(64))
+    donor_severity: Mapped[str] = mapped_column(String(16))
+    priority_support_class: Mapped[str] = mapped_column(String(64))
+    materiality_status: Mapped[str | None] = mapped_column(String(64))
+    budget: Mapped[float] = mapped_column(Double)
+    abstained: Mapped[bool] = mapped_column(Boolean)
+    abstention_codes: Mapped[list] = mapped_column(JSONB)
+    receiver_candidates_considered: Mapped[int] = mapped_column(Integer)
+    receiver_candidates_eligible: Mapped[int] = mapped_column(Integer)
+    donor_minimum_transfer_fraction: Mapped[float | None] = mapped_column(Double)
+    shortlist_bound: Mapped[int] = mapped_column(Integer)
+    alternative_count: Mapped[int] = mapped_column(Integer)
+    verification_failure_count: Mapped[int] = mapped_column(Integer)
+    scientific_output_sha256: Mapped[str] = mapped_column(String(64))
+    details: Mapped[dict] = mapped_column(JSONB)
+
+
+class ReviewAlternative(Base):
+    __tablename__ = "review_alternative"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "set_id", "alternative_id", name="uq_review_alternative_snapshot_id"),
+        Index("ix_review_alternative_set", "snapshot_id", "set_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[int] = mapped_column(ForeignKey("review_evidence_snapshot.id", ondelete="CASCADE"), index=True)
+    set_id: Mapped[str] = mapped_column(String(128))
+    alternative_id: Mapped[str] = mapped_column(String(128))
+    position: Mapped[int] = mapped_column(SmallInteger)
+    donor_org_code: Mapped[str] = mapped_column(String(8))
+    receiver_org_code: Mapped[str] = mapped_column(String(8))
+    profile_code: Mapped[str] = mapped_column(String(8))
+    region_code: Mapped[str] = mapped_column(String(4))
+    transfer_fraction: Mapped[float] = mapped_column(Double)
+    transferred_total: Mapped[float] = mapped_column(Double)
+    donor_severity_before: Mapped[str] = mapped_column(String(16))
+    donor_severity_after: Mapped[str] = mapped_column(String(16))
+    receiver_severity_before: Mapped[str] = mapped_column(String(16))
+    receiver_severity_after: Mapped[str] = mapped_column(String(16))
+    verification_state: Mapped[str] = mapped_column(String(32))
+    forecast_support_tier: Mapped[str] = mapped_column(String(32))
+    receiver_range_evidence: Mapped[str] = mapped_column(String(16))
+    sensitivity_range_result: Mapped[str] = mapped_column(String(48))
+    feasibility_status: Mapped[str] = mapped_column(String(48))
+    receiver_no_worse_constraint_satisfied: Mapped[bool] = mapped_column(Boolean)
+    conservation_satisfied: Mapped[bool] = mapped_column(Boolean)
+    details: Mapped[dict] = mapped_column(JSONB)
+
+
 # ------------------------------------------------------------------ serving marts
 # Filled by ml/pipelines/build_marts.py (`make marts`, also at the end of `make predict`): one
 # transaction truncates and rebuilds all mart_* tables. No FKs to the data layer on purpose —

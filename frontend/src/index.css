@@ -217,6 +217,9 @@
   gap: 0.8rem;
   padding: 1.5rem;
 }
+.evidence-lines {
+  overflow-wrap: anywhere;
+}
 .facts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));

@@ -48,6 +48,13 @@ EXPECTED_OPERATIONS = {
     ("GET", "/api/v1/operational-intelligence/signals/{signal_id}/explanation"): ("operational_signal_explanation_get"),
     ("GET", "/api/v1/overview"): "overview_get",
     ("GET", "/api/v1/regions/{region_code}/hospitals"): "region_hospitals_list",
+    ("GET", "/api/v1/review-evidence/decision-alternatives"): "review_decision_alternatives_list",
+    ("GET", "/api/v1/review-evidence/decision-alternatives/{set_id}"): "review_decision_alternative_set_get",
+    ("GET", "/api/v1/review-evidence/overview"): "review_evidence_overview_get",
+    ("GET", "/api/v1/review-evidence/signals/{signal_id}/decision-alternatives"): (
+        "review_signal_decision_alternatives_get"
+    ),
+    ("GET", "/api/v1/review-evidence/signals/{signal_id}/stress-test"): "review_signal_stress_test_get",
     ("GET", "/api/v1/regions/{region_code}"): "region_get",
 }
 

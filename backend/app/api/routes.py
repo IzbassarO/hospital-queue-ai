@@ -29,6 +29,13 @@ from app.schemas.operational_intelligence import (
     SignalType,
     SupportStatus,
 )
+from app.schemas.review_evidence import (
+    AlternativeSetResponse,
+    AlternativeSetSummaryResponse,
+    ReviewOverviewResponse,
+    SignalDecisionAlternativesResponse,
+    SignalStressTestResponse,
+)
 from app.schemas.status import HospitalProfileCard, HospitalProfileStatus, OverviewResponse, RegionDetailResponse
 from app.services import (
     activity,
@@ -39,6 +46,7 @@ from app.services import (
     model_assurance,
     operational_intelligence,
     recommend,
+    review_evidence,
 )
 from app.services import status as status_service
 
@@ -449,6 +457,89 @@ def get_operational_forecasts(
         limit=page.limit,
         offset=page.offset,
     )
+
+
+# ------------------------------------------------------------------------------- review evidence
+@router.get(
+    "/review-evidence/overview",
+    response_model=ReviewOverviewResponse,
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="review_evidence_overview_get",
+    tags=["review-evidence"],
+)
+def get_review_evidence_overview(session: SessionDep, _: ViewerDep) -> ReviewOverviewResponse:
+    """Current review-evidence publication: stress-test scenario catalog and decision-alternative population."""
+    return review_evidence.overview(session)
+
+
+@router.get(
+    "/review-evidence/signals/{signal_id}/stress-test",
+    response_model=SignalStressTestResponse,
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="review_signal_stress_test_get",
+    tags=["review-evidence"],
+)
+def get_review_signal_stress_test(signal_id: str, session: SessionDep, _: ViewerDep) -> SignalStressTestResponse:
+    """Accepted non-causal stress-test outcomes and daily cells for one published signal's series."""
+    return review_evidence.signal_stress_test(session, signal_id)
+
+
+@router.get(
+    "/review-evidence/signals/{signal_id}/decision-alternatives",
+    response_model=SignalDecisionAlternativesResponse,
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="review_signal_decision_alternatives_get",
+    tags=["review-evidence"],
+)
+def get_review_signal_decision_alternatives(
+    signal_id: str, session: SessionDep, _: ViewerDep
+) -> SignalDecisionAlternativesResponse:
+    """Retrospective mathematical alternative sets (or abstention) evaluated for one donor signal."""
+    return review_evidence.signal_decision_alternatives(session, signal_id)
+
+
+@router.get(
+    "/review-evidence/decision-alternatives",
+    response_model=Page[AlternativeSetSummaryResponse],
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="review_decision_alternatives_list",
+    tags=["review-evidence"],
+)
+def get_review_decision_alternatives(
+    session: SessionDep,
+    page: PaginationDep,
+    _: ViewerDep,
+    origin: dt.date | None = None,
+    region: Annotated[str | None, Query(description="region code; all regions if omitted")] = None,
+    org: Annotated[str | None, Query(description="donor hospital code; all hospitals if omitted")] = None,
+    profile: Annotated[str | None, Query(description="profile code; all profiles if omitted")] = None,
+    with_alternatives: Annotated[
+        bool | None, Query(description="true: sets with published alternatives; false: abstained sets")
+    ] = None,
+) -> Page[AlternativeSetSummaryResponse]:
+    """Donor/budget alternative-set summaries for human review; never a ranking of actions."""
+    return review_evidence.list_alternative_sets(
+        session,
+        origin=origin,
+        region_code=region,
+        org_code=org,
+        profile_code=profile,
+        with_alternatives=with_alternatives,
+        limit=page.limit,
+        offset=page.offset,
+    )
+
+
+@router.get(
+    "/review-evidence/decision-alternatives/{set_id}",
+    response_model=AlternativeSetResponse,
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="review_decision_alternative_set_get",
+    tags=["review-evidence"],
+)
+def get_review_decision_alternative_set(set_id: str, session: SessionDep, _: ViewerDep) -> AlternativeSetResponse:
+    """One alternative set with its verified alternatives, states, non-claims and provenance."""
+    return review_evidence.get_alternative_set(session, set_id)
 
 
 @router.get(

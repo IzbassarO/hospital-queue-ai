@@ -54,7 +54,7 @@ const base = "/operational-intelligence";
 
 describe("Control Tower routes use published operational contracts", () => {
   it("Overview renders operational counts, region matrix, server-ranked signals and national forecast", async () => {
-    renderAt("/");
+    renderAt("/operations");
     expect(
       await screen.findByRole("heading", { name: t.tower.title }),
     ).toBeVisible();
@@ -353,7 +353,7 @@ describe("Control Tower routes use published operational contracts", () => {
 });
 
 const screens = [
-  ["/", `${base}/overview`],
+  ["/operations", `${base}/overview`],
   ["/signals", `${base}/signals`],
   ["/signals/pressure-1", `${base}/signals/pressure-1`],
   ["/regions/71", `${base}/regions/71`],
@@ -413,7 +413,7 @@ describe("Deliberate publication states", () => {
         ? jsonResponse({ items: [], total: 0, limit: 500, offset: 0 })
         : undefined,
     );
-    renderAt("/");
+    renderAt("/operations");
     expect(await screen.findByText(t.tower.noSignals)).toBeVisible();
     expect(await screen.findByText(t.tower.noForecast)).toBeVisible();
   });
@@ -430,7 +430,7 @@ describe("Deliberate publication states", () => {
           })
         : undefined,
     );
-    renderAt("/");
+    renderAt("/operations");
     expect(await screen.findByText(t.tower.degraded)).toBeVisible();
     expect(screen.getByText(t.tower.stale)).toBeVisible();
   });
@@ -492,7 +492,7 @@ describe("Deliberate publication states", () => {
         ? jsonResponse({ snapshot: {}, national: {}, regions: [] })
         : undefined,
     );
-    renderAt("/");
+    renderAt("/operations");
     expect(await screen.findByRole("alert")).toHaveTextContent(
       t.tower.shapeError,
     );
@@ -536,7 +536,7 @@ describe("Empty evidence and explanation variants", () => {
           ? jsonResponse({ items: [], total: 0, limit: 500, offset: 0 })
           : undefined,
     );
-    renderAt("/");
+    renderAt("/operations");
     expect(await screen.findByText(t.tower.emptyPublication)).toBeVisible();
     expect(screen.getByText(t.tower.noRegions)).toBeVisible();
   });

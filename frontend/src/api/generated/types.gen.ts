@@ -219,6 +219,356 @@ export type Alternative = {
 };
 
 /**
+ * AlternativeRow
+ */
+export type AlternativeRow = {
+  /**
+   * Alternative Id
+   */
+  alternative_id: string;
+  baseline_donor_state: SeriesState;
+  baseline_receiver_state: SeriesState;
+  /**
+   * Budget Constraint Satisfied
+   */
+  budget_constraint_satisfied: true;
+  /**
+   * Capacity Checked
+   */
+  capacity_checked: false;
+  /**
+   * Causal Effect Claimed
+   */
+  causal_effect_claimed: false;
+  /**
+   * Conservation Satisfied
+   */
+  conservation_satisfied: true;
+  donor: SeriesRef;
+  /**
+   * Donor Binding Cell
+   */
+  donor_binding_cell?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Donor Binding Horizons
+   */
+  donor_binding_horizons: Array<number>;
+  donor_inbox: InboxOutcome;
+  /**
+   * Donor Severity After
+   */
+  donor_severity_after:
+    "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED";
+  /**
+   * Donor Severity Before
+   */
+  donor_severity_before:
+    "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED";
+  /**
+   * Donor Support Class
+   */
+  donor_support_class: "DIRECT_SUPPORTED" | "FALLBACK_LIMITED" | "UNSUPPORTED";
+  /**
+   * Explanation Text
+   */
+  explanation_text: string;
+  /**
+   * Feasibility Status
+   */
+  feasibility_status: "NOT_PHYSICAL_CAPACITY_VALIDATED";
+  /**
+   * Forecast Support Tier
+   */
+  forecast_support_tier:
+    "DIRECT_SUPPORTED" | "FALLBACK_LIMITED" | "UNSUPPORTED";
+  /**
+   * Hierarchy Coherent
+   */
+  hierarchy_coherent: boolean;
+  /**
+   * Human Review Required
+   */
+  human_review_required: true;
+  /**
+   * Limitations
+   */
+  limitations: Array<string>;
+  /**
+   * Non Claims
+   */
+  non_claims: Array<string>;
+  receiver: SeriesRef;
+  /**
+   * Receiver Binding Cell
+   */
+  receiver_binding_cell?: {
+    [key: string]: unknown;
+  } | null;
+  receiver_inbox: InboxOutcome;
+  /**
+   * Receiver Min Central Headroom
+   */
+  receiver_min_central_headroom: number;
+  /**
+   * Receiver No Worse Constraint Satisfied
+   */
+  receiver_no_worse_constraint_satisfied: true;
+  /**
+   * Receiver Range Evidence
+   */
+  receiver_range_evidence: "COMPLETE" | "RANGE_LIMITED";
+  /**
+   * Receiver Severity After
+   */
+  receiver_severity_after:
+    "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED";
+  /**
+   * Receiver Severity Before
+   */
+  receiver_severity_before:
+    "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED";
+  /**
+   * Receiver Support Class
+   */
+  receiver_support_class:
+    "DIRECT_SUPPORTED" | "FALLBACK_LIMITED" | "UNSUPPORTED";
+  scenario_donor_state: SeriesState;
+  scenario_receiver_state: SeriesState;
+  /**
+   * Sensitivity Range Result
+   */
+  sensitivity_range_result:
+    | "ROBUST_TO_TRANSFORMED_RANGE"
+    | "NOT_ROBUST_TO_TRANSFORMED_RANGE"
+    | "RANGE_EVIDENCE_INCOMPLETE";
+  /**
+   * Source Central Goal Satisfied
+   */
+  source_central_goal_satisfied: true;
+  /**
+   * Transfer Fraction
+   */
+  transfer_fraction: number;
+  /**
+   * Transfer Fraction Certification
+   */
+  transfer_fraction_certification: string;
+  /**
+   * Transferred By Horizon
+   */
+  transferred_by_horizon: Array<TransferByHorizon>;
+  /**
+   * Transferred Total
+   */
+  transferred_total: number;
+  /**
+   * Verification State
+   */
+  verification_state:
+    "VERIFIED_FULL_ENGINE" | "FAST_PATH_ONLY" | "VERIFICATION_FAILED";
+};
+
+/**
+ * AlternativeSetResponse
+ */
+export type AlternativeSetResponse = {
+  /**
+   * Abstained
+   */
+  abstained: boolean;
+  /**
+   * Abstention Codes
+   */
+  abstention_codes: Array<string>;
+  /**
+   * Alternatives
+   */
+  alternatives: Array<AlternativeRow>;
+  /**
+   * Budget
+   */
+  budget: number;
+  /**
+   * Canonical Unit Id
+   */
+  canonical_unit_id: string;
+  donor: DonorRef;
+  /**
+   * Donor Minimum Transfer Fraction
+   */
+  donor_minimum_transfer_fraction?: number | null;
+  /**
+   * Execution Mode
+   */
+  execution_mode: "EVALUATION";
+  /**
+   * Human Review Required
+   */
+  human_review_required: true;
+  /**
+   * Limitations
+   */
+  limitations: Array<string>;
+  /**
+   * Origin
+   */
+  origin: string;
+  /**
+   * Publication Identity Sha256
+   */
+  publication_identity_sha256: string;
+  /**
+   * Receiver Candidates Considered
+   */
+  receiver_candidates_considered: number;
+  /**
+   * Receiver Candidates Eligible
+   */
+  receiver_candidates_eligible: number;
+  /**
+   * Rejected Receiver Counts
+   */
+  rejected_receiver_counts: {
+    [key: string]: number;
+  };
+  /**
+   * Scientific Output Sha256
+   */
+  scientific_output_sha256: string;
+  /**
+   * Serving Claim
+   */
+  serving_claim: false;
+  /**
+   * Set Id
+   */
+  set_id: string;
+  /**
+   * Shortlist Bound
+   */
+  shortlist_bound: number;
+  /**
+   * Source Provenance
+   */
+  source_provenance: {
+    [key: string]: SourceProvenance;
+  };
+  /**
+   * Target
+   */
+  target: "registrations" | "cohort_hospitalizations";
+  /**
+   * Verification Failure Count
+   */
+  verification_failure_count: number;
+};
+
+/**
+ * AlternativeSetSummaryResponse
+ */
+export type AlternativeSetSummaryResponse = {
+  /**
+   * Abstained
+   */
+  abstained: boolean;
+  /**
+   * Abstention Codes
+   */
+  abstention_codes: Array<string>;
+  /**
+   * Alternative Count
+   */
+  alternative_count: number;
+  /**
+   * Budget
+   */
+  budget: number;
+  /**
+   * Canonical Unit Id
+   */
+  canonical_unit_id: string;
+  donor: DonorRef;
+  /**
+   * Donor Minimum Transfer Fraction
+   */
+  donor_minimum_transfer_fraction: number | null;
+  /**
+   * Origin
+   */
+  origin: string;
+  /**
+   * Publication Identity Sha256
+   */
+  publication_identity_sha256: string;
+  /**
+   * Receiver Candidates Considered
+   */
+  receiver_candidates_considered: number;
+  /**
+   * Receiver Candidates Eligible
+   */
+  receiver_candidates_eligible: number;
+  /**
+   * Set Id
+   */
+  set_id: string;
+  /**
+   * Target
+   */
+  target: "registrations" | "cohort_hospitalizations";
+};
+
+/**
+ * AlternativesSummary
+ *
+ * Accepted population metrics copied from Model Assurance evidence; not recomputed here.
+ */
+export type AlternativesSummary = {
+  /**
+   * Alternative Count
+   */
+  alternative_count: number;
+  /**
+   * Evaluation Population
+   */
+  evaluation_population: string;
+  /**
+   * Full Verification Success Rate
+   */
+  full_verification_success_rate: number;
+  /**
+   * Origins
+   */
+  origins: Array<string>;
+  /**
+   * Receiver Worsening Count
+   */
+  receiver_worsening_count: number;
+  /**
+   * Set Count
+   */
+  set_count: number;
+  /**
+   * Sets With Alternatives
+   */
+  sets_with_alternatives: number;
+  /**
+   * Transfer Budget Ladder
+   */
+  transfer_budget_ladder: Array<number>;
+  /**
+   * Unit Count
+   */
+  unit_count: number;
+  /**
+   * Verification Failure Count
+   */
+  verification_failure_count: number;
+};
+
+/**
  * AnomalyEvidence
  */
 export type AnomalyEvidence = {
@@ -858,6 +1208,12 @@ export type DictionariesResponse = {
    */
   national_code: string;
   /**
+   * Organizations
+   *
+   * medical organizations (hospital codes with names) for display
+   */
+  organizations?: Array<OrganizationItem>;
+  /**
    * Profiles
    */
   profiles: Array<ProfileItem>;
@@ -879,6 +1235,52 @@ export type DictionaryItem = {
    * Name
    */
   name: string;
+};
+
+/**
+ * DonorRef
+ */
+export type DonorRef = {
+  /**
+   * Binding Horizons
+   */
+  binding_horizons: Array<number>;
+  /**
+   * Displayed Severity
+   */
+  displayed_severity: "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED";
+  /**
+   * Inbox Rank
+   */
+  inbox_rank?: number | null;
+  /**
+   * Materiality Status
+   */
+  materiality_status?: string | null;
+  /**
+   * Org Code
+   */
+  org_code: string;
+  /**
+   * Priority Support Class
+   */
+  priority_support_class: string;
+  /**
+   * Profile Code
+   */
+  profile_code: string;
+  /**
+   * Region Code
+   */
+  region_code: string;
+  /**
+   * Series Id
+   */
+  series_id: string;
+  /**
+   * Signal Id
+   */
+  signal_id: string;
 };
 
 /**
@@ -1414,6 +1816,36 @@ export type HospitalProfileStatus = {
    * Status Label
    */
   status_label: string;
+};
+
+/**
+ * InboxOutcome
+ */
+export type InboxOutcome = {
+  /**
+   * Baseline Inbox Rank
+   */
+  baseline_inbox_rank?: number | null;
+  /**
+   * Baseline Severity
+   */
+  baseline_severity: "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED";
+  /**
+   * Entered Primary Inbox
+   */
+  entered_primary_inbox: boolean;
+  /**
+   * Left Primary Inbox
+   */
+  left_primary_inbox: boolean;
+  /**
+   * Scenario Inbox Rank
+   */
+  scenario_inbox_rank?: number | null;
+  /**
+   * Scenario Severity
+   */
+  scenario_severity: "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED";
 };
 
 /**
@@ -2191,6 +2623,24 @@ export type OperationalSnapshotResponse = {
 };
 
 /**
+ * OrganizationItem
+ */
+export type OrganizationItem = {
+  /**
+   * Code
+   */
+  code: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Region Code
+   */
+  region_code: string | null;
+};
+
+/**
  * OverviewResponse
  */
 export type OverviewResponse = {
@@ -2242,6 +2692,30 @@ export type PageAlertItem = {
    * Items
    */
   items: Array<AlertItem>;
+  /**
+   * Limit
+   */
+  limit: number;
+  /**
+   * Offset
+   */
+  offset: number;
+  /**
+   * Total
+   *
+   * rows matching the filters, before limit/offset
+   */
+  total: number;
+};
+
+/**
+ * Page[AlternativeSetSummaryResponse]
+ */
+export type PageAlternativeSetSummaryResponse = {
+  /**
+   * Items
+   */
+  items: Array<AlternativeSetSummaryResponse>;
   /**
    * Limit
    */
@@ -2729,6 +3203,439 @@ export type RegionProfileStatus = {
 };
 
 /**
+ * ReviewOverviewResponse
+ */
+export type ReviewOverviewResponse = {
+  alternatives_summary: AlternativesSummary;
+  /**
+   * Scenarios
+   */
+  scenarios: Array<ScenarioCatalogResponse>;
+  snapshot: ReviewSnapshotResponse;
+};
+
+/**
+ * ReviewSnapshotResponse
+ */
+export type ReviewSnapshotResponse = {
+  /**
+   * Alternative Count
+   */
+  alternative_count: number;
+  /**
+   * Alternative Set Count
+   */
+  alternative_set_count: number;
+  /**
+   * Assurance Identity Sha256
+   */
+  assurance_identity_sha256: string;
+  /**
+   * Bundle Sha256
+   */
+  bundle_sha256: string;
+  /**
+   * Contract Version
+   */
+  contract_version: string;
+  /**
+   * Current Origin
+   */
+  current_origin: string;
+  /**
+   * Freshness State
+   */
+  freshness_state: "FRESH" | "STALE" | "DEGRADED" | "UNKNOWN";
+  /**
+   * Generated At
+   */
+  generated_at: string | null;
+  /**
+   * Limitations
+   */
+  limitations: Array<string>;
+  /**
+   * Operational Publication Identity Sha256
+   */
+  operational_publication_identity_sha256: string;
+  /**
+   * Publication Id
+   */
+  publication_id: string;
+  /**
+   * Publication Identity Sha256
+   */
+  publication_identity_sha256: string;
+  /**
+   * Publication Status
+   */
+  publication_status: "AVAILABLE" | "EMPTY";
+  /**
+   * Published At
+   */
+  published_at: string;
+  /**
+   * Scenario Cell Count
+   */
+  scenario_cell_count: number;
+  /**
+   * Scenario Count
+   */
+  scenario_count: number;
+  /**
+   * Scenario Entity Count
+   */
+  scenario_entity_count: number;
+  /**
+   * Schema Version
+   */
+  schema_version: string;
+  /**
+   * Source Code Commit
+   */
+  source_code_commit: string;
+  /**
+   * Source Provenance
+   */
+  source_provenance: {
+    [key: string]: SourceProvenance;
+  };
+};
+
+/**
+ * ScenarioCatalogResponse
+ */
+export type ScenarioCatalogResponse = {
+  /**
+   * Baseline Reproduction
+   */
+  baseline_reproduction?: "PASS" | null;
+  /**
+   * Causal Effect Claimed
+   */
+  causal_effect_claimed: false;
+  /**
+   * Classification
+   */
+  classification:
+    "SAFE_NON_CAUSAL_STRESS_TEST" | "MECHANISTIC_ACCOUNTING_SCENARIO";
+  /**
+   * Coverage Guarantee
+   */
+  coverage_guarantee: false;
+  /**
+   * Evidence Facts
+   */
+  evidence_facts?: Array<string>;
+  /**
+   * Horizon End
+   */
+  horizon_end: number;
+  /**
+   * Horizon Start
+   */
+  horizon_start: number;
+  /**
+   * Lever Type
+   */
+  lever_type: string;
+  /**
+   * Limitations
+   */
+  limitations?: Array<string>;
+  /**
+   * Multiplier
+   */
+  multiplier?: number | null;
+  network_summary: ScenarioNetworkSummary;
+  /**
+   * Scenario Id
+   */
+  scenario_id: string;
+  /**
+   * Scenario Type
+   */
+  scenario_type: "identity" | "demand_multiplier";
+  /**
+   * Scope Type
+   */
+  scope_type: string;
+  /**
+   * Serving Claim
+   */
+  serving_claim: false;
+  /**
+   * Target
+   */
+  target: "registrations" | "cohort_hospitalizations";
+  /**
+   * Uncertainty Label
+   */
+  uncertainty_label: string;
+  /**
+   * Uncertainty Method
+   */
+  uncertainty_method: string;
+};
+
+/**
+ * ScenarioCellResponse
+ */
+export type ScenarioCellResponse = {
+  /**
+   * Baseline Central
+   */
+  baseline_central: number;
+  /**
+   * Baseline Lower
+   */
+  baseline_lower: number | null;
+  /**
+   * Baseline Severity
+   */
+  baseline_severity: "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED";
+  /**
+   * Baseline Upper
+   */
+  baseline_upper: number | null;
+  /**
+   * Horizon
+   */
+  horizon: number;
+  /**
+   * Scenario Central
+   */
+  scenario_central: number;
+  /**
+   * Scenario Lower
+   */
+  scenario_lower: number | null;
+  /**
+   * Scenario Severity
+   */
+  scenario_severity: "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED";
+  /**
+   * Scenario Uncertainty Status
+   */
+  scenario_uncertainty_status:
+    | "TRANSFORMED_BASELINE_UNCERTAINTY_RANGE"
+    | "UNAVAILABLE"
+    | "NOT_SCENARIO_ADJUSTED";
+  /**
+   * Scenario Upper
+   */
+  scenario_upper: number | null;
+  /**
+   * Severity Changed
+   */
+  severity_changed: boolean;
+  /**
+   * Source Reason Code
+   */
+  source_reason_code: string | null;
+  /**
+   * Target Date
+   */
+  target_date: string;
+  /**
+   * Threshold Status
+   */
+  threshold_status: string | null;
+  /**
+   * Threshold Value
+   */
+  threshold_value: number | null;
+};
+
+/**
+ * ScenarioNetworkSummary
+ *
+ * Population-level counts copied from the accepted scenario summary; never recomputed.
+ */
+export type ScenarioNetworkSummary = {
+  /**
+   * Daily Cells Total
+   */
+  daily_cells_total: number;
+  /**
+   * Entity Count
+   */
+  entity_count: number;
+  /**
+   * Entity Severity Changed Count
+   */
+  entity_severity_changed_count: number;
+  /**
+   * Severity Changed Count
+   */
+  severity_changed_count: number;
+  /**
+   * Severity Changed Share
+   */
+  severity_changed_share: number;
+  /**
+   * Severity Counts
+   */
+  severity_counts: {
+    [key: string]: number;
+  };
+};
+
+/**
+ * ScenarioOutcomeResponse
+ */
+export type ScenarioOutcomeResponse = {
+  /**
+   * Absolute Delta
+   */
+  absolute_delta: number;
+  /**
+   * Baseline Central
+   */
+  baseline_central: number;
+  /**
+   * Baseline Inbox Rank
+   */
+  baseline_inbox_rank: number | null;
+  /**
+   * Baseline Severity
+   */
+  baseline_severity: "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED";
+  /**
+   * Cells
+   */
+  cells: Array<ScenarioCellResponse>;
+  /**
+   * Entered Primary Inbox
+   */
+  entered_primary_inbox: boolean;
+  /**
+   * First Crossing Date
+   */
+  first_crossing_date: string | null;
+  /**
+   * Lead Time Days
+   */
+  lead_time_days: number | null;
+  /**
+   * Left Primary Inbox
+   */
+  left_primary_inbox: boolean;
+  /**
+   * Limitations
+   */
+  limitations: Array<string>;
+  /**
+   * Materiality Status
+   */
+  materiality_status: string | null;
+  /**
+   * Relative Delta
+   */
+  relative_delta: number | null;
+  scenario: ScenarioCatalogResponse;
+  /**
+   * Scenario Central
+   */
+  scenario_central: number;
+  /**
+   * Scenario Headline
+   */
+  scenario_headline: string | null;
+  /**
+   * Scenario Inbox Rank
+   */
+  scenario_inbox_rank: number | null;
+  /**
+   * Scenario Range Available
+   */
+  scenario_range_available: boolean;
+  /**
+   * Scenario Reason
+   */
+  scenario_reason: string | null;
+  /**
+   * Scenario Severity
+   */
+  scenario_severity: "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED";
+  /**
+   * Severity Changed
+   */
+  severity_changed: boolean;
+  /**
+   * Threshold Value
+   */
+  threshold_value: number | null;
+};
+
+/**
+ * SeriesRef
+ */
+export type SeriesRef = {
+  /**
+   * Org Code
+   */
+  org_code: string;
+  /**
+   * Profile Code
+   */
+  profile_code: string;
+  /**
+   * Region Code
+   */
+  region_code: string;
+  /**
+   * Series Id
+   */
+  series_id: string;
+};
+
+/**
+ * SeriesState
+ */
+export type SeriesState = {
+  /**
+   * Cells
+   */
+  cells: Array<StateCell>;
+  /**
+   * Displayed Severity
+   */
+  displayed_severity: "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED";
+  /**
+   * Max Severity 14D
+   */
+  max_severity_14d: "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED";
+  /**
+   * Max Severity 7D
+   */
+  max_severity_7d: "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED";
+  /**
+   * Severity Evidence Date
+   */
+  severity_evidence_date?: string | null;
+  /**
+   * Severity Evidence Horizon
+   */
+  severity_evidence_horizon?: number | null;
+};
+
+/**
+ * SignalDecisionAlternativesResponse
+ */
+export type SignalDecisionAlternativesResponse = {
+  /**
+   * Sets
+   */
+  sets: Array<AlternativeSetResponse>;
+  /**
+   * Signal Id
+   */
+  signal_id: string;
+  snapshot: ReviewSnapshotResponse;
+};
+
+/**
  * SignalExplanationResponse
  */
 export type SignalExplanationResponse = {
@@ -2763,6 +3670,45 @@ export type SignalExplanationResponse = {
 };
 
 /**
+ * SignalStressTestResponse
+ */
+export type SignalStressTestResponse = {
+  /**
+   * Org Code
+   */
+  org_code: string;
+  /**
+   * Origin
+   */
+  origin: string;
+  /**
+   * Outcomes
+   */
+  outcomes: Array<ScenarioOutcomeResponse>;
+  /**
+   * Profile Code
+   */
+  profile_code: string;
+  /**
+   * Region Code
+   */
+  region_code: string;
+  /**
+   * Series Id
+   */
+  series_id: string;
+  /**
+   * Signal Id
+   */
+  signal_id: string;
+  snapshot: ReviewSnapshotResponse;
+  /**
+   * Target
+   */
+  target: "registrations" | "cohort_hospitalizations";
+};
+
+/**
  * SourceProvenance
  */
 export type SourceProvenance = {
@@ -2790,6 +3736,44 @@ export type SourceProvenance = {
    * Scientific Identity Sha256
    */
   scientific_identity_sha256: string;
+};
+
+/**
+ * StateCell
+ */
+export type StateCell = {
+  /**
+   * Central
+   */
+  central: number;
+  /**
+   * Horizon
+   */
+  horizon: number;
+  /**
+   * Lower
+   */
+  lower?: number | null;
+  /**
+   * Severity
+   */
+  severity: "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED";
+  /**
+   * Target Date
+   */
+  target_date: string;
+  /**
+   * Threshold Status
+   */
+  threshold_status?: string | null;
+  /**
+   * Threshold Value
+   */
+  threshold_value?: number | null;
+  /**
+   * Upper
+   */
+  upper?: number | null;
 };
 
 /**
@@ -2828,6 +3812,24 @@ export type Thresholds = {
    * national median raw trend of hospital × profile rows (% per week); queue_trend_4w is relative to it
    */
   queue_trend_national_median_4w: number | null;
+};
+
+/**
+ * TransferByHorizon
+ */
+export type TransferByHorizon = {
+  /**
+   * Horizon
+   */
+  horizon: number;
+  /**
+   * Moved
+   */
+  moved: number;
+  /**
+   * Target Date
+   */
+  target_date: string;
 };
 
 /**
@@ -4238,3 +5240,250 @@ export type RegionHospitalsListResponses = {
 
 export type RegionHospitalsListResponse =
   RegionHospitalsListResponses[keyof RegionHospitalsListResponses];
+
+export type ReviewDecisionAlternativesListData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Origin
+     */
+    origin?: string | null;
+    /**
+     * Region
+     *
+     * region code; all regions if omitted
+     */
+    region?: string | null;
+    /**
+     * Org
+     *
+     * donor hospital code; all hospitals if omitted
+     */
+    org?: string | null;
+    /**
+     * Profile
+     *
+     * profile code; all profiles if omitted
+     */
+    profile?: string | null;
+    /**
+     * With Alternatives
+     *
+     * true: sets with published alternatives; false: abstained sets
+     */
+    with_alternatives?: boolean | null;
+    /**
+     * Limit
+     *
+     * page size
+     */
+    limit?: number;
+    /**
+     * Offset
+     *
+     * rows to skip
+     */
+    offset?: number;
+  };
+  url: "/api/v1/review-evidence/decision-alternatives";
+};
+
+export type ReviewDecisionAlternativesListErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ReviewDecisionAlternativesListError =
+  ReviewDecisionAlternativesListErrors[keyof ReviewDecisionAlternativesListErrors];
+
+export type ReviewDecisionAlternativesListResponses = {
+  /**
+   * Successful Response
+   */
+  200: PageAlternativeSetSummaryResponse;
+};
+
+export type ReviewDecisionAlternativesListResponse =
+  ReviewDecisionAlternativesListResponses[keyof ReviewDecisionAlternativesListResponses];
+
+export type ReviewDecisionAlternativeSetGetData = {
+  body?: never;
+  path: {
+    /**
+     * Set Id
+     */
+    set_id: string;
+  };
+  query?: never;
+  url: "/api/v1/review-evidence/decision-alternatives/{set_id}";
+};
+
+export type ReviewDecisionAlternativeSetGetErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ReviewDecisionAlternativeSetGetError =
+  ReviewDecisionAlternativeSetGetErrors[keyof ReviewDecisionAlternativeSetGetErrors];
+
+export type ReviewDecisionAlternativeSetGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: AlternativeSetResponse;
+};
+
+export type ReviewDecisionAlternativeSetGetResponse =
+  ReviewDecisionAlternativeSetGetResponses[keyof ReviewDecisionAlternativeSetGetResponses];
+
+export type ReviewEvidenceOverviewGetData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/review-evidence/overview";
+};
+
+export type ReviewEvidenceOverviewGetErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+};
+
+export type ReviewEvidenceOverviewGetError =
+  ReviewEvidenceOverviewGetErrors[keyof ReviewEvidenceOverviewGetErrors];
+
+export type ReviewEvidenceOverviewGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: ReviewOverviewResponse;
+};
+
+export type ReviewEvidenceOverviewGetResponse =
+  ReviewEvidenceOverviewGetResponses[keyof ReviewEvidenceOverviewGetResponses];
+
+export type ReviewSignalDecisionAlternativesGetData = {
+  body?: never;
+  path: {
+    /**
+     * Signal Id
+     */
+    signal_id: string;
+  };
+  query?: never;
+  url: "/api/v1/review-evidence/signals/{signal_id}/decision-alternatives";
+};
+
+export type ReviewSignalDecisionAlternativesGetErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ReviewSignalDecisionAlternativesGetError =
+  ReviewSignalDecisionAlternativesGetErrors[keyof ReviewSignalDecisionAlternativesGetErrors];
+
+export type ReviewSignalDecisionAlternativesGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: SignalDecisionAlternativesResponse;
+};
+
+export type ReviewSignalDecisionAlternativesGetResponse =
+  ReviewSignalDecisionAlternativesGetResponses[keyof ReviewSignalDecisionAlternativesGetResponses];
+
+export type ReviewSignalStressTestGetData = {
+  body?: never;
+  path: {
+    /**
+     * Signal Id
+     */
+    signal_id: string;
+  };
+  query?: never;
+  url: "/api/v1/review-evidence/signals/{signal_id}/stress-test";
+};
+
+export type ReviewSignalStressTestGetErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ReviewSignalStressTestGetError =
+  ReviewSignalStressTestGetErrors[keyof ReviewSignalStressTestGetErrors];
+
+export type ReviewSignalStressTestGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: SignalStressTestResponse;
+};
+
+export type ReviewSignalStressTestGetResponse =
+  ReviewSignalStressTestGetResponses[keyof ReviewSignalStressTestGetResponses];

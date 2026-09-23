@@ -1,4 +1,15 @@
-# Frontend — Control Tower Experience v1
+# Frontend — Guided Decision Journey (primary) and Control Tower (operations view)
+
+Since Slice 6 the primary demo experience is the **guided decision journey** at `/` → `/demo/detect`: five focused
+scenes (Обнаружение · Понимание · Стресс-тест · Разбор · Доверие) with a progress bar, Previous/Next controls and
+keyboard arrows, dark navy canvas, warm paper surfaces for meaning and a restrained cyan accent. It is built from
+`src/demo/*` (layout, scenes, SVG charts, `language.ts` human-language mapping, `api.ts` review-evidence hooks,
+`motion.ts` finite animations honouring `prefers-reduced-motion`) and Russian copy in `src/i18n/demo.ts`. Data,
+scene contents, the review-evidence publication and tests are documented in
+[demo-publication-slice-6.md](demo-publication-slice-6.md). The Control Tower below is retained unchanged as the
+secondary operations view at `/operations` (its drill-down routes keep their paths); `/` no longer renders it.
+
+## Control Tower Experience v1 (operations view)
 
 The Kazakhstan Hospital Flow Control Tower presents published signals, forecasts and versioned evidence for human decision support. ML CORE remains closed/frozen. Pressure means `historical_flow_proxy_v1`; it does not measure physical capacity. Decision alternatives remain retrospective mathematical alternatives for human review and are shown only as an assurance capability.
 
@@ -18,7 +29,7 @@ Let `OI` mean `/operational-intelligence` in this table.
 
 | Screen / route | Removed from mounted screen | New calls, hooks, adapters and consumers | Behavior proof in `src/test/routes.test.tsx` |
 | --- | --- | --- | --- |
-| Overview `/` | `/overview` (`useOverview`), `/config` (`useConfig`) | `OI/overview` → `useOperationalOverview` → `overviewView` → `OverviewPage`, `Publication`, `Summary`, regional matrix; `OI/signals?limit=5&offset=0` → `useSignals` → `signalView` → `SignalList`; `OI/forecasts?level=national&origin=…&limit=500&offset=…` → `useForecasts` → `forecastGroups` → `ForecastPanel` | “Overview renders operational counts, region matrix, server-ranked signals and national forecast” asserts response values and exact endpoint/filter use |
+| Overview `/operations` (formerly `/`) | `/overview` (`useOverview`), `/config` (`useConfig`) | `OI/overview` → `useOperationalOverview` → `overviewView` → `OverviewPage`, `Publication`, `Summary`, regional matrix; `OI/signals?limit=5&offset=0` → `useSignals` → `signalView` → `SignalList`; `OI/forecasts?level=national&origin=…&limit=500&offset=…` → `useForecasts` → `forecastGroups` → `ForecastPanel` | “Overview renders operational counts, region matrix, server-ranked signals and national forecast” asserts response values and exact endpoint/filter use |
 | Signals `/signals`; compatibility `/alerts` | `/alerts` (`useAlerts`), `/config` | `OI/signals?region=&profile=&severity=&support=&org=&limit=20&offset=` → `useSignals` → `signalView` → `AlertsPage` / `SignalList`; `OI/overview` → `useOperationalOverview` → `overviewView` → `Publication` | Both route aliases render; server filter results, URL state, pagination reset, rank and separate severity/support styles are asserted |
 | Investigation `/signals/:signalId` | New screen | `OI/signals/{id}` → `useSignal` → `signalView` → `SignalPage`; `OI/forecasts?origin=&org=&region=&profile=&target=&level=&limit=500&offset=` → `useForecasts` → `forecastGroups` → `ForecastPanel` | “Signal detail loads its endpoint…” checks limitations, historical reference, interval values, coverage and matching forecast query |
 | Explanation drawer | New experience; old hospital factor panel is unmounted | `OI/signals/{id}/explanation` → `useExplanation` → `explanationView` → `ExplanationDrawer`, requested on open | “Explain opens a deterministic evidence drawer…” proves endpoint, all sections, focus trap, Escape, inert background and focus restoration; fallback, error and publication mismatch tests |
@@ -30,7 +41,7 @@ The assurance query reads snapshot → capabilities → snapshot and rejects a d
 
 ## Product experience
 
-Navigation is Overview → Signals → Evidence & Assurance. Region and hospital routes are drill-down destinations. `/alerts` and `/models` remain functional aliases. Old `status=high|elevated|normal|insufficient_data` signal links map to the corresponding severity enum; region/profile query parameters are retained. The old regional `offset` no longer pages a legacy hospital table.
+Navigation is Overview (`/operations`) → Signals → Evidence & Assurance, with a «Гид по системе» link back to the guided journey. Region and hospital routes are drill-down destinations. `/alerts` and `/models` remain functional aliases. Old `status=high|elevated|normal|insufficient_data` signal links map to the corresponding severity enum; region/profile query parameters are retained. The old regional `offset` no longer pages a legacy hospital table.
 
 Overview shows published signal counts, severity distribution, support mix, a regional matrix, the first five server-ranked signals and a selectable national forecast series. Counts include all published signal states and are not described as patients, live events or physical capacity. No map geometry is fabricated. No client-side severity sorting is applied.
 

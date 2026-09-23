@@ -53,16 +53,11 @@ class SourceProvenance(BaseModel):
 class RawQuantiles(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    p10: float = Field(ge=0)
-    p50: float = Field(ge=0)
-    p90: float = Field(ge=0)
+    # Unrepaired model evidence can be negative or crossed; never repair it at publication.
+    p10: float = Field(allow_inf_nan=False)
+    p50: float = Field(allow_inf_nan=False)
+    p90: float = Field(allow_inf_nan=False)
     semantics: Literal["UNCHANGED_MODEL_EVIDENCE"]
-
-    @model_validator(mode="after")
-    def ordered(self) -> RawQuantiles:
-        if not self.p10 <= self.p50 <= self.p90:
-            raise ValueError("raw quantiles must satisfy p10 <= p50 <= p90")
-        return self
 
 
 class CalibratedUncertainty(BaseModel):
@@ -123,8 +118,8 @@ class ForecastPublicationRow(BaseModel):
         if self.uncertainty_status == "CALIBRATED":
             if self.calibrated_uncertainty is None or self.calibration_status != "CALIBRATED":
                 raise ValueError("calibrated uncertainty status requires calibrated bounds")
-            if not self.calibrated_uncertainty.lower <= self.central_value <= self.calibrated_uncertainty.upper:
-                raise ValueError("central forecast must fall within calibrated uncertainty bounds")
+            # Accepted level-local intervals are retained separately from the selected central.
+            # Hierarchical central reconciliation does not reconcile the predictive distribution.
         elif self.calibrated_uncertainty is not None:
             raise ValueError("non-calibrated forecast must not carry calibrated bounds")
         if self.support_status == "DIRECT_SUPPORTED" and self.fallback_status != "NOT_APPLICABLE":

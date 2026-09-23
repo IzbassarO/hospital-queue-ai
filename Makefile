@@ -5,7 +5,7 @@ PY           ?= $(CURDIR)/.venv/bin/python
 ML_PATH      := $(CURDIR)/ml
 API_DEV_PORT ?= 8001
 
-.PHONY: up down migrate ingest baseline psql train tournament flow-evidence flow-quantile flow-calibration flow-hierarchy flow-pressure signal-prioritization flow-scenario decision-alternatives model-assurance assurance-publish operational-intelligence-publish predict registry marts create-key backup restore api-dev test ml-test \
+.PHONY: up down migrate ingest baseline psql train tournament flow-evidence flow-quantile flow-calibration flow-hierarchy flow-pressure signal-prioritization flow-scenario decision-alternatives model-assurance assurance-publish operational-intelligence-bundle operational-intelligence-publish review-evidence-bundle review-evidence-publish predict registry marts create-key backup restore api-dev test ml-test \
         lint fmt audit fixture fixture-load web-install web-dev web-lint web-test web-build
 
 up:            ## build and start postgres + backend + frontend (UI http://localhost:3000, API docs http://localhost:8000/docs)
@@ -63,9 +63,19 @@ assurance-publish: migrate ## validate and transactionally publish BUNDLE=/path/
 	@test -n "$(BUNDLE)" || { echo 'usage: make assurance-publish BUNDLE=/path/to/model_assurance.json'; exit 2; }
 	cd backend && $(PY) -m app.cli publish-assurance --bundle "$(BUNDLE)"
 
+operational-intelligence-bundle: ## offline projection of the explicit accepted final-test evidence; no ML fitting
+	$(PY) tools/operational_bundle.py
+
 operational-intelligence-publish: migrate ## publish BUNDLE=/path/to/operational_intelligence.json
 	@test -n "$(BUNDLE)" || { echo 'usage: make operational-intelligence-publish BUNDLE=/path/to/operational_intelligence.json'; exit 2; }
 	cd backend && $(PY) -m app.cli publish-operational-intelligence --bundle "$(BUNDLE)"
+
+review-evidence-bundle: ## offline projection of the accepted stress-test and decision-alternative evidence; no ML fitting
+	$(PY) tools/review_evidence_bundle.py
+
+review-evidence-publish: migrate ## publish BUNDLE=/path/to/review_evidence.json (requires the operational publication)
+	@test -n "$(BUNDLE)" || { echo 'usage: make review-evidence-publish BUNDLE=/path/to/review_evidence.json'; exit 2; }
+	cd backend && $(PY) -m app.cli publish-review-evidence --bundle "$(BUNDLE)"
 
 predict: migrate ## predictions of the current models -> postgres (pred_referral, pred_daily_forecast, model_registry), then marts
 	PYTHONPATH=$(ML_PATH) $(PY) ml/pipelines/predict.py

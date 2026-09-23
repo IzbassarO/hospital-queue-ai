@@ -19,7 +19,11 @@ export function Layout() {
   const me = useMe();
   const location = useLocation();
   const nav = [
-    { to: "/", label: t.tower.overview, active: location.pathname === "/" },
+    {
+      to: "/operations",
+      label: t.tower.overview,
+      active: location.pathname === "/operations",
+    },
     {
       to: "/signals",
       label: t.tower.signals,
@@ -41,7 +45,7 @@ export function Layout() {
       </a>
       <header className="tower-header">
         <div className="tower-masthead">
-          <NavLink to="/" className="min-w-0">
+          <NavLink to="/operations" className="min-w-0">
             <span className="brand-kicker">{t.tower.brand}</span>
             <span className="block text-xl font-semibold">
               {t.tower.subtitle}
@@ -77,27 +81,32 @@ export function Layout() {
               ))}
             </ul>
           </nav>
-          <div className="text-sm" role="status">
-            {snapshot ? (
-              <>
-                <span>
-                  {t.tower.origin}: {fmtDate(snapshot.origin)}
-                </span>
-                <span className="ml-3">
-                  {label(snapshot.status)} · {t.tower.freshness}:{" "}
-                  {label(snapshot.freshness)}
-                </span>
-              </>
-            ) : overview.isError ? (
-              overview.error instanceof ApiError &&
-              overview.error.status === 404 ? (
-                t.tower.noPublication
+          <div className="flex flex-wrap items-center gap-4 text-sm">
+            <Link to="/demo/detect" className="tower-nav-link tower-guide-link">
+              {t.demo.openGuide} →
+            </Link>
+            <div role="status">
+              {snapshot ? (
+                <>
+                  <span>
+                    {t.tower.origin}: {fmtDate(snapshot.origin)}
+                  </span>
+                  <span className="ml-3">
+                    {label(snapshot.status)} · {t.tower.freshness}:{" "}
+                    {label(snapshot.freshness)}
+                  </span>
+                </>
+              ) : overview.isError ? (
+                overview.error instanceof ApiError &&
+                overview.error.status === 404 ? (
+                  t.tower.noPublication
+                ) : (
+                  t.tower.unavailable
+                )
               ) : (
-                t.tower.unavailable
-              )
-            ) : (
-              t.common.loading
-            )}
+                t.common.loading
+              )}
+            </div>
           </div>
         </div>
       </header>
