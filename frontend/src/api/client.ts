@@ -60,7 +60,7 @@ export function buildPath(path: string, query?: Query): string {
   return qs ? `${path}?${qs}` : path;
 }
 
-async function request<T>(
+export async function request<T>(
   schema: Schema<T>,
   path: string,
   init?: RequestInit,

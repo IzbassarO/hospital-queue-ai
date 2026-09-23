@@ -4,6 +4,8 @@
  * the data-source description and every number of the load_index formula come from the API (GET /models,
  * explanations, GET /config); the templates below only put those values into sentences.
  */
+import { tower } from "./tower";
+
 import type { DecisionAction, Status } from "../api/types";
 
 const plural = (n: number, one: string, few: string, many: string) => {
@@ -15,6 +17,7 @@ const plural = (n: number, one: string, few: string, many: string) => {
 };
 
 export const ru = {
+  tower,
   app: {
     title: "Очереди на плановую госпитализацию",
     subtitle: "Мониторинг нагрузки стационаров",

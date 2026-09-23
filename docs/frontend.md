@@ -1,123 +1,66 @@
-# Frontend — hospital-queue-ai
+# Frontend — Control Tower Experience v1
 
-Web UI for a specialist of a regional health department who plans bed capacity. One scenario: *where is the load,
-why, what are the alternatives, what did a person decide*. Built strictly against the existing API
-([docs/api.md](api.md)); it has no data or logic of its own beyond display formatting.
+The Kazakhstan Hospital Flow Control Tower presents published signals, forecasts and versioned evidence for human decision support. ML CORE remains closed/frozen. Pressure means `historical_flow_proxy_v1`; it does not measure physical capacity. Decision alternatives remain retrospective mathematical alternatives for human review and are shown only as an assurance capability.
 
-- Stack: React 18, Vite, TypeScript, react-router 7, TanStack Query 5, Recharts 3, Tailwind CSS 4 (npm, no CDN),
-  ESLint + Prettier (defaults), Vitest + Testing Library. No component library.
-- Language: Russian only; every UI string lives in `frontend/src/i18n/ru.ts` (the UI imports `t` from `src/i18n`, so
-  another language is one more file with the same `Messages` shape). Domain texts (model cards, factor labels, data
-  source, formula parameters) come from the API.
-- Access: the browser holds **no** credentials. The proxy in front of the UI adds `X-API-Key` server-side — nginx in
-  docker, the Vite dev server for `make web-dev`, both from `DEMO_API_KEY` in the environment (role specialist).
-  `VITE_API_KEY` still exists for a build that must carry its own key, but it is empty in every supported setup and
-  `make audit` fails if a key ends up in the bundle.
-- Runs: `make up` → http://localhost:3000 (nginx serves the build and proxies `/api` to the backend);
-  `make web-dev` → http://localhost:5173 (Vite, `/api` proxied to `localhost:8000`; `API_PROXY_TARGET` to change).
+The stack remains React 18, TypeScript, Vite, React Router, TanStack Query, Recharts and Tailwind. No new dependency was added. Russian UI copy is in `src/i18n/tower.ts`, composed into `ru.ts` and exposed through the existing `t` entry point. Published evidence narratives are displayed verbatim.
 
-## Screen map and API calls
+## Data boundary
 
-All requests go to the same origin under `/api/v1` (`VITE_API_BASE` overrides it at build time).
+`src/api/generated` (OpenAPI-owned transport types) → `operational-schemas.ts` (runtime response guards, checked against generated DTOs) → `operational-adapters.ts` (semantic view models) → `operational.ts` (fetch/query hooks) → pages and `components/control`.
 
-| route | screen | API calls |
-|---|---|---|
-| `/` | **Обзор** — national KPIs (queue, median wait, refusal rate, hospitals with high load), data source and `as_of_date` (from `/config`), regions table sorted by default by the share of hospital profiles with high load (descending), also sortable by max load index, queue, refusal rate, median wait, high-load hospitals; row → region | `GET /overview`, `GET /config` |
-| `/regions/:code?profile=&offset=` | **Регион** — region KPIs; profile selector (profiles of the region, highest regional load first, names from the dictionary); status of the region × profile; hospitals of the selected profile ranked by `load_index` with status badge, queue, backlog, median wait, refusal rate, 14-day forecast, excess trend; row → card. Profile and page live in the URL | `GET /regions/{code}`, `GET /dictionaries`, `GET /regions/{code}/hospitals?profile=&limit=50&offset=`, `GET /config` (national median trend for the column hint) |
-| `/hospitals/:org/profiles/:profile` | **Карточка стационара** (top to bottom): header with name, region, profile, rank, status badge, `load_index` with its three component bars and a formula tooltip; «Скачать отчёт» XLSX / PDF; KPI strip (queue, backlog, median wait, refusal rate, registrations 28 d, forecast 14 d); chart; «Почему»; «Рекомендации» with decision form and history; «Направления» | see below |
-| `/alerts?region=&profile=&status=&offset=` | **Сигналы** — alerts with reasons, status, index, rank in region, queue, backlog, refusal rate, excess trend; region, profile and status filters (in the URL); caption from the alert rule; link to the card | `GET /alerts?region=&profile=&status=&limit=50&offset=`, `GET /dictionaries`, `GET /config` |
-| `/models` | **О моделях** — per model: title, version, training date, train / test (or backtest) windows, headline metrics vs the best baseline on the same rows (names from `display_names`), intended use and limitations from the model card | `GET /models` |
-| every screen | header shows «Данные на dd.mm.yyyy» and «роль: специалист» (or «нет доступа к API») | `GET /health`, `GET /me` |
+The shared client still handles authentication, HTTP/network errors and JSON decoding. Runtime guards supply only explicit backend defaults for omitted optional properties; supplied values are validated without numeric coercion. The adapters only format labels, numbers and dates, group forecast points by publication/series/origin/target, and suppress unsupported chart points. Severity and inbox rank are displayed as published. The frontend never reads ML artifacts, fits models, reconstructs intervals, or computes scientific ranking.
 
-Hospital card, section by section:
+All endpoint paths below are prefixed with `/api/v1`. The shell calls `/operational-intelligence/overview` for publication state and retains `/me` for the role. `/dictionaries` is retained for region/profile names. Hospital names are absent from these DTOs, so hospital codes are explicitly labelled.
 
-| section | API call | notes |
-|---|---|---|
-| header, KPI strip | `GET /hospitals/{org}/profiles/{profile}` → `status` | component bars show `components.*_score` with weights from `/config`; the formula tooltip is filled with the `/config` weights, caps and thresholds |
-| chart | same response → `series`, `forecast` | bars: registrations, hospitalizations, refusals; line: queue (right axis); after the dashed «сегодня» marker (`as_of_date`) the 14-day forecast of registrations and hospitalizations as dashed lines on a shaded band; `forecast.note` under the chart. **No queue forecast is drawn** (the API does not return one) |
-| Почему | same response → `explanation_factors` | two lists (wait time, refusal risk): arrow icon + title for direction, `short_label` from the API (full `label` as tooltip), `most_common_value_display`, mean effect in дн. / п.п., share of referrals with the factor in their top 5 |
-| Рекомендации | `GET …/recommendations` | alternatives with current vs alternative wait, delta, refusal rates, backlogs, the API's Russian explanation, badge «оценка по историческим медианам», rule text, `reason` when there are none, `disclaimer`. Persistent line «Решение принимает специалист. Система только предлагает.» |
-| decision form | `POST /decisions` | Подтвердить / Отклонить / Отложить open a small form (comment, actor; actor required and remembered in `localStorage`); body carries `region_code`, `org_code`, `profile_code`, `recommendation_id`, `alternative_org_code`, `action` and an `idempotency_key` generated per submission content (a double submit or retry gets the stored row back); on 201/200 the history query is invalidated. Needs a specialist key (`403` otherwise, shown in the form) |
-| История решений | `GET /decisions?org=&profile=&limit=100` | newest first; the alternative by `alternative_org_name` and code |
-| «Скачать отчёт» | `GET …/export?format=xlsx\|pdf` | fetched with the API key (a plain link cannot send the header) and saved through an object URL; errors shown next to the buttons |
-| Направления | `GET …/referrals?sort=risk\|wait&limit=20&offset=` | server-side sort and paging; diagnosis code with `diagnosis_name`; expandable row with the top-5 factors of both models (`short_label`, `value_display`, `effect_in_unit` + `unit`) |
+## Routes, queries and actual consumers
 
-## Demo path
+Let `OI` mean `/operational-intelligence` in this table.
 
-`/` → «г. Астана» → profile «Патологии беременности» → ZIQ9 (Городской перинатальный центр) → recommendations →
-«Подтвердить» (comment, actor, «Записать решение») → the row appears in «История решений» → «Сигналы» shows the
-same hospital first with its reasons → link back to the card. Every API call on this path answers in < 100 ms
-against the docker stack; screens render in ≈ 0.1–0.25 s.
+| Screen / route | Removed from mounted screen | New calls, hooks, adapters and consumers | Behavior proof in `src/test/routes.test.tsx` |
+| --- | --- | --- | --- |
+| Overview `/` | `/overview` (`useOverview`), `/config` (`useConfig`) | `OI/overview` → `useOperationalOverview` → `overviewView` → `OverviewPage`, `Publication`, `Summary`, regional matrix; `OI/signals?limit=5&offset=0` → `useSignals` → `signalView` → `SignalList`; `OI/forecasts?level=national&origin=…&limit=500&offset=…` → `useForecasts` → `forecastGroups` → `ForecastPanel` | “Overview renders operational counts, region matrix, server-ranked signals and national forecast” asserts response values and exact endpoint/filter use |
+| Signals `/signals`; compatibility `/alerts` | `/alerts` (`useAlerts`), `/config` | `OI/signals?region=&profile=&severity=&support=&org=&limit=20&offset=` → `useSignals` → `signalView` → `AlertsPage` / `SignalList`; `OI/overview` → `useOperationalOverview` → `overviewView` → `Publication` | Both route aliases render; server filter results, URL state, pagination reset, rank and separate severity/support styles are asserted |
+| Investigation `/signals/:signalId` | New screen | `OI/signals/{id}` → `useSignal` → `signalView` → `SignalPage`; `OI/forecasts?origin=&org=&region=&profile=&target=&level=&limit=500&offset=` → `useForecasts` → `forecastGroups` → `ForecastPanel` | “Signal detail loads its endpoint…” checks limitations, historical reference, interval values, coverage and matching forecast query |
+| Explanation drawer | New experience; old hospital factor panel is unmounted | `OI/signals/{id}/explanation` → `useExplanation` → `explanationView` → `ExplanationDrawer`, requested on open | “Explain opens a deterministic evidence drawer…” proves endpoint, all sections, focus trap, Escape, inert background and focus restoration; fallback, error and publication mismatch tests |
+| Region `/regions/:code?profile=` | `/regions/{code}` (`useRegion`), `/regions/{code}/hospitals` (`useRegionHospitals`), `/overview`, `/config` | `OI/regions/{code}` → `useOperationalRegion` → `regionView` → `RegionPage`, `Summary`, `Publication`; `OI/signals?region=&profile=&limit=10&offset=0` → `useSignals` → `signalView` → `SignalList`; `OI/forecasts?level=region&region=&profile=&origin=…` → `useForecasts` → `forecastGroups` → `ForecastPanel` | “Region → hospital drill-down calls the new contracts” proves regional request, profile filtering and hospital navigation |
+| Hospital/profile `/hospitals/:org/profiles/:profile` | `/hospitals/{org}/profiles/{profile}` (`useHospitalCard`), its `/recommendations`, `/referrals`, `/export` subpaths and `/decisions` (GET/POST) are unmounted | `OI/hospitals/{org}/profiles/{profile}` → `useOperationalHospital` → `hospitalView` → `HospitalPage`, `Summary`, `SignalList`, `Publication`; `OI/forecasts?level=hospital&org=&profile=&origin=…` → `useForecasts` → `forecastGroups` → `ForecastPanel` | Same drill-down test proves hospital endpoint and hospital forecast request; separate loading, error, absent-object and empty-signal tests |
+| Evidence & Assurance `/assurance`; compatibility `/models` | `/models` (`useModels`) | `/model-assurance` and `/model-assurance/capabilities` → `useAssurance` → `assuranceView` / `capabilityView` → `ModelsPage` capability cards | Both aliases prove rejected/not-for-product, acceptance, evaluation-only, governance and collapsed identities |
 
-## Design rules
+The assurance query reads snapshot → capabilities → snapshot and rejects a detected active-identity change. Signal lists, forecasts and explanations check publication identity before being combined with an existing context. This detects observed changes; the API does not offer pinned snapshot queries and cannot provide a multi-request transaction.
 
-- Light background, one accent (blue `#174c8f`); status colours red / amber / green / grey are always paired with an
-  icon **and** a text label (Высокая / Повышенная / Норма / Недостаточно данных) and differ in lightness, so they
-  survive greyscale projectors.
-- Tables: sticky header, numbers right-aligned with tabular figures and Russian thousands separators, sortable
-  columns announced with `aria-sort`. Dates `dd.mm.yyyy` (formatted from the ISO string, no time-zone shift).
-- Every data block has a loading skeleton and an error state. API unreachable (network error, or 502/504 from
-  nginx) → «API недоступен. Адрес запроса: <absolute URL>» with a retry button; 404 and 503 show the API's `detail`.
-- Desktop tool: layout from 1024 px (`body { min-width: 1024px }`), content max 1440 px. No emojis; icons are
-  inline SVG.
-- Keyboard: skip link, visible focus ring, tooltips open on focus, rows are clickable but every row also contains a
-  real link or button.
+## Product experience
 
-## Code structure
+Navigation is Overview → Signals → Evidence & Assurance. Region and hospital routes are drill-down destinations. `/alerts` and `/models` remain functional aliases. Old `status=high|elevated|normal|insufficient_data` signal links map to the corresponding severity enum; region/profile query parameters are retained. The old regional `offset` no longer pages a legacy hospital table.
 
-```
-frontend/
-├── src/
-│   ├── api/          schema.ts (runtime response checks), types.ts (schemas → TS types), client.ts (fetch with
-│   │                 X-API-Key, file download, ApiError with URL), queries.ts (TanStack Query hooks and keys)
-│   ├── i18n/         ru.ts (all strings), index.ts (`t`)
-│   ├── lib/          format.ts (numbers, days, %, dates), paths.ts (links)
-│   ├── components/   Layout, DataTable, StatusBadge, LoadIndexBars, InfoTip, Kpi, Pagination, Skeleton,
-│   │                 ErrorState, QueryState, PageHeader, Direction, icons
-│   ├── pages/        OverviewPage, RegionPage, AlertsPage, ModelsPage, NotFoundPage,
-│   │                 hospital/ (HospitalPage, CardHeader, ExportButtons, SeriesChart, WhyPanel, Recommendations,
-│   │                 ReferralsTable)
-│   ├── test/         setup.ts, mockApi.ts, fixtures/*.json (responses captured from the running API), routes.test.tsx
-│   ├── routes.tsx    route table
-│   └── main.tsx      QueryClient + router
-├── Dockerfile        node:22-alpine build → nginx:1.29-alpine
-├── nginx.conf.template  SPA fallback, /api proxy to backend:8000 with server-side X-API-Key, caching, /healthz
-└── package.json      scripts: dev, build, lint, format, test
-```
+Overview shows published signal counts, severity distribution, support mix, a regional matrix, the first five server-ranked signals and a selectable national forecast series. Counts include all published signal states and are not described as patients, live events or physical capacity. No map geometry is fabricated. No client-side severity sorting is applied.
 
-Every API response is validated at runtime against the schema in `src/api/types.ts` (mirroring
-`backend/app/schemas`); a changed field fails loudly with its path instead of rendering an empty cell.
+Signals expose region, profile, severity and support filters supported by the API. `org` deep-link filtering is also retained. The `FALLBACK_LIMITED` support filter selects limited fallback support; there is no invented independent fallback-status API filter. Each row separates severity, support and fallback, shows forecast/interval/materiality, preserves rank and provides Investigate / Why this signal actions.
 
-## Tests and checks
+Investigation displays the subject, signal type, date, target, forecast, calibrated bounds, historical reference/status, materiality, first crossing/lead time, reason codes, evidence facts and limitations. Observed anomaly fields are kept separate from preventive pressure. The drawer presents summary, why flagged, key evidence, uncertainty, support, limitations, review questions, provenance and generation mode. Review questions are not presented as instructions or recommendations. Returned human-review, autonomy, capacity-check and causal-claim governance is visible in the drawer. No prompts are exposed.
 
-| command | what |
-|---|---|
-| `make web-test` | Vitest (30 tests): the header role label; the default sort by `high_load_share`; alert filters in the request and URL; the export button; every route renders with real captured responses; the decision form POSTs the expected body; the API-down message shows the URL; the client parses every endpoint's captured response **and the JSON examples of docs/api.md §6** (placeholders `…` stripped), and reports shape errors with the field path; formatting |
-| `make web-lint` | ESLint (typescript-eslint, react-hooks) + `prettier --check` |
-| `make web-build` | `tsc -b` + Vite production build |
-| `make audit` | runs web-lint and web-build too (when `frontend/package.json` exists) |
+`ForecastChart` uses Recharts with a central line and a calibrated range area. Raw quantiles are never substituted for calibrated intervals. Unsupported points create gaps. Dates are ordered for display within a single series/origin/target; distinct series are selectable, not merged. The API does not supply an observed time series, which is stated explicitly. An expandable numeric table exposes dates, central semantics, calibrated bounds, nominal coverage, support/fallback and uncertainty state. A 500-point page can be partial; pagination and a partial-data notice in the chart caption remain visible. Pages are not accumulated into a complete curve. A matching series absent from the current page is described as absent on this page, not unpublished.
 
-Fixtures in `src/test/fixtures/` were captured from `make up` and trimmed (fewer regions / profiles); refresh them
-when the API contract changes.
+Assurance cards show capability evidence status, acceptance verdict, product consumption, support semantics, freshness reason, limitations and governance independently. Rejected challengers remain rejected/not for product. Decision alternatives remain evaluation only. Identity hashes are inside disclosure sections. Model metrics are not re-ranked in the browser.
 
-## API gaps (step 5) — closed in step 6
+## States, accessibility and motion
 
-All gaps found while building the UI were closed in the API; the UI no longer duplicates domain texts:
+- `EvidenceState` provides loading skeletons, missing-publication/object state, auth/forbidden messages, malformed-response failure and retryable network/server errors. Empty lists/charts have explicit text.
+- `Publication` separates date of origin, publication time, publication status and freshness. UNKNOWN, STALE, DEGRADED and EMPTY have deliberate messages; freshness is not inferred from timestamps.
+- Semantic headings, table captions/header scopes, visible focus, skip-to-main link, labelled filters and textual severity/support cues. Support uses neutral borders, including dashed fallback styling; severity colours only reflect API severity.
+- Drawer has `role=dialog`, accessible title, `aria-modal`, initial close-button focus, Tab/Shift-Tab containment, Escape, background `inert`, body scroll lock and focus restoration.
+- Maximum content width 1440px, flexible grids, locally scrollable tables and a drawer capped at 680px. No fixed 1024px body minimum.
+- CSS page/card reveal, KPI fade, chart reveal, drawer entry, bounded skeleton shimmer and hover/focus transitions. No animation dependency. `prefers-reduced-motion` disables all animations/transitions; Recharts animation is disabled so chart motion is not required to understand values.
 
-| gap | now |
-|---|---|
-| model limitations duplicated in `ru.ts` | `GET /models` → `intended_use`, `limitations`, `display_names` from `ml/configs/model_cards.yaml` (artifact `card.json` → `model_registry.card`) |
-| `load_index` weights / caps, data source hard-coded | `GET /config` → weights, caps, thresholds, alert and recommendation rules, data-source description; the formula tooltip, alert caption and source note are built from it |
-| history parsed the alternative from `recommendation_id` | `decision_log.alternative_org_code`; `Decision.alternative_org_name`; the form sends `alternative_org_code` |
-| no diagnosis name on referrals | `ReferralItem.diagnosis_name` from `dim_icd` (built at ingest) |
-| UI kept its own short factor labels | `short_label` on card and referral factors (`explain_templates.yaml`) |
-| per-referral factor unit implicit | `unit` and `effect_in_unit` on every referral factor |
-| no data-source description | `GET /config` → `data_source` |
-| alerts: no profile / status filter, no `status_label` / `region_rank` | `GET /alerts?profile=&status=`; `status_label`, `region_rank`, `region_n_ranked` |
-| `POST /decisions` not idempotent | `idempotency_key` (unique); the form generates one per submission content — a retry returns the stored row with `200` |
-| stale recommendations example in docs/api.md | refreshed from the running API |
+## Remaining legacy code
 
-Also added in step 6: `high_load_share` on area rows (overview table, default sort descending; max index kept as a
-column), the role label «роль: …» in the header (`GET /me`), «Скачать отчёт» (XLSX / PDF) on the card, and the API key
-added by the proxy server-side (`DEMO_API_KEY` in the nginx / dev-server environment; see docs/security.md for what
-that implies).
+`src/api/client.ts`, `queries.ts`, `types.ts` and legacy runtime schemas still retain the old transport helpers. Only `/me` and `/dictionaries` are used by the new route tree. These retained hospital components are **not mounted**: `CardHeader`, `SeriesChart`, `WhyPanel`, `Recommendations`, `ReferralsTable`, `ExportButtons`. They retain their legacy recommendation/decision/referral/export logic. Their previous route-level behavior is not claimed as part of this slice. Remounting them would reintroduce legacy calls and terminology; the route tests reject those calls. The existing hospital summary API returns at most 500 signals and derives counts from those rows; the UI cannot establish a full total from that response. For larger subjects, use the Signals inbox with org/profile filters. This backend limitation is deferred; no contract is changed here. The old registry/metric fixtures and client tests remain for those retained helpers.
+
+## Running and verification
+
+`make web-dev` serves the frontend with the same-origin API proxy. `make up` builds the stack. Existing proxy authentication remains unchanged: nginx/Vite adds `X-API-Key` server-side; supported builds do not embed credentials. See [security.md](security.md).
+
+From `frontend`: `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`. From repository root: `make audit`, `git diff --check`, `git status`. The audit checks generation against `backend/openapi.json` in a temporary directory; generated files are not edited by hand.
+
+Route tests use synthetic typed API fixtures and a fetch mock that rejects legacy metric calls. They exercise actual client parsing, adapters, hooks and rendering rather than mocking the hooks. Adapter tests additionally protect series isolation, unsupported gaps, server-owned severity/rank and assurance publication changes. Existing API client/format tests remain.
+
+A populated demo requires current Model Assurance and Operational Intelligence publications in PostgreSQL. On 2026-09-22 the existing local proxy returned 404 for both current publications. Browser validation used synthetic fixtures against the production frontend build; no evidence was regenerated or published. This is a demo-data prerequisite, not a frontend contract defect. Full review results are in [control-tower-slice-4.md](control-tower-slice-4.md).

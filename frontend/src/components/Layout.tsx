@@ -1,94 +1,116 @@
-import { useQuery } from "@tanstack/react-query";
-import { NavLink, Outlet, ScrollRestoration } from "react-router-dom";
-
-import { api } from "../api/client";
+import {
+  Link,
+  NavLink,
+  Outlet,
+  ScrollRestoration,
+  useLocation,
+} from "react-router-dom";
+import { ApiError } from "../api/client";
+import { useOperationalOverview } from "../api/operational";
+import { label } from "../api/operational-adapters";
 import { useMe } from "../api/queries";
 import { t } from "../i18n";
 import { fmtDate } from "../lib/format";
 import { IconUser } from "./icons";
 
-const NAV = [
-  { to: "/", label: t.nav.overview, end: true },
-  { to: "/alerts", label: t.nav.alerts, end: false },
-  { to: "/models", label: t.nav.models, end: false },
-];
-
 export function Layout() {
-  const health = useQuery({
-    queryKey: ["health"],
-    queryFn: api.health,
-    retry: false,
-    staleTime: 60_000,
-  });
-  const asOf = health.data?.marts_as_of_date;
+  const overview = useOperationalOverview();
+  const snapshot = overview.data?.snapshot;
   const me = useMe();
-
+  const location = useLocation();
+  const nav = [
+    { to: "/", label: t.tower.overview, active: location.pathname === "/" },
+    {
+      to: "/signals",
+      label: t.tower.signals,
+      active:
+        location.pathname.startsWith("/signals") ||
+        location.pathname === "/alerts",
+    },
+    {
+      to: "/assurance",
+      label: t.tower.assurance,
+      active:
+        location.pathname === "/assurance" || location.pathname === "/models",
+    },
+  ];
   return (
     <div className="flex min-h-screen flex-col">
-      <a
-        href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-white focus:p-2"
-      >
+      <a href="#main" className="skip-link">
         {t.app.skipToContent}
       </a>
-      <header className="border-b border-line bg-white">
-        <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-6 px-6 py-3">
-          <NavLink to="/" className="flex flex-col leading-tight">
-            <span className="text-lg font-semibold text-accent-800">
-              {t.app.title}
+      <header className="tower-header">
+        <div className="tower-masthead">
+          <NavLink to="/" className="min-w-0">
+            <span className="brand-kicker">{t.tower.brand}</span>
+            <span className="block text-xl font-semibold">
+              {t.tower.subtitle}
             </span>
-            <span className="text-sm text-muted">{t.app.subtitle}</span>
           </NavLink>
+          <div className="role-state">
+            {me.data ? (
+              <>
+                <span className="inline-flex items-center gap-2">
+                  <IconUser size={16} />
+                  {t.app.role(me.data.role_label)}
+                </span>
+                <span className="text-xs">{me.data.label}</span>
+              </>
+            ) : (
+              <span>{me.isError ? t.app.noKey : t.common.loading}</span>
+            )}
+          </div>
+        </div>
+        <div className="tower-nav">
           <nav aria-label={t.nav.main}>
-            <ul className="flex items-center gap-1">
-              {NAV.map((item) => (
+            <ul className="flex flex-wrap gap-1">
+              {nav.map((item) => (
                 <li key={item.to}>
-                  <NavLink
+                  <Link
                     to={item.to}
-                    end={item.end}
-                    className={({ isActive }) =>
-                      `block rounded-md px-3 py-2 font-medium ${
-                        isActive
-                          ? "bg-accent-50 text-accent-800 underline decoration-2 underline-offset-8"
-                          : "text-ink hover:bg-canvas"
-                      }`
-                    }
+                    aria-current={item.active ? "page" : undefined}
+                    className={`tower-nav-link ${item.active ? "is-active" : ""}`}
                   >
                     {item.label}
-                  </NavLink>
+                  </Link>
                 </li>
               ))}
             </ul>
           </nav>
-          <div className="flex flex-col items-end gap-0.5 text-sm">
-            <span className="text-muted tabular-nums">
-              {asOf ? t.common.asOf(fmtDate(asOf)) : "\u00a0"}
-            </span>
-            {me.data ? (
-              <span
-                className="inline-flex items-center gap-1 rounded-full border border-line bg-canvas px-2 py-0.5 font-medium text-ink"
-                title={t.app.roleTitle(me.data.label)}
-              >
-                <IconUser size={14} />
-                {t.app.role(me.data.role_label)}
-              </span>
-            ) : me.isError ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-high-fg/40 bg-high-bg px-2 py-0.5 font-medium text-high-fg">
-                {t.app.noKey}
-              </span>
-            ) : null}
+          <div className="text-sm" role="status">
+            {snapshot ? (
+              <>
+                <span>
+                  {t.tower.origin}: {fmtDate(snapshot.origin)}
+                </span>
+                <span className="ml-3">
+                  {label(snapshot.status)} · {t.tower.freshness}:{" "}
+                  {label(snapshot.freshness)}
+                </span>
+              </>
+            ) : overview.isError ? (
+              overview.error instanceof ApiError &&
+              overview.error.status === 404 ? (
+                t.tower.noPublication
+              ) : (
+                t.tower.unavailable
+              )
+            ) : (
+              t.common.loading
+            )}
           </div>
         </div>
       </header>
       <main
         id="main"
-        className="mx-auto w-full max-w-[1440px] flex-1 space-y-8 px-6 py-6"
+        tabIndex={-1}
+        className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-7 md:px-6"
       >
         <Outlet />
       </main>
       <footer className="border-t border-line bg-white">
-        <p className="mx-auto max-w-[1440px] px-6 py-3 text-sm text-muted">
-          {t.app.footer}
+        <p className="mx-auto max-w-[1440px] px-6 py-4 text-sm text-muted">
+          {t.tower.footer}
         </p>
       </footer>
       <ScrollRestoration />

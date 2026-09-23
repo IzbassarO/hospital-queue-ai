@@ -2,7 +2,7 @@
   "name": "hqai-frontend",
   "private": true,
   "version": "0.1.0",
-  "description": "hospital-queue-ai web UI for regional bed-capacity planning specialists",
+  "description": "Kazakhstan hospital flow Control Tower for human decision support",
   "type": "module",
   "engines": {
     "node": ">=22.18.0"

@@ -1,148 +1,116 @@
-import { Link, useNavigate } from "react-router-dom";
-
-import { useConfig, useOverview } from "../api/queries";
-import type { AreaKpis } from "../api/types";
-import { type Column, DataTable } from "../components/DataTable";
-import { Kpi, KpiGrid } from "../components/Kpi";
+import { Link } from "react-router-dom";
+import { useOperationalOverview, useSignals } from "../api/operational";
+import { useDictionaries } from "../api/queries";
 import { PageHeader, Section } from "../components/PageHeader";
-import { QueryState } from "../components/QueryState";
-import { KpiSkeleton, TableSkeleton } from "../components/Skeleton";
+import {
+  EvidenceState,
+  Empty,
+  Notice,
+  Publication,
+  Summary,
+} from "../components/control/Evidence";
+import { SignalList } from "../components/control/SignalList";
+import { ForecastPanel } from "../components/control/ForecastChart";
 import { t } from "../i18n";
-import { fmtDate, fmtDays, fmtIndex, fmtInt, fmtPercent } from "../lib/format";
-
-const columns: Column<AreaKpis>[] = [
-  {
-    key: "name",
-    header: t.overview.columns.region,
-    render: (r) => (
-      <Link to={`/regions/${r.code}`} className="link font-medium">
-        {r.name}
-      </Link>
-    ),
-    sortValue: (r) => r.name,
-  },
-  {
-    key: "load_index_max",
-    header: t.overview.columns.loadIndexMax,
-    align: "right",
-    render: (r) => fmtIndex(r.load_index_max),
-    sortValue: (r) => r.load_index_max,
-  },
-  {
-    key: "queue_now",
-    header: t.overview.columns.queue,
-    align: "right",
-    render: (r) => fmtInt(r.queue_now),
-    sortValue: (r) => r.queue_now,
-  },
-  {
-    key: "refusal_rate_28d",
-    header: t.overview.columns.refusalRate,
-    align: "right",
-    render: (r) => fmtPercent(r.refusal_rate_28d),
-    sortValue: (r) => r.refusal_rate_28d,
-  },
-  {
-    key: "median_wait_28d",
-    header: t.overview.columns.medianWait,
-    align: "right",
-    render: (r) => fmtDays(r.median_wait_28d),
-    sortValue: (r) => r.median_wait_28d,
-  },
-  {
-    key: "n_hospitals_high_load",
-    header: t.overview.columns.highLoad,
-    align: "right",
-    render: (r) =>
-      `${fmtInt(r.n_hospitals_high_load)} / ${fmtInt(r.n_hospitals)}`,
-    sortValue: (r) => r.n_hospitals_high_load,
-  },
-  {
-    key: "high_load_share",
-    header: (
-      <abbr title={t.overview.highLoadShareHint} className="no-underline">
-        {t.overview.columns.highLoadShare}
-      </abbr>
-    ),
-    headerText: t.overview.columns.highLoadShare,
-    align: "right",
-    render: (r) => fmtPercent(r.high_load_share),
-    sortValue: (r) => r.high_load_share,
-  },
-];
+import { regionPath } from "../lib/paths";
 
 export function OverviewPage() {
-  const overview = useOverview();
-  const config = useConfig();
-  const navigate = useNavigate();
-
+  const overview = useOperationalOverview();
+  const signals = useSignals({ limit: 5, offset: 0 });
+  const dictionaries = useDictionaries();
   return (
-    <>
-      <PageHeader title={t.overview.title} />
-      <QueryState
-        query={overview}
-        skeleton={
-          <div className="space-y-6">
-            <KpiSkeleton />
-            <TableSkeleton rows={10} />
-          </div>
-        }
-      >
+    <div className="space-y-6 page-reveal">
+      <PageHeader title={t.tower.title}>
+        <p className="max-w-4xl text-muted">{t.tower.intro}</p>
+      </PageHeader>
+      <EvidenceState query={overview}>
         {(data) => (
           <>
-            <section className="space-y-2" aria-label={t.overview.title}>
-              <KpiGrid>
-                <Kpi
-                  label={t.metrics.queueNow}
-                  value={fmtInt(data.national.queue_now)}
-                  hint={t.metrics.queueNowHint}
-                />
-                <Kpi
-                  label={t.metrics.medianWait}
-                  value={fmtDays(data.national.median_wait_28d)}
-                  hint={t.metrics.medianWaitHint}
-                />
-                <Kpi
-                  label={t.metrics.refusalRate}
-                  value={fmtPercent(data.national.refusal_rate_28d)}
-                  hint={t.metrics.refusalRateHint}
-                />
-                <Kpi
-                  label={t.metrics.hospitalsHighLoad}
-                  value={fmtInt(data.national.n_hospitals_high_load)}
-                  sub={t.common.hospitals(data.national.n_hospitals)}
-                  hint={t.metrics.hospitalsHighLoadHint}
-                />
-              </KpiGrid>
-              {config.data ? (
-                <p className="text-sm text-muted">
-                  {t.common.source(
-                    config.data.data_source.publisher,
-                    config.data.data_source.description,
-                    config.data.data_source.period,
-                    fmtDate(config.data.as_of_date),
-                  )}
-                </p>
-              ) : null}
-            </section>
-
+            <Publication snapshot={data.snapshot} />
+            <Summary counts={data.counts} />
+            <div className="control-columns">
+              <Section title={t.tower.regional} id="regions">
+                <p className="text-sm text-muted">{t.tower.totalHint}</p>
+                {dictionaries.isError ? (
+                  <Notice>{t.tower.namesUnavailable}</Notice>
+                ) : null}
+                {data.regions.length ? (
+                  <div className="card overflow-x-auto">
+                    <table className="evidence-table">
+                      <caption className="sr-only">{t.tower.regional}</caption>
+                      <thead>
+                        <tr>
+                          {[
+                            t.tower.region,
+                            t.tower.total,
+                            t.tower.high,
+                            t.tower.direct,
+                          ].map((h) => (
+                            <th scope="col" key={h}>
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.regions.map((r) => (
+                          <tr key={r.code}>
+                            <th scope="row">
+                              <Link className="link" to={regionPath(r.code)}>
+                                {dictionaries.data?.regions.find(
+                                  (d) => d.code === r.code,
+                                )?.name ?? r.code}
+                              </Link>
+                            </th>
+                            <td>{r.counts.total}</td>
+                            <td>{r.counts.high}</td>
+                            <td>{r.counts.direct}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <Empty>{t.tower.noRegions}</Empty>
+                )}
+              </Section>
+              <aside className="card p-5 space-y-3">
+                <p className="eyebrow">{t.tower.evidence}</p>
+                <h2 className="text-xl font-semibold">{t.tower.pressure}</h2>
+                <p>{t.tower.pressureHint}</p>
+                <p className="text-sm text-muted">{t.tower.human}</p>
+                <Link to="/assurance" className="link">
+                  {t.tower.assurance} →
+                </Link>
+              </aside>
+            </div>
             <Section
-              title={t.overview.regionsTitle}
-              caption={t.overview.regionsCaption}
-              id="regions"
+              title={t.tower.priority}
+              caption={t.tower.rankHint}
+              id="priority"
+              actions={
+                <Link className="link" to="/signals">
+                  {t.tower.showAll} →
+                </Link>
+              }
             >
-              <DataTable
-                columns={columns}
-                rows={data.regions}
-                rowKey={(r) => r.code}
-                caption={t.overview.regionsTitle}
-                initialSort={{ key: "high_load_share", direction: "desc" }}
-                onRowClick={(r) => navigate(`/regions/${r.code}`)}
-              />
+              <EvidenceState query={signals}>
+                {(rows) => (
+                  <SignalList
+                    signals={rows.items}
+                    identity={data.snapshot.identity}
+                  />
+                )}
+              </EvidenceState>
             </Section>
+            <ForecastPanel
+              key={data.snapshot.identity}
+              identity={data.snapshot.identity}
+              filters={{ level: "national", origin: data.snapshot.origin }}
+            />
           </>
         )}
-      </QueryState>
-    </>
+      </EvidenceState>
+    </div>
   );
 }
