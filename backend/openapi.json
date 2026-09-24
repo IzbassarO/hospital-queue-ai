@@ -1340,6 +1340,141 @@
         "title": "AreaKpis",
         "type": "object"
       },
+      "AssistantReply": {
+        "properties": {
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "provider",
+          "model"
+        ],
+        "title": "AssistantReply",
+        "type": "object"
+      },
+      "AssistantRequest": {
+        "properties": {
+          "explanation": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 12,
+            "title": "Explanation",
+            "type": "array"
+          },
+          "facts": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 40,
+            "title": "Facts",
+            "type": "array"
+          },
+          "lang": {
+            "default": "ru",
+            "enum": [
+              "ru",
+              "kk"
+            ],
+            "title": "Lang",
+            "type": "string"
+          },
+          "question": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/AssistantSubject"
+          }
+        },
+        "required": [
+          "question",
+          "subject"
+        ],
+        "title": "AssistantRequest",
+        "type": "object"
+      },
+      "AssistantStatus": {
+        "properties": {
+          "configured": {
+            "description": "an external model is configured on the server",
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "groq | openrouter | gemini | openai-compatible",
+            "title": "Provider"
+          }
+        },
+        "required": [
+          "configured",
+          "provider",
+          "model"
+        ],
+        "title": "AssistantStatus",
+        "type": "object"
+      },
+      "AssistantSubject": {
+        "properties": {
+          "hospital": {
+            "maxLength": 300,
+            "title": "Hospital",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 64,
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "alert",
+              "patient"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "hospital"
+        ],
+        "title": "AssistantSubject",
+        "type": "object"
+      },
       "AssuranceFreshness": {
         "additionalProperties": false,
         "properties": {
@@ -4967,6 +5102,38 @@
         "title": "Page[ReferralItem]",
         "type": "object"
       },
+      "Page_SpecialistDecision_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SpecialistDecision"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "description": "rows matching the filters, before limit/offset",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[SpecialistDecision]",
+        "type": "object"
+      },
       "ProfileItem": {
         "properties": {
           "code": {
@@ -6544,6 +6711,314 @@
         "title": "SourceProvenance",
         "type": "object"
       },
+      "SpecialistDecision": {
+        "properties": {
+          "action": {
+            "description": "alerts: accept | decline | clarify; admission requests: confirm | decline | postpone",
+            "enum": [
+              "accept",
+              "decline",
+              "clarify",
+              "confirm",
+              "postpone"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "actor": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor"
+          },
+          "api_key_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "label of the API key that submitted the decision",
+            "title": "Api Key Label"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 8,
+                "pattern": "^[A-Za-z0-9._:-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "client-generated per submission; resending the same key returns the stored row with 200",
+            "title": "Idempotency Key"
+          },
+          "org_code": {
+            "anyOf": [
+              {
+                "maxLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Code"
+          },
+          "origin": {
+            "description": "publication origin the demo runs on",
+            "format": "date",
+            "title": "Origin",
+            "type": "string"
+          },
+          "profile_code": {
+            "anyOf": [
+              {
+                "maxLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Code"
+          },
+          "region_code": {
+            "anyOf": [
+              {
+                "maxLength": 4,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Code"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "pattern": "^[A-Za-z0-9._:-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "simulation run the decision belongs to; a restart of the simulation starts a new run, and the control centre replays only the decisions of its current run",
+            "title": "Run Id"
+          },
+          "sim_day": {
+            "description": "day of the simulation when the decision was taken (0 = origin)",
+            "maximum": 60.0,
+            "minimum": 0.0,
+            "title": "Sim Day",
+            "type": "integer"
+          },
+          "subject_id": {
+            "description": "signal id or synthetic referral id",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_kind": {
+            "enum": [
+              "alert",
+              "patient"
+            ],
+            "title": "Subject Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "origin",
+          "sim_day",
+          "subject_kind",
+          "subject_id",
+          "action",
+          "id",
+          "created_at",
+          "api_key_label"
+        ],
+        "title": "SpecialistDecision",
+        "type": "object"
+      },
+      "SpecialistDecisionCreate": {
+        "properties": {
+          "action": {
+            "description": "alerts: accept | decline | clarify; admission requests: confirm | decline | postpone",
+            "enum": [
+              "accept",
+              "decline",
+              "clarify",
+              "confirm",
+              "postpone"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "actor": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 8,
+                "pattern": "^[A-Za-z0-9._:-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "client-generated per submission; resending the same key returns the stored row with 200",
+            "title": "Idempotency Key"
+          },
+          "org_code": {
+            "anyOf": [
+              {
+                "maxLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Code"
+          },
+          "origin": {
+            "description": "publication origin the demo runs on",
+            "format": "date",
+            "title": "Origin",
+            "type": "string"
+          },
+          "profile_code": {
+            "anyOf": [
+              {
+                "maxLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Code"
+          },
+          "region_code": {
+            "anyOf": [
+              {
+                "maxLength": 4,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Code"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "pattern": "^[A-Za-z0-9._:-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "simulation run the decision belongs to; a restart of the simulation starts a new run, and the control centre replays only the decisions of its current run",
+            "title": "Run Id"
+          },
+          "sim_day": {
+            "description": "day of the simulation when the decision was taken (0 = origin)",
+            "maximum": 60.0,
+            "minimum": 0.0,
+            "title": "Sim Day",
+            "type": "integer"
+          },
+          "subject_id": {
+            "description": "signal id or synthetic referral id",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_kind": {
+            "enum": [
+              "alert",
+              "patient"
+            ],
+            "title": "Subject Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "origin",
+          "sim_day",
+          "subject_kind",
+          "subject_id",
+          "action"
+        ],
+        "title": "SpecialistDecisionCreate",
+        "type": "object"
+      },
       "StateCell": {
         "additionalProperties": false,
         "properties": {
@@ -7251,6 +7726,140 @@
         "summary": "Get Alerts",
         "tags": [
           "monitoring"
+        ]
+      }
+    },
+    "/api/v1/assistant": {
+      "post": {
+        "description": "Ask the configured model about one subject. The browser sends the published facts and the deterministic\nexplanation; the system prompt keeps the claim boundaries. Generated text, never evidence.",
+        "operationId": "assistant_ask",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssistantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssistantReply"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the provider answered with an error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "no provider configured (ASSISTANT_API_KEY is empty)"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Post Assistant",
+        "tags": [
+          "control-centre"
+        ]
+      }
+    },
+    "/api/v1/assistant/status": {
+      "get": {
+        "description": "Whether an external model is configured on the server (the key itself is never exposed).",
+        "operationId": "assistant_status",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssistantStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Assistant Status",
+        "tags": [
+          "control-centre"
         ]
       }
     },
@@ -9943,6 +10552,229 @@
         "summary": "Get Review Signal Stress Test",
         "tags": [
           "review-evidence"
+        ]
+      }
+    },
+    "/api/v1/specialist-decisions": {
+      "get": {
+        "description": "Specialist decisions, newest first; the control centre replays those of its current run on load.",
+        "operationId": "specialist_decisions_list",
+        "parameters": [
+          {
+            "description": "publication origin the demo runs on",
+            "in": "query",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "publication origin the demo runs on",
+              "title": "Origin"
+            }
+          },
+          {
+            "description": "simulation run; a restart starts a new run",
+            "in": "query",
+            "name": "run_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "simulation run; a restart starts a new run",
+              "title": "Run Id"
+            }
+          },
+          {
+            "description": "alert | patient",
+            "in": "query",
+            "name": "subject_kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "alert",
+                    "patient"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "alert | patient",
+              "title": "Subject Kind"
+            }
+          },
+          {
+            "description": "page size",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "page size",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_SpecialistDecision_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Specialist Decisions",
+        "tags": [
+          "control-centre"
+        ]
+      },
+      "post": {
+        "description": "Record the specialist's answer to a published alert (accept / decline / clarify) or to a synthetic\nadmission request (confirm / decline / postpone) of the control centre.",
+        "operationId": "specialist_decision_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpecialistDecisionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpecialistDecision"
+                }
+              }
+            },
+            "description": "idempotent replay of an already stored decision"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpecialistDecision"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "idempotency_key reused with a different decision"
+          },
+          "422": {
+            "description": "action does not fit the subject kind"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Post Specialist Decision",
+        "tags": [
+          "control-centre"
         ]
       }
     }

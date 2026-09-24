@@ -15,9 +15,17 @@ open http://localhost:3000        # the web UI
 open http://localhost:8000/docs   # API (Swagger)
 ```
 
-The UI ([docs/frontend.md](docs/frontend.md)) has five screens: Обзор, Регион, Карточка стационара (chart, «Почему»,
-recommendations with decisions, referrals), Сигналы, О моделях. Demo path: Обзор → г. Астана → профиль «Патологии
-беременности» → ZIQ9 → подтвердить рекомендацию → решение в истории → Сигналы.
+The UI ([docs/frontend.md](docs/frontend.md), [docs/demo-frontend-handoff.md](docs/demo-frontend-handoff.md)),
+in Russian and Kazakh, has three parts. `/` is the **control centre**: a map of all 1 406 hospitals with published
+severity, a feed in which a synthetic day unfolds hour by hour and stops whenever the model asks the specialist,
+waiting counts for 7 / 14 / 30 days, and the top of the specialist's inbox. `/notifications` is the inbox
+(list on the left, verdict + facts + plain explanation + decision on the right) and `/queue` the full 30-day
+queue; the bell in the header opens the task drawer on every page. `/demo/flow` … `/demo/trust` is the six-step
+story of how the system works. The AI assistant bubble talks to a backend proxy (`POST /api/v1/assistant`) that holds the provider key
+(`ASSISTANT_PROVIDER`, `ASSISTANT_API_KEY`, `ASSISTANT_MODEL` in `.env`; Groq, OpenRouter, Gemini or OpenAI);
+without a key the bubble says so. Decisions are stored in Postgres (`specialist_decision`) and replayed on reload;
+the simulation itself is remembered by the browser. Demo path: Запустить → the clock stops on «Нужен специалист» → Подробнее → Принять / Отклонить →
+Уведомления → Как это работает.
 
 The API is described in [docs/api.md](docs/api.md): overview, regions, hospital cards with series, forecast and
 explanations, referrals, rule-based recommendations, alerts, models, dictionaries, and `POST /decisions` for the
@@ -87,7 +95,7 @@ backend/    FastAPI service (/api/v1: routers, schemas, services), SQLAlchemy mo
             tests (pytest + httpx; fixtures/ = 2-region CI dataset), Dockerfile
 ml/         hqai_ml package (ingest, features, models, evaluation, explain, registry, serving implemented;
             causal is a placeholder), pipelines/ (ingest, baseline, train, predict, build_marts), configs/
-frontend/   web UI: React 18 + Vite + TypeScript, TanStack Query, Recharts, Tailwind; strings in src/i18n/ru.ts;
+frontend/   web UI: React 18 + Vite + TypeScript, TanStack Query, inline SVG charts and map; strings in src/i18n/*.ts;
             Dockerfile (node build → nginx, /api proxy)
 tools/      audit.py (make audit), test_fixture.py (make fixture / fixture-load)
 .github/    workflows/ci.yml — lint + API tests on push and pull request

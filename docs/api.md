@@ -637,6 +637,64 @@ Same key, different `action` → `409`
 {"items": [{"region_code": "71", "org_code": "ZIQ9", "profile_code": "241", "recommendation_id": "rec-v1:historical_median:2025-03-31:ZIQ9:241:ZH7B", "alternative_org_code": "ZH7B", "action": "confirm", "comment": "Согласовано с заведующим отделением; направлять планово в ГБ № 3", "actor": "Иванова А. (УОЗ г. Астана)", "idempotency_key": "ui-5b1d9c0e-8f7a-4f5e-9d38-2a6f1b7c4e21", "id": 54, "created_at": "2026-09-15T22:14:16.214850Z", "alternative_org_name": "Государственное коммунальное предприятие на праве хозяйственного ведения \"Многопрофильная городская больница № 3\" акимата города Астана", "api_key_label": "Иванова А. (УОЗ г. Астана)"}], "total": 1, "limit": 20, "offset": 0}
 ```
 
+### `POST /specialist-decisions`
+
+**role: specialist.** The control centre's human-in-the-loop record. A decision answers one *subject*: a published
+alert (`subject_kind = alert`, `subject_id` = signal id, actions `accept | decline | clarify`) or a synthetic
+admission request of the demo simulation (`subject_kind = patient`, `subject_id` = referral id such as `Н-1281`,
+actions `confirm | decline | postpone`). `origin` is the publication origin the demo runs on, `run_id` the
+simulation run (a restart or a scenario change starts a new run; earlier runs stay in the table as history) and
+`sim_day` the simulated day (0 = origin), so the control centre can replay the decisions of its current run after
+a reload. An action that does not fit
+the subject kind → `422`. Idempotency works as for `POST /decisions` (same key + same content → `200` with the stored
+row; different content → `409`).
+
+```json
+{"origin": "2025-03-17", "run_id": "run-m1x9k2-4f7a", "sim_day": 1, "subject_kind": "alert", "subject_id": "cc50965694cb0b6862928df5", "region_code": "39", "org_code": "000V", "profile_code": "391", "action": "accept", "comment": "согласовано с заведующим", "actor": "Иванова А.", "idempotency_key": "ui-5b1d9c0e-8f7a-4f5e-9d38-2a6f1b7c4e21"}
+```
+
+→ `201`
+
+```json
+{"origin": "2025-03-17", "run_id": "run-m1x9k2-4f7a", "sim_day": 1, "subject_kind": "alert", "subject_id": "cc50965694cb0b6862928df5", "region_code": "39", "org_code": "000V", "profile_code": "391", "action": "accept", "comment": "согласовано с заведующим", "actor": "Иванова А.", "idempotency_key": "ui-5b1d9c0e-8f7a-4f5e-9d38-2a6f1b7c4e21", "id": 3, "created_at": "2026-09-23T21:10:02.114Z", "api_key_label": "demo"}
+```
+
+### `GET /specialist-decisions?origin=&run_id=&subject_kind=&limit=&offset=`
+
+**role: viewer.** Specialist decisions, newest first, optionally for one origin, one simulation run and/or
+subject kind.
+
+```json
+{"items": [{"origin": "2025-03-17", "run_id": "run-m1x9k2-4f7a", "sim_day": 1, "subject_kind": "patient", "subject_id": "Н-1281", "region_code": "55", "org_code": "0K3V", "profile_code": "021", "action": "confirm", "comment": null, "actor": null, "idempotency_key": null, "id": 4, "created_at": "2026-09-23T21:11:40.002Z", "api_key_label": "demo"}], "total": 1, "limit": 50, "offset": 0}
+```
+
+### `GET /assistant/status`
+
+**role: viewer.** Whether an external language model is configured for the assistant bubble (`ASSISTANT_API_KEY`
+on the server; the key is never exposed). `provider` ∈ `groq | openrouter | gemini | openai`.
+
+```json
+{"configured": true, "provider": "groq", "model": "openai/gpt-oss-120b"}
+```
+
+### `POST /assistant`
+
+**role: specialist.** The assistant proxy: the browser sends the published facts and the deterministic explanation
+of one subject plus the specialist's question; the server adds a system prompt with the product's claim boundaries
+(attention reading, no medical advice, no capacity claims, the specialist decides) and calls the configured
+provider's OpenAI-compatible chat endpoint. The reply is generated text, never evidence. `503` when no provider is
+configured, `502` when the provider fails.
+
+```json
+{"lang": "ru", "question": "Стоит ли соглашаться?", "facts": ["Прогноз: 5,9 в день", "Обычный уровень: 1,0 в день"], "explanation": ["В стационаре … модель ожидает 5,9 регистраций в день при обычном уровне 1,0."], "subject": {"kind": "alert", "id": "cc50965694cb0b6862928df5", "hospital": "Костанайская областная больница"}}
+```
+
+→ `200`
+
+```json
+{"text": "Да, стационару стоит уделить внимание: … Решение и ответственность за специалистом.", "provider": "groq", "model": "openai/gpt-oss-120b"}
+```
+
 ### `GET /alerts?region=&profile=&status=&limit=&offset=`
 
 **role: viewer.** Rule in [section 5](#5-alerts). `GET /alerts?region=71&profile=241&status=high&limit=1`:

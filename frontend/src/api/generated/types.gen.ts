@@ -793,6 +793,87 @@ export type AreaKpis = {
 };
 
 /**
+ * AssistantReply
+ */
+export type AssistantReply = {
+  /**
+   * Model
+   */
+  model: string;
+  /**
+   * Provider
+   */
+  provider: string;
+  /**
+   * Text
+   */
+  text: string;
+};
+
+/**
+ * AssistantRequest
+ */
+export type AssistantRequest = {
+  /**
+   * Explanation
+   */
+  explanation?: Array<string>;
+  /**
+   * Facts
+   */
+  facts?: Array<string>;
+  /**
+   * Lang
+   */
+  lang?: "ru" | "kk";
+  /**
+   * Question
+   */
+  question: string;
+  subject: AssistantSubject;
+};
+
+/**
+ * AssistantStatus
+ */
+export type AssistantStatus = {
+  /**
+   * Configured
+   *
+   * an external model is configured on the server
+   */
+  configured: boolean;
+  /**
+   * Model
+   */
+  model: string | null;
+  /**
+   * Provider
+   *
+   * groq | openrouter | gemini | openai-compatible
+   */
+  provider: string | null;
+};
+
+/**
+ * AssistantSubject
+ */
+export type AssistantSubject = {
+  /**
+   * Hospital
+   */
+  hospital: string;
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Kind
+   */
+  kind: "alert" | "patient";
+};
+
+/**
  * AssuranceFreshness
  */
 export type AssuranceFreshness = {
@@ -2853,6 +2934,30 @@ export type PageReferralItem = {
 };
 
 /**
+ * Page[SpecialistDecision]
+ */
+export type PageSpecialistDecision = {
+  /**
+   * Items
+   */
+  items: Array<SpecialistDecision>;
+  /**
+   * Limit
+   */
+  limit: number;
+  /**
+   * Offset
+   */
+  offset: number;
+  /**
+   * Total
+   *
+   * rows matching the filters, before limit/offset
+   */
+  total: number;
+};
+
+/**
  * ProfileItem
  */
 export type ProfileItem = {
@@ -3739,6 +3844,152 @@ export type SourceProvenance = {
 };
 
 /**
+ * SpecialistDecision
+ */
+export type SpecialistDecision = {
+  /**
+   * Action
+   *
+   * alerts: accept | decline | clarify; admission requests: confirm | decline | postpone
+   */
+  action: "accept" | "decline" | "clarify" | "confirm" | "postpone";
+  /**
+   * Actor
+   */
+  actor?: string | null;
+  /**
+   * Api Key Label
+   *
+   * label of the API key that submitted the decision
+   */
+  api_key_label: string | null;
+  /**
+   * Comment
+   */
+  comment?: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Id
+   */
+  id: number;
+  /**
+   * Idempotency Key
+   *
+   * client-generated per submission; resending the same key returns the stored row with 200
+   */
+  idempotency_key?: string | null;
+  /**
+   * Org Code
+   */
+  org_code?: string | null;
+  /**
+   * Origin
+   *
+   * publication origin the demo runs on
+   */
+  origin: string;
+  /**
+   * Profile Code
+   */
+  profile_code?: string | null;
+  /**
+   * Region Code
+   */
+  region_code?: string | null;
+  /**
+   * Run Id
+   *
+   * simulation run the decision belongs to; a restart of the simulation starts a new run, and the control centre replays only the decisions of its current run
+   */
+  run_id?: string | null;
+  /**
+   * Sim Day
+   *
+   * day of the simulation when the decision was taken (0 = origin)
+   */
+  sim_day: number;
+  /**
+   * Subject Id
+   *
+   * signal id or synthetic referral id
+   */
+  subject_id: string;
+  /**
+   * Subject Kind
+   */
+  subject_kind: "alert" | "patient";
+};
+
+/**
+ * SpecialistDecisionCreate
+ */
+export type SpecialistDecisionCreate = {
+  /**
+   * Action
+   *
+   * alerts: accept | decline | clarify; admission requests: confirm | decline | postpone
+   */
+  action: "accept" | "decline" | "clarify" | "confirm" | "postpone";
+  /**
+   * Actor
+   */
+  actor?: string | null;
+  /**
+   * Comment
+   */
+  comment?: string | null;
+  /**
+   * Idempotency Key
+   *
+   * client-generated per submission; resending the same key returns the stored row with 200
+   */
+  idempotency_key?: string | null;
+  /**
+   * Org Code
+   */
+  org_code?: string | null;
+  /**
+   * Origin
+   *
+   * publication origin the demo runs on
+   */
+  origin: string;
+  /**
+   * Profile Code
+   */
+  profile_code?: string | null;
+  /**
+   * Region Code
+   */
+  region_code?: string | null;
+  /**
+   * Run Id
+   *
+   * simulation run the decision belongs to; a restart of the simulation starts a new run, and the control centre replays only the decisions of its current run
+   */
+  run_id?: string | null;
+  /**
+   * Sim Day
+   *
+   * day of the simulation when the decision was taken (0 = origin)
+   */
+  sim_day: number;
+  /**
+   * Subject Id
+   *
+   * signal id or synthetic referral id
+   */
+  subject_id: string;
+  /**
+   * Subject Kind
+   */
+  subject_kind: "alert" | "patient";
+};
+
+/**
  * StateCell
  */
 export type StateCell = {
@@ -4102,6 +4353,79 @@ export type AlertsListResponses = {
 };
 
 export type AlertsListResponse = AlertsListResponses[keyof AlertsListResponses];
+
+export type AssistantAskData = {
+  body: AssistantRequest;
+  path?: never;
+  query?: never;
+  url: "/api/v1/assistant";
+};
+
+export type AssistantAskErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+  /**
+   * the provider answered with an error
+   */
+  502: Message;
+  /**
+   * no provider configured (ASSISTANT_API_KEY is empty)
+   */
+  503: Message;
+};
+
+export type AssistantAskError = AssistantAskErrors[keyof AssistantAskErrors];
+
+export type AssistantAskResponses = {
+  /**
+   * Successful Response
+   */
+  200: AssistantReply;
+};
+
+export type AssistantAskResponse =
+  AssistantAskResponses[keyof AssistantAskResponses];
+
+export type AssistantStatusData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/assistant/status";
+};
+
+export type AssistantStatusErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+};
+
+export type AssistantStatusError =
+  AssistantStatusErrors[keyof AssistantStatusErrors];
+
+export type AssistantStatusResponses = {
+  /**
+   * Successful Response
+   */
+  200: AssistantStatus;
+};
+
+export type AssistantStatusResponse =
+  AssistantStatusResponses[keyof AssistantStatusResponses];
 
 export type ConfigGetData = {
   body?: never;
@@ -5487,3 +5811,112 @@ export type ReviewSignalStressTestGetResponses = {
 
 export type ReviewSignalStressTestGetResponse =
   ReviewSignalStressTestGetResponses[keyof ReviewSignalStressTestGetResponses];
+
+export type SpecialistDecisionsListData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Origin
+     *
+     * publication origin the demo runs on
+     */
+    origin?: string | null;
+    /**
+     * Run Id
+     *
+     * simulation run; a restart starts a new run
+     */
+    run_id?: string | null;
+    /**
+     * Subject Kind
+     *
+     * alert | patient
+     */
+    subject_kind?: "alert" | "patient" | null;
+    /**
+     * Limit
+     *
+     * page size
+     */
+    limit?: number;
+    /**
+     * Offset
+     *
+     * rows to skip
+     */
+    offset?: number;
+  };
+  url: "/api/v1/specialist-decisions";
+};
+
+export type SpecialistDecisionsListErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type SpecialistDecisionsListError =
+  SpecialistDecisionsListErrors[keyof SpecialistDecisionsListErrors];
+
+export type SpecialistDecisionsListResponses = {
+  /**
+   * Successful Response
+   */
+  200: PageSpecialistDecision;
+};
+
+export type SpecialistDecisionsListResponse =
+  SpecialistDecisionsListResponses[keyof SpecialistDecisionsListResponses];
+
+export type SpecialistDecisionCreateData = {
+  body: SpecialistDecisionCreate;
+  path?: never;
+  query?: never;
+  url: "/api/v1/specialist-decisions";
+};
+
+export type SpecialistDecisionCreateErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * idempotency_key reused with a different decision
+   */
+  409: Message;
+  /**
+   * action does not fit the subject kind
+   */
+  422: unknown;
+};
+
+export type SpecialistDecisionCreateError =
+  SpecialistDecisionCreateErrors[keyof SpecialistDecisionCreateErrors];
+
+export type SpecialistDecisionCreateResponses = {
+  /**
+   * idempotent replay of an already stored decision
+   */
+  200: SpecialistDecision;
+  /**
+   * Successful Response
+   */
+  201: SpecialistDecision;
+};
+
+export type SpecialistDecisionCreateResponse =
+  SpecialistDecisionCreateResponses[keyof SpecialistDecisionCreateResponses];

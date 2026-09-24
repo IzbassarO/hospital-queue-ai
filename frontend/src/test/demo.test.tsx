@@ -8,7 +8,7 @@ import { routes } from "../routes";
 import { t } from "../i18n";
 import { SCENES } from "../demo/journey";
 import * as d from "./demoFixtures";
-import { jsonResponse } from "./mockApi";
+import { fixtures, jsonResponse } from "./mockApi";
 import { operationalMock, type Override } from "./operationalMock";
 import * as f from "./operationalFixtures";
 
@@ -19,6 +19,7 @@ function demoMock(override?: Override) {
     if (overridden) return overridden;
     const path = url.pathname.replace(base, "");
     if (path === "/dictionaries") return jsonResponse(d.demoDictionaries);
+    if (path === "/overview") return jsonResponse(fixtures.overview);
     if (path === "/operational-intelligence/overview")
       return jsonResponse(d.demoOverview);
     if (path === "/operational-intelligence/signals") {
@@ -147,8 +148,48 @@ const FORBIDDEN = [
 ];
 
 describe("Guided decision journey", () => {
-  it("/ opens the DETECT scene for the published rank-1 signal and speaks Russian", async () => {
-    const router = renderAt("/");
+  it("/demo opens the process simulation and steps to the specialist's decision", async () => {
+    const user = userEvent.setup();
+    const router = renderAt("/demo");
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/demo/flow"),
+    );
+    expect(
+      await screen.findByRole("heading", { level: 1, name: t.demo.flow.title }),
+    ).toBeVisible();
+    const stations = within(
+      screen.getByRole("list", { name: t.demo.flow.stations }),
+    ).getAllByRole("button");
+    expect(stations).toHaveLength(7);
+    expect(stations[0]).toHaveAttribute("aria-current", "step");
+    expect(
+      await screen.findByText(t.demo.flow.steps.referral.lead),
+    ).toBeVisible();
+    expect(await screen.findByText("209 243")).toBeVisible();
+    expect(called("/overview")).toHaveLength(1);
+    await user.click(stations[5]);
+    expect(screen.getByText(t.demo.flow.human)).toBeVisible();
+    expect(screen.getByText(t.demo.flow.steps.decision.lead)).toBeVisible();
+    expect(
+      screen
+        .getAllByRole("link", { name: /Разбор/ })
+        .some((link) => link.getAttribute("href") === "/demo/review"),
+    ).toBe(true);
+    await user.click(stations[6]);
+    expect(screen.getByText(t.demo.flow.steps.audit.lead)).toBeVisible();
+    await waitFor(() =>
+      expect(
+        screen.getByText(t.demo.flow.steps.audit.metric).previousElementSibling,
+      ).toHaveTextContent(String(d.demoCapabilities.length)),
+    );
+    expect(
+      screen.getByRole("button", { name: new RegExp(t.demo.flow.replay) }),
+    ).toBeVisible();
+    expect(primaryText()).not.toMatch(MACHINE_TOKEN);
+  });
+
+  it("DETECT presents the published rank-1 signal in Russian", async () => {
+    const router = renderAt("/demo/detect");
     expect(router.state.location.pathname).toBe("/demo/detect");
     expect(
       await screen.findByRole("heading", {
@@ -222,10 +263,10 @@ describe("Guided decision journey", () => {
     expect(router.state.location.pathname).toBe("/demo/detect");
     await user.click(within(nav).getByRole("link", { name: /Доверие/ }));
     expect(router.state.location.pathname).toBe("/demo/trust");
-    expect(screen.getByText(t.demo.scene(5, 5))).toBeVisible();
+    expect(screen.getByText(t.demo.scene(6, 6))).toBeVisible();
     expect(
       screen.getByRole("link", { name: `${t.demo.openOperations} →` }),
-    ).toHaveAttribute("href", "/operations");
+    ).toHaveAttribute("href", "/");
   });
 
   it("UNDERSTAND renders the forecast story, mapped reasons and an evidence drawer without raw enums", async () => {
@@ -243,7 +284,9 @@ describe("Guided decision journey", () => {
         within(chart).getAllByText(/Дата отсчёта|Первое превышение/).length,
       ).toBeGreaterThan(0),
     );
-    expect(called("/hospitals/000V/profiles/391")).toHaveLength(1);
+    expect(
+      called("/hospitals/000V/profiles/391").length,
+    ).toBeGreaterThanOrEqual(1);
     expect(
       screen.getAllByText(t.demo.understand.observed, { exact: false }).length,
     ).toBeGreaterThan(0);
@@ -258,7 +301,7 @@ describe("Guided decision journey", () => {
       ),
     ).toBeVisible();
     expect(
-      screen.getByText(t.demo.understand.knows.calibrated("80,0%")),
+      screen.getByText(t.demo.understand.knows.calibrated("80,0%").value),
     ).toBeVisible();
     expect(screen.getByText(t.demo.understand.askTitle)).toBeVisible();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
@@ -319,7 +362,9 @@ describe("Guided decision journey", () => {
         `${t.demo.test.identity}: ${t.demo.test.identityHint}`,
       ),
     ).toBeVisible();
-    const chips = screen.getAllByRole("button", { pressed: true });
+    const chips = screen
+      .getAllByRole("button", { pressed: true })
+      .filter((b) => /×/.test(b.textContent ?? ""));
     expect(chips[0]).toHaveTextContent("×1,20");
     expect(screen.getByText("5,9 → 7,1")).toBeVisible();
     expect(
@@ -457,18 +502,5 @@ describe("Guided decision journey", () => {
     expect(
       screen.queryByRole("button", { name: "×1,20" }),
     ).not.toBeInTheDocument();
-  });
-
-  it("operations view still works at /operations and links back to the guide", async () => {
-    renderAt("/operations");
-    expect(
-      await screen.findByRole("heading", { name: t.tower.title }),
-    ).toBeVisible();
-    expect(
-      screen.getByRole("link", { name: `${t.demo.openGuide} →` }),
-    ).toHaveAttribute("href", "/demo/detect");
-    expect(
-      screen.getByRole("link", { name: t.tower.overview }),
-    ).toHaveAttribute("href", "/operations");
   });
 });

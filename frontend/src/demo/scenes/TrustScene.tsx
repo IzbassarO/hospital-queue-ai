@@ -5,6 +5,14 @@ import { t } from "../../i18n";
 import { fmtDate } from "../../lib/format";
 import { useReviewOverview } from "../api";
 import { capabilityName, percent0, statusLabel } from "../language";
+import {
+  GlyphAudit,
+  GlyphEvidence,
+  GlyphFlow,
+  GlyphForecast,
+  GlyphHuman,
+  GlyphSignal,
+} from "../glyphs";
 import { Panel, Scene, Technical } from "../primitives";
 import { EvidenceState } from "./SubjectState";
 
@@ -44,7 +52,7 @@ export function TrustScene() {
               key: "temporal",
               title: t.demo.trust.indicators.temporal.title,
               body: t.demo.trust.indicators.temporal.body,
-              icon: "◷",
+              icon: <GlyphForecast size={18} />,
             },
             {
               key: "calibration",
@@ -55,13 +63,13 @@ export function TrustScene() {
                     calibration.final,
                   )
                 : t.demo.trust.indicators.calibration.bodyUnknown,
-              icon: "◫",
+              icon: <GlyphSignal size={18} />,
             },
             {
               key: "hierarchy",
               title: t.demo.trust.indicators.hierarchy.title,
               body: t.demo.trust.indicators.hierarchy.body,
-              icon: "⌂",
+              icon: <GlyphFlow size={18} />,
             },
             {
               key: "versioned",
@@ -72,7 +80,7 @@ export function TrustScene() {
                     fmtDate(snapshot.origin),
                   )
                 : t.demo.loading,
-              icon: "⎘",
+              icon: <GlyphAudit size={18} />,
             },
             {
               key: "separation",
@@ -82,32 +90,40 @@ export function TrustScene() {
                 rejected,
                 evaluation,
               ),
-              icon: "⊘",
+              icon: <GlyphEvidence size={18} />,
             },
             {
               key: "human",
               title: t.demo.trust.indicators.human.title,
               body: t.demo.trust.indicators.human.body,
-              icon: "☺",
+              icon: <GlyphHuman size={18} />,
             },
           ];
           return (
             <>
-              <div className="trust-grid">
+              <ol className="trust-list">
                 {indicators.map((item, i) => (
-                  <article
-                    key={item.key}
-                    className="trust-card"
-                    style={{ animationDelay: `${i * 70}ms` }}
-                  >
-                    <span className="trust-icon" aria-hidden="true">
-                      {item.icon}
-                    </span>
-                    <h2>{item.title}</h2>
-                    <p>{item.body}</p>
-                  </article>
+                  <li key={item.key}>
+                    <article
+                      className="trust-item"
+                      style={{ animationDelay: `${i * 70}ms` }}
+                    >
+                      <span className="trust-index" aria-hidden="true">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <div className="trust-text">
+                        <h2>
+                          <span className="trust-glyph" aria-hidden="true">
+                            {item.icon}
+                          </span>
+                          {item.title}
+                        </h2>
+                        <p>{item.body}</p>
+                      </div>
+                    </article>
+                  </li>
                 ))}
-              </div>
+              </ol>
               <div className="trust-foot">
                 <Panel tone="glass" className="trust-lineage">
                   <p className="panel-eyebrow">

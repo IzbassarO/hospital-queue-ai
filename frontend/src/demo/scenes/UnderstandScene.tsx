@@ -7,7 +7,14 @@ import { useObservedHistory } from "../api";
 import { ForecastStory } from "../charts/ForecastStory";
 import { DemoEvidenceDrawer } from "./DemoEvidenceDrawer";
 import { reasonLabel, translateList } from "../language";
-import { Bullets, NonClaims, Panel, Scene, Technical } from "../primitives";
+import {
+  Bullets,
+  Facts,
+  NonClaims,
+  Panel,
+  Scene,
+  Technical,
+} from "../primitives";
 import { SubjectState } from "./SubjectState";
 import { useDemoSubject } from "../useDemoSubject";
 
@@ -96,10 +103,10 @@ export function UnderstandScene() {
               </Panel>
               <div className="understand-blocks">
                 <Panel tone="paper" eyebrow={t.demo.understand.whyTitle}>
-                  <Bullets items={reasons} tone="check" />
+                  <Bullets items={reasons} tone="numbered" />
                 </Panel>
                 <Panel eyebrow={t.demo.understand.knowsTitle}>
-                  <Bullets items={knows} />
+                  <Facts rows={knows} />
                 </Panel>
                 <NonClaims
                   title={t.demo.understand.notClaimTitle}

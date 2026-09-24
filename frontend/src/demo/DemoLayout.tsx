@@ -10,8 +10,11 @@ import {
 } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { useOperationalOverview } from "../api/operational";
-import { t } from "../i18n";
+import { t, useLang } from "../i18n";
+import { LanguageSwitch, TaskBell, TaskHost } from "../tower/TaskHost";
+import { useUi } from "../tower/ui";
 import { fmtDate } from "../lib/format";
+import { GlyphMark } from "./glyphs";
 import { SCENES, isScene, scenePath, type SceneId } from "./journey";
 
 export function DemoLayout() {
@@ -19,6 +22,8 @@ export function DemoLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const overview = useOperationalOverview();
+  const lang = useLang();
+  const ui = useUi();
   const index = SCENES.indexOf(scene as SceneId);
   const previous = index > 0 ? SCENES[index - 1] : null;
   const next =
@@ -52,18 +57,23 @@ export function DemoLayout() {
     return () => window.removeEventListener("keydown", onKey);
   }, [next, previous, navigate, location.search]);
 
-  if (!isScene(scene)) return <Navigate to={scenePath("detect")} replace />;
+  if (!isScene(scene)) return <Navigate to={scenePath("flow")} replace />;
   const snapshot = overview.data?.snapshot;
   return (
-    <div className="demo-root">
+    <div className={`demo-root ${ui.explorerOpen ? "explorer-open" : ""}`}>
       <a href="#scene-title" className="skip-link">
         {t.app.skipToContent}
       </a>
       <header className="demo-header">
         <div className="demo-brand">
-          <Link to={scenePath("detect", location.search)} className="min-w-0">
-            <span className="demo-brand-name">{t.demo.brand}</span>
-            <span className="demo-brand-kicker">{t.demo.brandKicker}</span>
+          <Link to={scenePath("flow", location.search)} className="min-w-0">
+            <span className="demo-brand-mark" aria-hidden="true">
+              <GlyphMark size={18} />
+            </span>
+            <span className="demo-brand-text">
+              <span className="demo-brand-name">{t.demo.brand}</span>
+              <span className="demo-brand-kicker">{t.demo.brandKicker}</span>
+            </span>
           </Link>
         </div>
         <nav className="demo-progress" aria-label={t.demo.progress}>
@@ -95,12 +105,14 @@ export function DemoLayout() {
                   : t.tower.unavailable
                 : t.common.loading}
           </span>
-          <Link to="/operations" className="btn-ghost">
+          <Link to="/" className="btn-ghost">
             {t.demo.openOperations}
           </Link>
+          <LanguageSwitch />
+          <TaskBell />
         </div>
       </header>
-      <main id="main" className="demo-main" key={scene}>
+      <main id="main" className="demo-main" key={`${scene}:${lang}`}>
         <Outlet />
       </main>
       <footer className="demo-footer">
@@ -131,12 +143,13 @@ export function DemoLayout() {
               {t.demo.next}: {t.demo.scenes[next].label} →
             </Link>
           ) : (
-            <Link to="/operations" className="btn-accent">
+            <Link to="/" className="btn-accent">
               {t.demo.openOperations} →
             </Link>
           )}
         </div>
       </footer>
+      <TaskHost />
     </div>
   );
 }

@@ -57,6 +57,8 @@ export function snapshotView(d: OperationalSnapshotResponse) {
     freshness: d.freshness_state,
     status: d.publication_status,
     published: fmtDateTime(d.published_at),
+    forecastCount: d.forecast_count,
+    signalCount: d.signal_count,
     limitations: d.limitations,
     facts: [
       { label: "Publication SHA256", value: d.publication_identity_sha256 },

@@ -838,6 +838,44 @@ class DecisionLog(Base):
     api_key_label: Mapped[str | None] = mapped_column(Text)  # label of the API key that submitted it
 
 
+class SpecialistDecision(Base):
+    """A specialist's answer in the control centre: to a published alert or to a synthetic admission request.
+    Keyed by the publication origin and the subject id, so a reload of the demo can restore it. Never truncated
+    by the pipelines."""
+
+    __tablename__ = "specialist_decision"
+    __table_args__ = (
+        CheckConstraint("subject_kind IN ('alert', 'patient')", name="ck_specialist_decision_subject_kind"),
+        CheckConstraint(
+            "action IN ('accept', 'decline', 'clarify', 'confirm', 'postpone')",
+            name="ck_specialist_decision_action",
+        ),
+        Index("ix_specialist_decision_subject", "subject_kind", "subject_id"),
+        Index(
+            "ux_specialist_decision_idempotency_key",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("idempotency_key IS NOT NULL"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    origin: Mapped[dt.date] = mapped_column(Date, index=True)  # publication origin the decision belongs to
+    run_id: Mapped[str | None] = mapped_column(String(64), index=True)  # simulation run; a restart starts a new one
+    sim_day: Mapped[int] = mapped_column(Integer)  # day of the demo simulation (0 = origin)
+    subject_kind: Mapped[str] = mapped_column(String(16))  # alert | patient
+    subject_id: Mapped[str] = mapped_column(String(64))  # signal id or synthetic referral id
+    region_code: Mapped[str | None] = mapped_column(String(4))
+    org_code: Mapped[str | None] = mapped_column(String(8))
+    profile_code: Mapped[str | None] = mapped_column(String(8))
+    action: Mapped[str] = mapped_column(String(16))
+    comment: Mapped[str | None] = mapped_column(Text)
+    actor: Mapped[str | None] = mapped_column(Text)
+    api_key_label: Mapped[str | None] = mapped_column(Text)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128))
+
+
 # ------------------------------------------------------------------ access control
 class ApiKey(Base):
     """API keys (only the SHA-256 of the key is stored). role: viewer < specialist < admin."""

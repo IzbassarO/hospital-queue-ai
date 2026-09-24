@@ -56,8 +56,12 @@ export function Panel({
       aria-label={title}
       id={id}
     >
-      {eyebrow ? <p className="panel-eyebrow">{eyebrow}</p> : null}
-      {title ? <h2 className="panel-title">{title}</h2> : null}
+      {eyebrow || title ? (
+        <header className="panel-head">
+          {eyebrow ? <p className="panel-eyebrow">{eyebrow}</p> : null}
+          {title ? <h2 className="panel-title">{title}</h2> : null}
+        </header>
+      ) : null}
       {children}
     </section>
   );
@@ -132,12 +136,16 @@ export function NonClaims({
 }) {
   return (
     <section className="nonclaims" data-nonclaim="true" aria-label={title}>
-      <h3 className="nonclaims-title">{title}</h3>
-      <ul>
-        {items.map((item) => (
-          <li key={item}>{item}</li>
+      <p className="nonclaims-text">
+        <strong className="nonclaims-title">{title}.</strong>{" "}
+        {items.map((item, i) => (
+          <span key={item} className="nonclaims-item">
+            <span>{item}</span>
+            {/[.!?…]$/.test(item) ? "" : "."}
+            {i < items.length - 1 ? " " : ""}
+          </span>
         ))}
-      </ul>
+      </p>
     </section>
   );
 }
@@ -147,14 +155,56 @@ export function Bullets({
   tone = "default",
 }: {
   items: string[];
-  tone?: "default" | "check";
+  tone?: "default" | "check" | "numbered";
 }) {
+  const Tag = tone === "numbered" ? "ol" : "ul";
   return (
-    <ul className={`bullets bullets-${tone}`}>
+    <Tag className={`bullets bullets-${tone}`}>
       {items.map((item) => (
         <li key={item}>{item}</li>
       ))}
-    </ul>
+    </Tag>
+  );
+}
+
+/** Ledger of facts: label on the left, value on the right, hairlines between rows. No tiles, no count-ups. */
+export function Facts({
+  rows,
+  className = "",
+}: {
+  rows: { label: string; value: ReactNode; hint?: ReactNode }[];
+  className?: string;
+}) {
+  return (
+    <dl className={`facts ${className}`}>
+      {rows.map((row, i) => (
+        <div key={`${row.label}-${i}`} className="fact">
+          <dt>{row.label}</dt>
+          <dd>
+            <span className="fact-value">{row.value}</span>
+            {row.hint ? <span className="fact-hint">{row.hint}</span> : null}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** A number spoken inline: "207 сигналов в регионе · 60 высокого уровня". */
+export function FactLine({
+  parts,
+}: {
+  parts: { value: string; label: string }[];
+}) {
+  return (
+    <p className="fact-line">
+      {parts.map((part, i) => (
+        <span key={`${part.label}-${i}`}>
+          {i > 0 ? <span className="fact-line-sep"> · </span> : null}
+          <strong>{part.value}</strong> {part.label}
+        </span>
+      ))}
+    </p>
   );
 }
 

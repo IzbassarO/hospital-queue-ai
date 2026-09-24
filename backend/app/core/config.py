@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     # OpenAPI UI (/docs, /redoc, /openapi.json) — open when enabled; disable in production (docs/security.md)
     docs_enabled: bool = True
 
+    # Assistant proxy (POST /assistant): the provider key lives only here, never in the browser bundle.
+    # provider: groq | openrouter | gemini | openai (any OpenAI-compatible chat endpoint); empty key = not configured
+    assistant_provider: str = "groq"
+    assistant_api_key: str = ""
+    assistant_model: str = ""  # empty = the provider's default model (app/services/assistant.py)
+    assistant_base_url: str = ""  # empty = the provider's public endpoint
+
     postgres_user: str = "hqai"
     postgres_password: str = "change-me"
     postgres_db: str = "hqai"

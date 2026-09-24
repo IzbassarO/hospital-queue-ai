@@ -10,6 +10,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Query, Response, status
 
 from app.api.deps import PaginationDep, SessionDep
+from app.core.config import get_settings
 from app.core.security import AdminDep, SpecialistDep, ViewerDep
 from app.schemas.activity import AlertItem, Decision, DecisionCreate, RecommendationResponse, ReferralItem
 from app.schemas.admin import AccessLogItem, ApiKeyCreate, ApiKeyCreated, ApiKeyInfo
@@ -36,10 +37,18 @@ from app.schemas.review_evidence import (
     SignalDecisionAlternativesResponse,
     SignalStressTestResponse,
 )
+from app.schemas.specialist import (
+    AssistantReply,
+    AssistantRequest,
+    AssistantStatus,
+    SpecialistDecision,
+    SpecialistDecisionCreate,
+)
 from app.schemas.status import HospitalProfileCard, HospitalProfileStatus, OverviewResponse, RegionDetailResponse
 from app.services import (
     activity,
     admin,
+    assistant,
     catalog,
     explanations,
     export,
@@ -47,6 +56,7 @@ from app.services import (
     operational_intelligence,
     recommend,
     review_evidence,
+    specialist_decisions,
 )
 from app.services import status as status_service
 
@@ -270,6 +280,79 @@ def get_decisions(
 ) -> Page[Decision]:
     """Decisions, newest first."""
     return activity.list_decisions(session, org, profile, page.limit, page.offset)
+
+
+# ------------------------------------------------------------------------------------------ control centre
+@router.post(
+    "/specialist-decisions",
+    response_model=SpecialistDecision,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        **AUTH,
+        200: {"model": SpecialistDecision, "description": "idempotent replay of an already stored decision"},
+        409: {"model": Message, "description": "idempotency_key reused with a different decision"},
+        422: {"description": "action does not fit the subject kind"},
+    },
+    operation_id="specialist_decision_create",
+    tags=["control-centre"],
+)
+def post_specialist_decision(
+    payload: SpecialistDecisionCreate, session: SessionDep, principal: SpecialistDep, response: Response
+) -> SpecialistDecision:
+    """Record the specialist's answer to a published alert (accept / decline / clarify) or to a synthetic
+    admission request (confirm / decline / postpone) of the control centre."""
+    decision, created = specialist_decisions.create_decision(session, payload, api_key_label=principal.label)
+    if not created:
+        response.status_code = status.HTTP_200_OK
+    return decision
+
+
+@router.get(
+    "/specialist-decisions",
+    response_model=Page[SpecialistDecision],
+    responses=AUTH,
+    operation_id="specialist_decisions_list",
+    tags=["control-centre"],
+)
+def get_specialist_decisions(
+    session: SessionDep,
+    page: PaginationDep,
+    _: ViewerDep,
+    origin: Annotated[dt.date | None, Query(description="publication origin the demo runs on")] = None,
+    run_id: Annotated[str | None, Query(description="simulation run; a restart starts a new run")] = None,
+    subject_kind: Annotated[Literal["alert", "patient"] | None, Query(description="alert | patient")] = None,
+) -> Page[SpecialistDecision]:
+    """Specialist decisions, newest first; the control centre replays those of its current run on load."""
+    return specialist_decisions.list_decisions(session, origin, run_id, subject_kind, page.limit, page.offset)
+
+
+@router.get(
+    "/assistant/status",
+    response_model=AssistantStatus,
+    responses=AUTH,
+    operation_id="assistant_status",
+    tags=["control-centre"],
+)
+def get_assistant_status(_: ViewerDep) -> AssistantStatus:
+    """Whether an external model is configured on the server (the key itself is never exposed)."""
+    return assistant.status(get_settings())
+
+
+@router.post(
+    "/assistant",
+    response_model=AssistantReply,
+    responses={
+        **AUTH,
+        502: {"model": Message, "description": "the provider answered with an error"},
+        503: {"model": Message, "description": "no provider configured (ASSISTANT_API_KEY is empty)"},
+    },
+    operation_id="assistant_ask",
+    tags=["control-centre"],
+)
+def post_assistant(payload: AssistantRequest, _: SpecialistDep) -> AssistantReply:
+    """Ask the configured model about one subject. The browser sends the published facts and the deterministic
+    explanation; the system prompt keeps the claim boundaries. Generated text, never evidence."""
+    return assistant.ask(get_settings(), payload)
 
 
 # ------------------------------------------------------------------------------------------ catalog

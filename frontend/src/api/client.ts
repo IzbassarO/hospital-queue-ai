@@ -4,21 +4,10 @@
  */
 import type { Schema } from "./schema";
 import {
-  alertPageSchema,
-  configSchema,
-  type DecisionCreate,
-  decisionPageSchema,
-  decisionSchema,
   dictionariesSchema,
   healthSchema,
   hospitalCardSchema,
-  hospitalPageSchema,
-  meSchema,
-  modelsSchema,
   overviewSchema,
-  recommendationsSchema,
-  referralPageSchema,
-  regionDetailSchema,
 } from "./types";
 
 export const API_BASE: string = import.meta.env.VITE_API_BASE ?? "/api/v1";
@@ -134,49 +123,6 @@ function errorKind(status: number): ApiErrorKind {
   return "http";
 }
 
-export interface DownloadedFile {
-  blob: Blob;
-  filename: string;
-}
-
-/** Binary download with the API key (a plain link cannot send the header). */
-async function download(path: string): Promise<DownloadedFile> {
-  const url = absoluteUrl(path);
-  let response: Response;
-  try {
-    response = await fetch(url, { headers: authHeaders() });
-  } catch (cause) {
-    throw new ApiError(
-      "network",
-      url,
-      cause instanceof Error ? cause.message : String(cause),
-    );
-  }
-  if (!response.ok) {
-    let detail: string | undefined;
-    try {
-      detail = extractDetail(await response.json());
-    } catch {
-      detail = undefined;
-    }
-    throw new ApiError(
-      errorKind(response.status),
-      url,
-      detail ?? `HTTP ${response.status}`,
-      response.status,
-      detail,
-    );
-  }
-  const disposition = response.headers.get("Content-Disposition") ?? "";
-  const match = /filename\*=UTF-8''([^;]+)|filename="([^"]+)"/.exec(
-    disposition,
-  );
-  const filename = match
-    ? decodeURIComponent(match[1] ?? match[2] ?? "")
-    : "download";
-  return { blob: await response.blob(), filename };
-}
-
 function extractDetail(body: unknown): string | undefined {
   if (typeof body !== "object" || body === null || !("detail" in body))
     return undefined;
@@ -200,66 +146,11 @@ const enc = encodeURIComponent;
 
 export const api = {
   health: () => request(healthSchema, "/health"),
-  me: () => request(meSchema, "/me"),
-  config: () => request(configSchema, "/config"),
   overview: () => request(overviewSchema, "/overview"),
   dictionaries: () => request(dictionariesSchema, "/dictionaries"),
-  region: (code: string) =>
-    request(regionDetailSchema, `/regions/${enc(code)}`),
-  regionHospitals: (
-    code: string,
-    query: { profile?: string; limit: number; offset: number },
-  ) =>
-    request(
-      hospitalPageSchema,
-      buildPath(`/regions/${enc(code)}/hospitals`, query),
-    ),
   hospitalCard: (org: string, profile: string) =>
     request(
       hospitalCardSchema,
       `/hospitals/${enc(org)}/profiles/${enc(profile)}`,
     ),
-  referrals: (
-    org: string,
-    profile: string,
-    query: { sort: "risk" | "wait"; limit: number; offset: number },
-  ) =>
-    request(
-      referralPageSchema,
-      buildPath(
-        `/hospitals/${enc(org)}/profiles/${enc(profile)}/referrals`,
-        query,
-      ),
-    ),
-  recommendations: (org: string, profile: string) =>
-    request(
-      recommendationsSchema,
-      `/hospitals/${enc(org)}/profiles/${enc(profile)}/recommendations`,
-    ),
-  decisions: (query: {
-    org?: string;
-    profile?: string;
-    limit: number;
-    offset: number;
-  }) => request(decisionPageSchema, buildPath("/decisions", query)),
-  createDecision: (payload: DecisionCreate) =>
-    request(decisionSchema, "/decisions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }),
-  exportCard: (org: string, profile: string, format: "xlsx" | "pdf") =>
-    download(
-      buildPath(`/hospitals/${enc(org)}/profiles/${enc(profile)}/export`, {
-        format,
-      }),
-    ),
-  alerts: (query: {
-    region?: string;
-    profile?: string;
-    status?: string;
-    limit: number;
-    offset: number;
-  }) => request(alertPageSchema, buildPath("/alerts", query)),
-  models: () => request(modelsSchema, "/models"),
 };

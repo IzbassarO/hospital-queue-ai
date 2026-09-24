@@ -1,5 +1,6 @@
 /** Scene identifiers and paths of the guided journey (shared by the layout, the scenes and tests). */
 export const SCENES = [
+  "flow",
   "detect",
   "understand",
   "test",

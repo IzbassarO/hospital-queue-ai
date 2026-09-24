@@ -1,13 +1,16 @@
-# Frontend — Guided Decision Journey (primary) and Control Tower (operations view)
+# Frontend — Control centre (`/`) and the six-step story (`/demo/*`)
 
-Since Slice 6 the primary demo experience is the **guided decision journey** at `/` → `/demo/detect`: five focused
-scenes (Обнаружение · Понимание · Стресс-тест · Разбор · Доверие) with a progress bar, Previous/Next controls and
-keyboard arrows, dark navy canvas, warm paper surfaces for meaning and a restrained cyan accent. It is built from
-`src/demo/*` (layout, scenes, SVG charts, `language.ts` human-language mapping, `api.ts` review-evidence hooks,
-`motion.ts` finite animations honouring `prefers-reduced-motion`) and Russian copy in `src/i18n/demo.ts`. Data,
-scene contents, the review-evidence publication and tests are documented in
-[demo-publication-slice-6.md](demo-publication-slice-6.md). The Control Tower below is retained unchanged as the
-secondary operations view at `/operations` (its drill-down routes keep their paths); `/` no longer renders it.
+**Current state (September 2026).** The root route is the **control centre** (`src/tower/*`): a Kazakhstan map with
+one dot per registry hospital coloured by published severity, the model's predictive notifications (plain-language
+explanation built deterministically from published facts, specialist decision dialog), the queue of expected
+admissions, and a fourteen-day simulation on labelled synthetic flow (scenarios: baseline, surge, seasonal peak,
+data outage; the clock stops whenever the model asks the specialist). `/demo/flow` … `/demo/trust` is the six-step
+story of how the system works (`src/demo/*`). Both are documented in
+[demo-frontend-handoff.md](demo-frontend-handoff.md). The former Control Tower operations view (`/operations`,
+`/signals`, `/regions/:code`, `/hospitals/...`, `/assurance`) and its pages, components, legacy mart hooks and copy
+were removed; the sections below are kept as the historical description of that view and of the data boundary that
+the control centre still follows (`generated` → runtime guards → adapters → hooks → components; no scientific
+computation in the browser).
 
 ## Control Tower Experience v1 (operations view)
 

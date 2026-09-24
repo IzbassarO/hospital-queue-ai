@@ -8,6 +8,7 @@ from app.api.routes import router
 from app.core.access_log import AccessLogMiddleware
 from app.core.config import get_settings
 from app.core.security import API_KEY_HEADER
+from app.services.assistant import AssistantNotConfiguredError, AssistantUpstreamError
 from app.services.common import ConflictError, MartsNotBuiltError, NotFoundError, ValidationError
 from app.services.export import ExportUnavailableError
 
@@ -67,3 +68,13 @@ def _not_built(_: Request, exc: MartsNotBuiltError) -> JSONResponse:
 def liveness() -> dict[str, str]:
     """Process liveness without touching the database (container healthcheck)."""
     return {"status": "ok"}
+
+
+@app.exception_handler(AssistantNotConfiguredError)
+def _assistant_not_configured(_: Request, exc: AssistantNotConfiguredError) -> JSONResponse:
+    return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content={"detail": str(exc)})
+
+
+@app.exception_handler(AssistantUpstreamError)
+def _assistant_upstream(_: Request, exc: AssistantUpstreamError) -> JSONResponse:
+    return JSONResponse(status_code=status.HTTP_502_BAD_GATEWAY, content={"detail": str(exc)})

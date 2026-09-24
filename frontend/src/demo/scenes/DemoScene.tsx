@@ -2,6 +2,7 @@
 import { Navigate, useParams } from "react-router-dom";
 import { isScene, scenePath } from "../journey";
 import { DetectScene } from "./DetectScene";
+import { FlowScene } from "./FlowScene";
 import { ReviewScene } from "./ReviewScene";
 import { TestScene } from "./TestScene";
 import { TrustScene } from "./TrustScene";
@@ -9,8 +10,10 @@ import { UnderstandScene } from "./UnderstandScene";
 
 export function DemoScene() {
   const { scene } = useParams();
-  if (!isScene(scene)) return <Navigate to={scenePath("detect")} replace />;
+  if (!isScene(scene)) return <Navigate to={scenePath("flow")} replace />;
   switch (scene) {
+    case "flow":
+      return <FlowScene />;
     case "detect":
       return <DetectScene />;
     case "understand":

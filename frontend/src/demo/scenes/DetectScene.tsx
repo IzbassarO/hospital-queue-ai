@@ -2,12 +2,13 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { t } from "../../i18n";
-import { fmtDate } from "../../lib/format";
+import { fmtDate, fmtNumber } from "../../lib/format";
 import { RegionBars } from "../charts/RegionBars";
 import { DemoEvidenceDrawer } from "./DemoEvidenceDrawer";
 import { scenePath } from "../journey";
 import { number1, severityAdjective, statusLabel } from "../language";
 import {
+  FactLine,
   NonClaims,
   Panel,
   Scene,
@@ -142,24 +143,27 @@ export function DetectScene() {
                   title={subject.names.region}
                 >
                   {regionCounts ? (
-                    <StatGrid>
-                      <Stat
-                        label={t.demo.detect.regionSignals}
-                        value={regionCounts.total}
-                        decimals={0}
-                      />
-                      <Stat
-                        label={t.demo.detect.regionHigh}
-                        value={regionCounts.high}
-                        decimals={0}
-                      />
-                    </StatGrid>
+                    <FactLine
+                      parts={[
+                        {
+                          value: fmtNumber(regionCounts.total, 0),
+                          label: t.demo.detect.regionSignals,
+                        },
+                        {
+                          value: fmtNumber(regionCounts.high, 0),
+                          label: t.demo.detect.regionHigh,
+                        },
+                      ]}
+                    />
                   ) : null}
                   {subject.region?.signals.length ? (
                     <ol
                       className="region-rank"
                       aria-label={t.demo.detect.regionTop}
                     >
+                      <li className="region-rank-head" aria-hidden="true">
+                        {t.demo.detect.regionTop}
+                      </li>
                       {subject.region.signals.slice(0, 5).map((s) => (
                         <li
                           key={s.id}
@@ -187,10 +191,7 @@ export function DetectScene() {
                     </ol>
                   ) : null}
                 </Panel>
-                <Panel
-                  eyebrow={t.demo.detect.nationalTitle}
-                  title={t.demo.detect.nationalHint}
-                >
+                <Panel eyebrow={t.demo.detect.nationalTitle}>
                   {subject.overview ? (
                     <RegionBars
                       regions={subject.overview.regions.map((r) => ({
@@ -206,6 +207,7 @@ export function DetectScene() {
                       }
                     />
                   ) : null}
+                  <p className="footnote">{t.demo.detect.nationalHint}</p>
                 </Panel>
               </div>
             </div>

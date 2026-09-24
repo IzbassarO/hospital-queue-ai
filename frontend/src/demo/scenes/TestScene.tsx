@@ -7,13 +7,11 @@ import { StressChart } from "../charts/StressChart";
 import { percent1, severityLabel, translateSentence } from "../language";
 import {
   Arrow,
-  Bullets,
+  Facts,
   NonClaims,
   Panel,
   Scene,
   SeverityPill,
-  Stat,
-  StatGrid,
   Technical,
 } from "../primitives";
 import { EvidenceState, SubjectState } from "./SubjectState";
@@ -120,82 +118,82 @@ export function TestScene() {
                         eyebrow={t.demo.test.outcomeTitle}
                         title={`${subject.names.hospital} · ${subject.names.profile}`}
                       >
-                        <div className="before-after">
-                          <div>
-                            <span className="ba-label">
-                              {t.demo.test.severityBefore}
-                            </span>
-                            <SeverityPill
-                              value={active.baseline_severity}
-                              size="lg"
-                            />
-                          </div>
-                          <Arrow />
-                          <div>
-                            <span className="ba-label">
-                              {t.demo.test.severityAfter}
-                            </span>
-                            <SeverityPill
-                              value={active.scenario_severity}
-                              size="lg"
-                            />
-                          </div>
-                        </div>
-                        <StatGrid>
-                          <Stat
-                            label={t.demo.test.central}
-                            text={`${fmtNumber(active.baseline_central, 1)} → ${fmtNumber(active.scenario_central, 1)}`}
-                            hint={
-                              active.relative_delta === null ||
-                              active.relative_delta === 0
-                                ? t.demo.test.unchanged
-                                : `${active.relative_delta > 0 ? "+" : "−"}${percent1(Math.abs(active.relative_delta))}`
-                            }
-                          />
-                          <Stat
-                            label={t.demo.test.rank}
-                            text={`${active.baseline_inbox_rank == null ? "—" : `#${active.baseline_inbox_rank}`} → ${active.scenario_inbox_rank == null ? "—" : `#${active.scenario_inbox_rank}`}`}
-                          />
-                          <Stat
-                            label={t.demo.test.crossing}
-                            text={
-                              active.first_crossing_date
+                        <Facts
+                          rows={[
+                            {
+                              label: t.demo.detect.severity,
+                              value: (
+                                <span className="fact-pair">
+                                  <SeverityPill
+                                    value={active.baseline_severity}
+                                  />
+                                  <Arrow />
+                                  <SeverityPill
+                                    value={active.scenario_severity}
+                                  />
+                                </span>
+                              ),
+                            },
+                            {
+                              label: t.demo.test.central,
+                              value: `${fmtNumber(active.baseline_central, 1)} → ${fmtNumber(active.scenario_central, 1)}`,
+                              hint:
+                                active.relative_delta === null ||
+                                active.relative_delta === 0
+                                  ? t.demo.test.unchanged
+                                  : `${active.relative_delta > 0 ? "+" : "−"}${percent1(Math.abs(active.relative_delta))}`,
+                            },
+                            {
+                              label: t.demo.test.rank,
+                              value: `${active.baseline_inbox_rank == null ? "—" : `#${active.baseline_inbox_rank}`} → ${active.scenario_inbox_rank == null ? "—" : `#${active.scenario_inbox_rank}`}`,
+                            },
+                            {
+                              label: t.demo.test.crossing,
+                              value: active.first_crossing_date
                                 ? fmtDate(active.first_crossing_date)
-                                : t.common.noData
-                            }
-                          />
-                          <Stat
-                            label={t.demo.understand.threshold}
-                            value={active.threshold_value}
-                            unit={t.demo.detect.perDay}
-                          />
-                        </StatGrid>
+                                : t.common.noData,
+                            },
+                            {
+                              label: t.demo.understand.threshold,
+                              value:
+                                active.threshold_value == null
+                                  ? t.common.noData
+                                  : fmtNumber(active.threshold_value, 1),
+                              hint:
+                                active.threshold_value == null
+                                  ? undefined
+                                  : t.demo.detect.perDay,
+                            },
+                          ]}
+                        />
                         {active.scenario_reason ? (
-                          <p className="outcome-reason">
+                          <p className="prose outcome-reason">
                             {translateSentence(active.scenario_reason) ??
                               severityLabel(active.scenario_severity)}
                           </p>
                         ) : null}
                       </Panel>
-                      <Panel
-                        eyebrow={t.demo.test.networkTitle}
-                        title={t.demo.test.networkHint}
-                      >
-                        <Bullets
-                          items={[
-                            t.demo.test.networkCells(
+                      <Panel eyebrow={t.demo.test.networkTitle}>
+                        <p className="prose">
+                          <span>
+                            {t.demo.test.networkCells(
                               percent1(network.severity_changed_share),
                               fmtNumber(network.severity_changed_count, 0),
-                            ),
-                            t.demo.test.networkEntities(
+                            )}
+                          </span>
+                          .{" "}
+                          <span>
+                            {t.demo.test.networkEntities(
                               fmtNumber(
                                 network.entity_severity_changed_count,
                                 0,
                               ),
                               fmtNumber(network.entity_count, 0),
-                            ),
-                          ]}
-                        />
+                            )}
+                          </span>
+                          .
+                        </p>
+                        <p className="footnote">{t.demo.test.networkHint}</p>
                       </Panel>
                       <NonClaims
                         title={t.demo.understand.notClaimTitle}

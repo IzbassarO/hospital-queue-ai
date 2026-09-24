@@ -10,7 +10,6 @@ export function operationalMock(override?: Override) {
     if (overridden) return overridden;
     const path = url.pathname.replace("/api/v1", "");
     const base = "/operational-intelligence";
-    if (path === "/me") return jsonResponse(fixtures.me);
     if (path === "/dictionaries") return jsonResponse(fixtures.dictionaries);
     if (path === `${base}/overview`) return jsonResponse(f.overview);
     if (path === `${base}/signals`) {

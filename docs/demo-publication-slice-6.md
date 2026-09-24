@@ -10,8 +10,8 @@ Model Assurance and operational publications.
 
 | Route | Role |
 | --- | --- |
-| `/` → `/demo/detect` | Primary guided journey (five focused scenes, stepper model, no long dashboard) |
-| `/demo/:scene` | `detect`, `understand`, `test`, `review`, `trust`; optional `?signal=<id>` |
+| `/` → `/demo/flow` | Primary guided journey (six focused scenes, stepper model, no long dashboard) |
+| `/demo/:scene` | `flow`, `detect`, `understand`, `test`, `review`, `trust`; optional `?signal=<id>` |
 | `/operations` | Secondary “Operations view”: the unchanged Control Tower overview |
 | `/signals`, `/signals/:id`, `/regions/:code`, `/hospitals/:org/profiles/:profile`, `/assurance` (+ `/alerts`, `/models`) | Detailed operational/reference views, unchanged |
 
@@ -31,6 +31,7 @@ lead 1 day) are read from the API. Hospital names come from the `organizations` 
 
 | Scene | Data |
 | --- | --- |
+| FLOW (process simulation) | A finite, step-by-step animation of one referral's path: Направление → Поток → Прогноз → Сигнал → Свидетельства → Решение специалиста → Аудит. Numbers per station: `/overview` national mart (registrations over 28 days, hospital × profile series, hospitals), `OI/overview` (published forecast points, signal counts), `review-evidence/overview` (scenarios, alternative sets), `/model-assurance` (capabilities). Autoplay stops at the last step; stations are clickable; reduced motion shows the final state. |
 | DETECT | `OI/signals?limit=1`, `OI/signals/{id}`, `OI/regions/39` (counts + top signals), `OI/overview` (regional HIGH counts), `OI/forecasts` (coverage), `/dictionaries` |
 | UNDERSTAND | `OI/forecasts` (14 central points + calibrated bounds), `OI/signals/{id}/explanation` (deterministic), `/hospitals/000V/profiles/391` (observed daily registrations **up to the origin only**, from the operational data mart; context, not part of the frozen publication) |
 | TEST | `review-evidence/signals/{id}/stress-test`: identity reproduction + ×0.90 / ×1.10 / ×1.20 outcomes and 14 daily cells each (baseline central + calibrated bounds vs scenario central + derived sensitivity range), network counts from the accepted scenario summary |
@@ -67,6 +68,13 @@ codes, verification states, range results, capability names, and the English pub
 endpoint (exact and pattern forms). Unmapped sentences are never shown in the primary surface; they stay in the
 “Технические идентификаторы” disclosure. Headlines are rebuilt from severity and lead time
 («Потенциальное высокое давление потока — в течение 1 дня»); the English model headline is never rendered.
+
+## Visual language (revision 2)
+
+Ivory canvas (`#f3f4ef`), near-black ink (`#0f1512`), one emerald accent (`#16a66e`) with a lime highlight
+(`#cdeb5b`) on black surfaces; amber and red only for published severity. Components are compact (stat tiles,
+pills, 16px radii, soft shadows); charts are restyled for both paper and black panels. Tokens live on `.demo-root`
+and on the portalled drawer backdrop. The previous navy theme is not kept.
 
 ## Motion
 

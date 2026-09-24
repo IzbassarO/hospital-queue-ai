@@ -12,13 +12,11 @@ import { TransferChart } from "../charts/TransferChart";
 import { abstentionLabel, percent1, statusLabel } from "../language";
 import {
   Arrow,
-  Bullets,
+  Facts,
   NonClaims,
   Panel,
   Scene,
   SeverityPill,
-  Stat,
-  StatGrid,
   Technical,
 } from "../primitives";
 import { EvidenceState, SubjectState } from "./SubjectState";
@@ -171,41 +169,51 @@ function OwnSets({
           <p className="panel-lead">{t.demo.review.abstainedLead}</p>
         </>
       ) : null}
-      <StatGrid>
-        <Stat
-          label={t.demo.review.budgets}
-          text={sorted.map((s) => t.demo.review.budget(s.budget)).join(" · ")}
-        />
-        <Stat
-          label={t.demo.review.considered}
-          value={first.receiver_candidates_considered}
-          decimals={0}
-          hint={`${fmtNumber(first.receiver_candidates_eligible, 0)} ${t.demo.review.eligible}`}
-        />
-        <Stat
-          label={t.demo.review.minimumFraction}
-          text={
-            first.donor_minimum_transfer_fraction === null
-              ? t.common.noData
-              : percent1(first.donor_minimum_transfer_fraction)
-          }
-          hint={t.demo.review.minimumHint}
-        />
-      </StatGrid>
+      <Facts
+        rows={[
+          {
+            label: t.demo.review.budgets,
+            value: sorted
+              .map((s) => t.demo.review.budget(s.budget))
+              .join(" · "),
+          },
+          {
+            label: t.demo.review.considered,
+            value: fmtNumber(first.receiver_candidates_considered, 0),
+            hint: `${fmtNumber(first.receiver_candidates_eligible, 0)} ${t.demo.review.eligible}`,
+          },
+          {
+            label: t.demo.review.minimumFraction,
+            value:
+              first.donor_minimum_transfer_fraction === null
+                ? t.common.noData
+                : percent1(first.donor_minimum_transfer_fraction),
+            hint: t.demo.review.minimumHint,
+          },
+        ]}
+      />
       {codes.length ? (
         <>
           <h4 className="review-subtitle">{t.demo.review.reasonsTitle}</h4>
-          <Bullets items={codes.map(abstentionLabel)} />
+          <p className="prose">
+            {codes.map((code, i) => (
+              <span key={code}>
+                <span>{abstentionLabel(code)}</span>
+                {i < codes.length - 1 ? ". " : "."}
+              </span>
+            ))}
+          </p>
         </>
       ) : null}
       {withAlternatives.map((s) => (
         <div key={s.set_id} className="own-alternatives">
           <h4 className="review-subtitle">{t.demo.review.budget(s.budget)}</h4>
-          <Bullets
-            items={s.alternatives.map(
-              (a) =>
-                `${names(a.receiver.org_code)} · ${t.demo.review.fraction} ${percent1(a.transfer_fraction)} · ${statusLabel(a.verification_state)}`,
-            )}
+          <Facts
+            rows={s.alternatives.map((a) => ({
+              label: names(a.receiver.org_code),
+              value: `${t.demo.review.fraction} ${percent1(a.transfer_fraction)}`,
+              hint: statusLabel(a.verification_state),
+            }))}
           />
         </div>
       ))}
@@ -274,27 +282,30 @@ function ExampleSet({
           </span>
         </div>
       </div>
-      <StatGrid>
-        <Stat
-          label={t.demo.review.fraction}
-          text={percent1(alternative.transfer_fraction)}
-          hint={t.demo.review.budget(set.budget)}
-        />
-        <Stat
-          label={t.demo.review.moved}
-          value={alternative.transferred_total}
-          unit={t.demo.review.over}
-        />
-        <Stat
-          label={t.demo.review.supportTier}
-          text={statusLabel(alternative.forecast_support_tier)}
-        />
-        <Stat
-          label={t.demo.review.rangeResult}
-          text={statusLabel(alternative.sensitivity_range_result)}
-          hint={statusLabel(alternative.receiver_range_evidence)}
-        />
-      </StatGrid>
+      <Facts
+        className="facts-columns"
+        rows={[
+          {
+            label: t.demo.review.fraction,
+            value: percent1(alternative.transfer_fraction),
+            hint: t.demo.review.budget(set.budget),
+          },
+          {
+            label: t.demo.review.moved,
+            value: fmtNumber(alternative.transferred_total, 1),
+            hint: t.demo.review.over,
+          },
+          {
+            label: t.demo.review.supportTier,
+            value: statusLabel(alternative.forecast_support_tier),
+          },
+          {
+            label: t.demo.review.rangeResult,
+            value: statusLabel(alternative.sensitivity_range_result),
+            hint: statusLabel(alternative.receiver_range_evidence),
+          },
+        ]}
+      />
       <div className="transfer-pair">
         <TransferChart
           title={`${t.demo.review.donor}: ${names(alternative.donor.org_code)}`}
@@ -314,20 +325,21 @@ function ExampleSet({
         {t.demo.review.perHorizon} · {t.demo.review.thresholdMark}:{" "}
         {t.demo.understand.threshold.toLowerCase()}
       </p>
-      <div className="verify-row" data-nonclaim="true">
-        <span className="verify-item is-ok">{t.demo.review.verified}</span>
-        <span className="verify-item is-ok">{t.demo.review.conservation}</span>
-        <span className="verify-item is-ok">{t.demo.review.noWorsening}</span>
+      <h4 className="review-subtitle">{t.demo.review.verification}</h4>
+      <ul className="checks" data-nonclaim="true">
+        <li className="is-ok">{t.demo.review.verified}</li>
+        <li className="is-ok">{t.demo.review.conservation}</li>
+        <li className="is-ok">{t.demo.review.noWorsening}</li>
         {alternative.hierarchy_coherent ? (
-          <span className="verify-item is-ok">{t.demo.review.hierarchy}</span>
+          <li className="is-ok">{t.demo.review.hierarchy}</li>
         ) : null}
-        <span className="verify-item is-warn">
+        <li className="is-warn">
           {statusLabel("NOT_PHYSICAL_CAPACITY_VALIDATED")}
-        </span>
-        <span className="verify-item is-warn">
+        </li>
+        <li className="is-warn">
           {statusLabel("PHYSICAL_FEASIBILITY_UNKNOWN")}
-        </span>
-      </div>
+        </li>
+      </ul>
       {others > 0 ? (
         <p className="chart-note">{t.demo.review.otherAlternatives(others)}</p>
       ) : null}
