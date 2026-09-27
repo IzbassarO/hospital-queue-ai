@@ -472,6 +472,7 @@ def list_signals(
     severity: str | None,
     signal_type: str | None,
     support_status: str | None,
+    materiality_status: str | None = None,
     limit: int,
     offset: int,
 ) -> Page[OperationalSignalResponse]:
@@ -486,6 +487,7 @@ def list_signals(
         severity=severity,
         signal_type=signal_type,
         support_status=support_status,
+        materiality_status=materiality_status,
         limit=limit,
         offset=offset,
     )

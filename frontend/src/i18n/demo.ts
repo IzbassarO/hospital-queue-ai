@@ -1,7 +1,7 @@
 /** Guided decision journey copy (Russian). Scientific values always come from the API; these are frames only. */
 export const demo = {
-  brand: "Hospital Flow Intelligence",
-  brandKicker: "Казахстан · интеллект потоков госпитализации",
+  brand: "Aqyl Kezek",
+  brandKicker: "Hospital Flow Intelligence",
   tagline: "Поддержка решений специалиста на основе принятых свидетельств",
   openOperations: "Центр управления",
   openGuide: "Гид по системе",
@@ -133,7 +133,10 @@ export const demo = {
     central: "Центральный прогноз",
     perDay: "регистраций в день",
     interval: "Калиброванный интервал",
-    intervalHint: (coverage: string) => `номинальное покрытие ${coverage}`,
+    intervalHint: (coverage: string, measured: string | null = null) =>
+      measured
+        ? `номинальное покрытие ${coverage} · на финальном тесте ${measured}`
+        : `номинальное покрытие ${coverage}`,
     reference: "Исторический ориентир потока",
     referenceHint: "порог высокого потока по истории ряда",
     rank: "Детерминированный ранг",
@@ -177,9 +180,11 @@ export const demo = {
         label: "Поддержка данными",
         value: "данные ряда прогноз не поддерживают",
       },
-      calibrated: (coverage: string) => ({
+      calibrated: (coverage: string, measured: string | null = null) => ({
         label: "Интервал",
-        value: `калиброван, номинальное покрытие ${coverage}`,
+        value: measured
+          ? `калиброван, номинальное покрытие ${coverage}, на финальном тесте ${measured}`
+          : `калиброван, номинальное покрытие ${coverage}`,
       }),
       notCalibrated: {
         label: "Интервал",
@@ -321,6 +326,8 @@ export const demo = {
         title: "Калиброванная неопределённость",
         body: (validation: string, final: string) =>
           `Интервалы с номинальным покрытием 80%: на валидации ${validation}, на финальном тесте ${final}. Разрыв показан, а не скрыт.`,
+        byDateClass:
+          "По классам дней покрытие разное: по будням 75,1 %, в праздники 66,7 %, на выходных 59,7 %.",
         bodyUnknown:
           "Интервалы с номинальным покрытием 80%; фактическое покрытие публикуется отдельно.",
       },

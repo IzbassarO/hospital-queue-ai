@@ -1,14 +1,24 @@
 services:
   postgres:
-    image: pgvector/pgvector:pg16
+    # Plain upstream PostgreSQL 16, pinned by digest: no extensions are used, so any DBA-managed PostgreSQL 14+
+    # serves just as well (docs/operations.md). The bookworm variant is deliberate — it keeps the Debian 12 glibc
+    # (2.36) of the pgvector image this replaced, so an existing pgdata volume keeps its collation version and
+    # needs no REINDEX; the default postgres:16 tag is Debian 13 (glibc 2.41) and would not. Digest resolved
+    # 2026-09-27 with `docker buildx imagetools inspect postgres:16-bookworm`.
+    # POSTGRES_IMAGE overrides the pin where a digest cannot be resolved, e.g. a closed network that loads the
+    # image from a tar (docker load does not restore repo digests) or a site registry mirror.
+    image: ${POSTGRES_IMAGE:-postgres:16-bookworm@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67}
     container_name: hqai-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+    # host ports bind to the loopback interface: the database and the API are not reachable from the network,
+    # only the UI is (UI_BIND=127.0.0.1 in .env closes that too). POSTGRES_PORT/API_PORT/FRONTEND_PORT move the
+    # host side when a laptop already uses the default ports (docs/security.md §3)
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
@@ -32,10 +42,14 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        # VITE_SYNTHETIC=off in .env builds the UI without the synthetic layer (frontend/src/synthetic/README.md)
+        VITE_SYNTHETIC: "${VITE_SYNTHETIC:-}"
     image: hqai-frontend:latest
     container_name: hqai-frontend
     restart: unless-stopped
@@ -47,7 +61,50 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "${FRONTEND_PORT:-3000}:80"
+      - "${UI_BIND:-0.0.0.0}:${FRONTEND_PORT:-3000}:80"
+
+  # One-shot demo loader (`make demo`): the committed seed/ -> database tables, then the three publications
+  # (backend/app/services/seed.py). Only in the "demo" profile, so plain `make up` never touches the data:
+  #   docker compose --profile demo run --rm seed
+  seed:
+    profiles: ["demo"]
+    build: ./backend
+    image: hqai-backend:latest
+    restart: "no"
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+    volumes:
+      - ./seed:/seed:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: ["python", "-m", "app.cli", "load-seed", "--dir", "/seed"]
+
+  # Offline ML pipelines in a container (ml/Dockerfile), so the nightly refresh needs no host Python toolchain.
+  # Only in the "pipelines" profile, so `make up` and `make demo` never start it:
+  #   make pipe CMD='ml/pipelines/flow_quantile.py --plan'
+  #   docker compose --profile pipelines run --rm pipelines python ml/pipelines/ingest.py
+  # Raw and processed data, model artifacts and the frozen configs stay on the host and are mounted here.
+  pipelines:
+    profiles: ["pipelines"]
+    build:
+      context: .
+      dockerfile: ml/Dockerfile
+    image: hqai-ml:latest
+    restart: "no"
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+    volumes:
+      # The deployed checkout at /work: the pipelines read ./data, write ./data/processed and ./artifacts, and every
+      # run record stores the commit and worktree state it was produced from (hqai_ml/registry/experiment.py runs the
+      # git client in /work), so the repository is mounted rather than a copy baked into the image.
+      - .:/work
+      # the frozen model configuration is read-only even for a pipeline run by hand
+      - ./ml/configs:/work/ml/configs:ro
 
 volumes:
   pgdata:

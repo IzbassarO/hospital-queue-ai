@@ -44,6 +44,11 @@ class SpecialistDecision(SpecialistDecisionCreate):
     id: int
     created_at: dt.datetime
     api_key_label: str | None = Field(description="label of the API key that submitted the decision")
+    publication_identity_sha256: str | None = Field(
+        description="identity of the operational-intelligence publication that was active when the decision was "
+        "written (server-side, GET /operational-intelligence/overview -> snapshot.publication_identity_sha256); "
+        "null when nothing was published"
+    )
 
 
 class AssistantStatus(BaseModel):

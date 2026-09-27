@@ -327,6 +327,23 @@ export function explanationView(d: SignalExplanationResponse) {
     })),
   };
 }
+/**
+ * Measured interval coverage of the temporal calibration capability, read from the published assurance evidence:
+ * the share of observed values that fell inside the nominal 80 % interval on the validation and on the final test.
+ * Returns null when the capability does not carry the evidence, so the caller can fall back to the nominal only.
+ */
+export function calibrationCoverage(
+  evidence: Record<string, unknown> | undefined,
+): { validation: number; final: number } | null {
+  const nested = evidence?.calibration_evidence;
+  if (typeof nested !== "object" || nested === null) return null;
+  const inner = nested as Record<string, unknown>;
+  const validation = inner.hospital_registrations_validation_coverage;
+  const final = inner.hospital_registrations_final_coverage;
+  if (typeof validation !== "number" || typeof final !== "number") return null;
+  return { validation, final };
+}
+
 export function capabilityView(d: ModelAssuranceCapabilityResponse) {
   return {
     id: d.capability_id,

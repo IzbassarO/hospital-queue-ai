@@ -1,0 +1,6 @@
+{
+  "candidate": "discrete_hospitalization_hazard",
+  "evaluation_status": "completed",
+  "fold": "q1_final",
+  "model_name": "patient_journey"
+}

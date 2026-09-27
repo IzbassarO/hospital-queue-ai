@@ -231,3 +231,9 @@ bit-for-bit numerical equality across operating systems or architectures.
 
 Patient-journey outputs are additional ignored experiment artifacts under `artifacts/tournaments/<run-id>/`; they do
 not alter the current model manifest, PostgreSQL serving registry, prediction schema, backend API or frontend.
+
+Released copies of the frozen models (A, B, C, both retained patient-journey candidates and the flow quantile
+boosters) are committed under [`models/`](../models/README.md) as self-contained modules with a standalone
+`predict.py`, a joblib bundle, an example with its expected output and per-file sha256 in `models/manifest.json`.
+They are rebuilt only by `ml/pipelines/export_models.py` from the checksummed artifacts above and never edited by hand
+([ADR 0007](adr/0007-committed-release-data.md)); `artifacts/` remains the authority they point back to.

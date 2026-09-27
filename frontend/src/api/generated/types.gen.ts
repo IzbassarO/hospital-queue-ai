@@ -1704,6 +1704,17 @@ export type HttpValidationError = {
 };
 
 /**
+ * HealthPublications
+ *
+ * null = nothing of that kind is published yet; the UI then shows that the published model is unavailable.
+ */
+export type HealthPublications = {
+  model_assurance: PublicationRef | null;
+  operational_intelligence: PublicationRef | null;
+  review_evidence: PublicationRef | null;
+};
+
+/**
  * HealthResponse
  */
 export type HealthResponse = {
@@ -1721,6 +1732,10 @@ export type HealthResponse = {
    * Marts Built At
    */
   marts_built_at: string | null;
+  /**
+   * active publications the control centre serves; all three null on a database without them
+   */
+  publications: HealthPublications;
   /**
    * Status
    *
@@ -2976,6 +2991,30 @@ export type ProfileItem = {
 };
 
 /**
+ * PublicationRef
+ *
+ * The active publication of one read model: enough for a stranger to tell which evidence the product serves.
+ */
+export type PublicationRef = {
+  /**
+   * Identity Sha256
+   *
+   * canonical identity of the published bundle, 64 hex characters
+   */
+  identity_sha256: string;
+  /**
+   * Publication Id
+   *
+   * publication_id of the read model (assurance_id for model assurance)
+   */
+  publication_id: string;
+  /**
+   * Published At
+   */
+  published_at: string;
+};
+
+/**
  * RawQuantiles
  */
 export type RawQuantiles = {
@@ -3895,6 +3934,12 @@ export type SpecialistDecision = {
    * Profile Code
    */
   profile_code?: string | null;
+  /**
+   * Publication Identity Sha256
+   *
+   * identity of the operational-intelligence publication that was active when the decision was written (server-side, GET /operational-intelligence/overview -> snapshot.publication_identity_sha256); null when nothing was published
+   */
+  publication_identity_sha256: string | null;
   /**
    * Region Code
    */
@@ -5282,6 +5327,13 @@ export type OperationalSignalsListData = {
      * Support
      */
     support?: "DIRECT_SUPPORTED" | "FALLBACK_LIMITED" | "UNSUPPORTED" | null;
+    /**
+     * Materiality
+     *
+     * materiality_status of the stored signal: materiality_rule_not_triggered = the primary inbox; zero_baseline_low_volume = below the 1.0 expected count/day floor; all signals if omitted
+     */
+    materiality?:
+      "materiality_rule_not_triggered" | "zero_baseline_low_volume" | null;
     /**
      * Limit
      *

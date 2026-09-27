@@ -1,12 +1,13 @@
 /** Scene 1 — DETECT: one real signal, understandable in ten seconds. */
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useIntervalCoverage } from "../../api/operational";
 import { t } from "../../i18n";
 import { fmtDate, fmtNumber } from "../../lib/format";
 import { RegionBars } from "../charts/RegionBars";
 import { DemoEvidenceDrawer } from "./DemoEvidenceDrawer";
 import { scenePath } from "../journey";
-import { number1, severityAdjective, statusLabel } from "../language";
+import { number1, percent0, severityAdjective, statusLabel } from "../language";
 import {
   FactLine,
   NonClaims,
@@ -24,6 +25,7 @@ export function DetectScene() {
   const subject = useDemoSubject();
   const location = useLocation();
   const [explain, setExplain] = useState(false);
+  const measured = useIntervalCoverage();
   return (
     <SubjectState subject={subject}>
       {(signal) => {
@@ -93,7 +95,10 @@ export function DetectScene() {
                       }
                       hint={
                         coverage
-                          ? t.demo.detect.intervalHint(coverage)
+                          ? t.demo.detect.intervalHint(
+                              coverage,
+                              measured ? percent0(measured.final) : null,
+                            )
                           : undefined
                       }
                     />

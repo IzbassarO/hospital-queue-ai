@@ -1,0 +1,33 @@
+{
+  "baseline": {
+    "multiplier": 1,
+    "profile": null,
+    "national": 1,
+    "escalation": 0.05,
+    "outage": false
+  },
+  "surge": {
+    "multiplier": 1.25,
+    "profile": null,
+    "national": 1.25,
+    "escalation": 0.45,
+    "outage": false
+  },
+  "season": {
+    "multiplier": 1.03,
+    "profile": {
+      "pattern": "инфекц|детск|педиатр|пульмон|отоларинг",
+      "multiplier": 1.5
+    },
+    "national": 1.12,
+    "escalation": 0.3,
+    "outage": false
+  },
+  "outage": {
+    "multiplier": 1,
+    "profile": null,
+    "national": 1,
+    "escalation": 0,
+    "outage": true
+  }
+}

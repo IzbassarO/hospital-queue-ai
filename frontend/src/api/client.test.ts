@@ -18,6 +18,18 @@ describe("API client parses real responses (captured from the running API)", () 
     expect(card.series.length).toBeGreaterThan(0);
   });
 
+  it("parses the load-index mart rows the descriptive queue list reads", async () => {
+    mockApi();
+    const page = await api.loadAlerts(8);
+    expect(page.items.length).toBe(8);
+    expect(page.total).toBeGreaterThan(page.items.length);
+    // the row a bureau specialist looks for: a standing queue, with the days it needs at the current throughput
+    const longest = page.items[0];
+    expect(longest.queue_now).toBeGreaterThan(1000);
+    expect(longest.backlog_days).toBeGreaterThan(0);
+    expect(longest.profile_name.length).toBeGreaterThan(0);
+  });
+
   it("classifies HTTP failures", async () => {
     vi.stubGlobal(
       "fetch",

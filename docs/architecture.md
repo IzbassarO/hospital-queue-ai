@@ -6,7 +6,7 @@ boundaries already exist. Detailed endpoint, data, UI, model and security behavi
 [`api.md`](api.md), [`data.md`](data.md), [`frontend.md`](frontend.md),
 [`model_card.md`](model_card.md) and [`security.md`](security.md).
 
-The decisions behind the proposed direction are under [`adr/`](adr/). ADRs 0001–0005 are **Accepted**. The
+The decisions behind the proposed direction are under [`adr/`](adr/). ADRs 0001–0007 are **Accepted**. The
 candidate-independent [`6B.2D intelligence serving contract`](serving-contract-6b2d.md) is **Accepted / closed** as
 a semantic design; persistence, API, frontend, and legal-origin runtime scoring remain future work. The boundaries
 automated today are listed in section 13.
@@ -43,11 +43,23 @@ The current monorepo deliberately retains these top-level responsibilities:
 | `ml/` | offline ingestion, feature building, LightGBM training/evaluation, batch prediction, registry persistence and serving-mart builds |
 | `db/` | PostgreSQL extension initialization |
 | `docs/` | reviewed product, architecture, API, data, model and security documentation |
-| `tools/` | repository audit and test-fixture tooling |
+| `tools/` | repository audit, test-fixture and seed-builder tooling |
+| `seed/` | committed release data for `make demo`: the three accepted publications as the exact published bytes (gzipped), the national serving tables and a two-region facts slice as `tables/*.csv.gz`, with `manifest.json` (sizes, rows, sha256); built only by `tools/seed_bundle.py` ([ADR 0007](adr/0007-committed-release-data.md)) |
+| `models/` | committed release data: the frozen models as self-contained modules (native file, JSON contracts, `predict.py`, `bundle.joblib`, example with expected output, README), identified by sha256 in `manifest.json`; built only by `ml/pipelines/export_models.py` ([ADR 0007](adr/0007-committed-release-data.md)) |
+| `frontend/src/synthetic/` | the demonstration-only layer: pseudonymous queue generation, day-simulation parameters and scenarios as `config.json`/`scenarios.json` plus `generate.ts`; reached through one seam, `frontend/src/tower/synthetic.ts`, and switched off with `VITE_SYNTHETIC=off` (`tower/synthetic-off.ts` stands in); nothing synthetic enters published forecasts, thresholds or severities |
 
 Docker Compose currently runs PostgreSQL, the FastAPI backend and the nginx-served frontend for
 local/demo use. nginx proxies `/api` and injects the demo API key server-side; the built browser
 bundle contains no supported-setup credential. Compose is not a production topology.
+
+The fresh-clone path is `make demo`: `make env` writes `.env` with a generated database password and demo API key
+(kept if it exists), `make up` builds and starts the three services (the backend image migrates on start), and
+`docker compose --profile demo run --rm seed` runs the one-shot `seed` service, which is the backend image executing
+`python -m app.cli load-seed --dir /seed` over the read-only `./seed` mount: digest verification, `COPY` of the
+tables in one transaction, then the three publications through the existing publish services. The `seed` service
+exists only in the `demo` profile, so plain `make up` never touches the data. The seeded database serves the same
+publication identities as the machine the evidence was produced on, because the loader verifies the decompressed
+bytes and the publish services recompute the identities.
 
 ### Backend
 
@@ -305,6 +317,13 @@ The following are transient and must remain in gitignored locations such as `scr
 reasoning, scratch files, model binaries, experiment output, notebook transient output, raw/local
 datasets and local exports. An ADR is a reviewed decision record, not a generated investigation.
 
+The one exception is **release data** under `seed/` and `models/` ([ADR 0007](adr/0007-committed-release-data.md)):
+derived, digest-identified copies of accepted publications, serving tables and frozen models that a fresh clone
+needs to show and integrate the product. They are pipeline output, never sources: written only by
+`tools/seed_bundle.py`, `ml/pipelines/export_models.py` and `ml/pipelines/export_flow_quantile_models.py`, never
+edited by hand, byte-identical to their checksummed artifacts where they are copies, and capped at 40 MB (`seed/`)
+and 90 MB (`models/`). `artifacts/` and `data/` remain the ignored authorities they point back to.
+
 ## 11. Explicit non-goals
 
 The target does not introduce the following without a future measurable requirement:
@@ -323,7 +342,7 @@ benefit, operational ownership and a simpler alternative that was measured first
 ## 12. Migration strategy
 
 1. Keep the current root layout and green audit/test/build gates.
-2. Record and review architectural decisions before structural work; retain ADRs 0001–0005 and implement ADR 0005's
+2. Record and review architectural decisions before structural work; retain ADRs 0001–0007 and implement ADR 0005's
    accepted semantic boundary only through separately reviewed persistence, API, frontend, and scoring changes.
 3. Select one backend capability and separate an application query or command behind a port while
    preserving routes and behavior. Move policy inward only when tests demonstrate the seam.
@@ -347,7 +366,13 @@ targets exclude current test, migration and generated-artifact locations.
 The `openapi` audit step validates the stable operation inventory and current `backend/openapi.json`; the
 `web-contract` step regenerates the frontend TypeScript artifacts in a temporary directory and compares bytes.
 GitHub Actions runs the complete `make audit`, so these contract checks and ARCH001–ARCH005 are continuous on every
-push and pull request.
+push and pull request. A separate CI job, `demo-seed`, proves the fresh-clone path of ADR 0007 on every push: it
+installs the backend as the image does, applies `db/init.sql` and the Alembic migrations to a fresh PostgreSQL, runs
+`python -m app.cli load-seed --dir ../seed` and executes `backend/tests/test_seed_smoke.py` (row counts, the three
+publication identities, key endpoints). The release contract of `models/` runs inside the `ml-pytest` audit step
+through `ml/tests/test_models_release.py`. A third job, `docker-images`, builds the `backend` and `frontend` images
+from their Dockerfiles with buildx (no push), so the compose services that `make demo` relies on are known to build
+on every push.
 
 | rule | status | protected boundary |
 |---|---|---|

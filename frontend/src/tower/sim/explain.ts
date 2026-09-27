@@ -4,10 +4,10 @@
  * Templates exist in Russian and Kazakh and follow the current language.
  */
 import { getLang, t } from "../../i18n";
-import { fmtDate, fmtNumber } from "../../lib/format";
+import { flowDecimals, fmtDate, fmtNumber } from "../../lib/format";
+import { daysBetween } from "../../lib/dates";
 import { reasonLabel } from "../../demo/language";
-import type { Urgency } from "../synthetic";
-import { daysBetween, flowDecimals, urgencyOf } from "../synthetic";
+import { type Urgency, urgencyOf } from "../urgency";
 import type { SimAlert } from "./simulation";
 
 export interface PlainExplanation {
@@ -23,9 +23,15 @@ interface Templates {
     threshold: string | null,
   ) => string;
   support: Record<"DIRECT_SUPPORTED" | "FALLBACK_LIMITED" | "other", string>;
-  spread: (lower: string, upper: string, coverage: string) => string;
+  spread: (
+    lower: string,
+    upper: string,
+    coverage: string,
+    coverageFinal: string | null,
+  ) => string;
   crossing: (date: string, lead: number | null) => string;
-  confirmed: (observed: string) => string;
+  confirmedFact: (observed: string) => string;
+  confirmedSynthetic: (observed: string) => string;
   notConfirmed: string;
   unverified: string;
   escalated: string;
@@ -44,8 +50,8 @@ const RU: Templates = {
     other:
       "Данных ряда недостаточно, чтобы считать сигнал подтверждённым свидетельством.",
   },
-  spread: (lower, upper, coverage) =>
-    `Разброс прогноза — от ${lower} до ${upper} регистраций в день (интервал с номинальным покрытием ${coverage}).`,
+  spread: (lower, upper, coverage, coverageFinal) =>
+    `Разброс прогноза — от ${lower} до ${upper} регистраций в день (интервал с номинальным покрытием ${coverage}${coverageFinal ? `, на финальном тесте фактически ${coverageFinal}` : ""}).`,
   crossing: (date, lead) => {
     const when =
       lead === null
@@ -61,8 +67,10 @@ const RU: Templates = {
                 : ` — через ${lead} дней`;
     return `Первое превышение ожидается ${date}${when}.`;
   },
-  confirmed: (observed) =>
-    `В симуляции это подтвердилось: наблюдаемый поток составил ${observed} регистраций в день.`,
+  confirmedFact: (observed) =>
+    `Это подтвердилось фактом: по данным витрины в этот день было ${observed} регистраций.`,
+  confirmedSynthetic: (observed) =>
+    `Факта за этот день в витрине нет, поэтому сравнение идёт с синтетическим потоком: ${observed} регистраций в день.`,
   notConfirmed:
     "В симуляции поток остался ниже ориентира — сигнал не подтвердился.",
   unverified:
@@ -84,8 +92,8 @@ const KK: Templates = {
       "Қатардың өз тарихы аз, сондықтан болжам өңір мен бейін бойынша құрылған — оған сақтықпен сену керек.",
     other: "Сигналды расталған дәлел деп санауға қатар деректері жеткіліксіз.",
   },
-  spread: (lower, upper, coverage) =>
-    `Болжамның ауытқуы — күніне ${lower}-ден ${upper}-ге дейін тіркеу (номиналды қамтуы ${coverage} аралық).`,
+  spread: (lower, upper, coverage, coverageFinal) =>
+    `Болжамның ауытқуы — күніне ${lower}-ден ${upper}-ге дейін тіркеу (номиналды қамтуы ${coverage} аралық${coverageFinal ? `, соңғы тесте нақты ${coverageFinal}` : ""}).`,
   crossing: (date, lead) => {
     const when =
       lead === null
@@ -99,8 +107,10 @@ const KK: Templates = {
               : ` — ${lead} күннен кейін`;
     return `Алғашқы асып кету ${date} күтіледі${when}.`;
   },
-  confirmed: (observed) =>
-    `Симуляцияда бұл расталды: байқалған ағын күніне ${observed} тіркеу болды.`,
+  confirmedFact: (observed) =>
+    `Бұл фактімен расталды: витрина деректері бойынша осы күні ${observed} тіркеу болды.`,
+  confirmedSynthetic: (observed) =>
+    `Витринада осы күнге факт жоқ, сондықтан салыстыру синтетикалық ағынмен жүреді: күніне ${observed} тіркеу.`,
   notConfirmed: "Симуляцияда ағын бағдардан төмен қалды — сигнал расталмады.",
   unverified:
     "Өңірден деректер түспеді, сондықтан жүйе ескертуді растай да, алып тастай да алмайды — және ойдан шығармайды.",
@@ -141,6 +151,7 @@ export function plainExplanation(
         fmtNumber(alert.lower, flowDecimals(alert.lower)),
         fmtNumber(alert.upper, flowDecimals(alert.upper)),
         alert.coverage,
+        alert.coverageFinal ?? null,
       ),
     );
   second.push(
@@ -153,11 +164,17 @@ export function plainExplanation(
 
   const third: string[] = [];
   if (alert.crossing) third.push(tpl.crossing(fmtDate(alert.crossing), lead));
-  if (alert.phase === "confirmed" && alert.observed !== null)
-    third.push(
-      tpl.confirmed(fmtNumber(alert.observed, flowDecimals(alert.observed))),
+  if (alert.phase === "confirmed" && alert.observedFlow !== null) {
+    const value = fmtNumber(
+      alert.observedFlow,
+      flowDecimals(alert.observedFlow),
     );
-  else if (alert.phase === "not_confirmed") third.push(tpl.notConfirmed);
+    third.push(
+      alert.observedSource === "fact"
+        ? tpl.confirmedFact(value)
+        : tpl.confirmedSynthetic(value),
+    );
+  } else if (alert.phase === "not_confirmed") third.push(tpl.notConfirmed);
   else if (alert.phase === "unverified") third.push(tpl.unverified);
   else if (alert.phase === "escalated") third.push(tpl.escalated);
 

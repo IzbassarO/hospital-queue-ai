@@ -178,6 +178,7 @@ export const demoDictionaries = {
     { code: "031", name: "Кардиологические", is_day_hospital: false },
     { code: "071", name: "Неврологические", is_day_hospital: false },
     { code: "241", name: "Патологии беременности", is_day_hospital: false },
+    { code: "DH", name: "Дневной стационар", is_day_hospital: true },
   ],
   organizations: [
     {
@@ -646,18 +647,7 @@ export const demoAlternatives: SignalDecisionAlternativesResponse = {
   ],
 };
 export const demoCapabilities: ModelAssuranceCapabilityResponse[] = [
-  {
-    ...f.capability,
-    capability_id: "flow_temporal_calibration",
-    display_name: "Temporal count interval calibration",
-    acceptance_verdict: "ACCEPT",
-    evidence: {
-      calibration_evidence: {
-        hospital_registrations_final_coverage: 0.6992,
-        hospital_registrations_validation_coverage: 0.8297,
-      },
-    },
-  },
+  f.calibrationCapability,
   {
     ...f.capability,
     capability_id: "flow_hierarchical_coherence",
@@ -683,5 +673,138 @@ export const demoCapabilities: ModelAssuranceCapabilityResponse[] = [
     evidence_status: "REJECTED",
     acceptance_verdict: "DO_NOT_PROMOTE",
     product_consumption_status: "NOT_FOR_PRODUCT",
+  },
+];
+
+/** A published signal on a day-hospital profile: the half the inbox facet keeps out of the default view. */
+export const dayHospitalSignal: OperationalSignalResponse = {
+  ...demoSignal,
+  signal_id: "dd1176c661034ba9715179dh",
+  series_id: "hp:ZH60:DH",
+  org_code: "ZH60",
+  profile_code: "DH",
+  inbox_rank: 14,
+  severity: "ELEVATED",
+  headline: "Elevated flow pressure expected within 9 days.",
+  forecast_value: 1.12,
+  threshold_value: 0.9,
+  first_crossing_date: "2025-03-26",
+  lead_time_days: 9,
+};
+
+/**
+ * Facts of the data mart per organisation, as the control centre reads them from a hospital card: the historical
+ * wait and queue that feed the order chips, and the observed registrations after the origin that turn a crossing
+ * into a fact. 000V has a real count on its crossing day; ZH60 has none, so it falls back to the synthetic flow.
+ */
+const TOWER_CARD_FACTS: Record<
+  string,
+  {
+    queue: number;
+    wait: number;
+    backlog: number | null;
+    observed: Record<string, number>;
+  }
+> = {
+  "000V": {
+    queue: 97,
+    wait: 53,
+    backlog: 158.6,
+    observed: { "2025-03-19": 4 },
+  },
+  ZH60: { queue: 18, wait: 7, backlog: null, observed: {} },
+  "22VJ": { queue: 214, wait: 21, backlog: 92.5, observed: {} },
+};
+
+/** One hospital card of the mart: real dates 2025-03-18…03-31, zero registrations unless the org has a fact. */
+export function towerCard(org: string, profile: string) {
+  const facts = TOWER_CARD_FACTS[org] ?? {
+    queue: 5,
+    wait: 4,
+    backlog: null,
+    observed: {},
+  };
+  const dates = Array.from({ length: 14 }, (_, i) => `2025-03-${18 + i}`);
+  return {
+    ...fixtures.card,
+    status: {
+      ...fixtures.card.status,
+      org_code: org,
+      profile_code: profile,
+      queue_now: facts.queue,
+      median_wait_28d: facts.wait,
+      backlog_days: facts.backlog,
+    },
+    series: dates.map((date) => ({
+      date,
+      registrations: facts.observed[date] ?? 0,
+      hospitalizations: 0,
+      refusals: 0,
+      queue: facts.queue,
+    })),
+  };
+}
+
+/**
+ * Rows of the legacy load-index mart: the descriptive "longest queues at the as-of date" list. The first row is the
+ * kind a bureau specialist looks for and the forward-looking inbox cannot show — a standing queue, not a forecast.
+ */
+export const loadAlerts = [
+  {
+    region_code: "39",
+    region_name: "Костанайская область",
+    org_code: "ACGB",
+    org_name: 'ГКП "Городская клиническая больница № 1"',
+    profile_code: "031",
+    profile_name: "Кардиологические для взрослых",
+    load_index: 87.5,
+    status: "high" as const,
+    status_label: "Высокая нагрузка",
+    region_rank: 1,
+    region_n_ranked: 245,
+    queue_now: 719,
+    backlog_days: 1258.2,
+    queue_trend_raw_4w: 12.1,
+    queue_trend_4w: 9.5,
+    refusal_rate_28d: 0.3012,
+    reasons: ["Индекс нагрузки 87,5 ≥ 70: место 1 из 245 в регионе"],
+  },
+  {
+    region_code: "71",
+    region_name: "г. Астана",
+    org_code: "ZIQ9",
+    org_name: 'ГКП "Городской перинатальный центр"',
+    profile_code: "241",
+    profile_name: "Патологии беременности",
+    load_index: 96.6,
+    status: "high" as const,
+    status_label: "Высокая нагрузка",
+    region_rank: 1,
+    region_n_ranked: 245,
+    queue_now: 85,
+    backlog_days: 108.2,
+    queue_trend_raw_4w: 19.1,
+    queue_trend_4w: 16.5,
+    refusal_rate_28d: 0.6857,
+    reasons: ["Очередь растёт на 19,1% в неделю за последние 4 недели"],
+  },
+  {
+    region_code: "61",
+    region_name: "Туркестанская область",
+    org_code: "ZH60",
+    org_name: 'КГП "Областная детская больница"',
+    profile_code: "DH",
+    profile_name: "Дневной стационар",
+    load_index: 71.2,
+    status: "elevated" as const,
+    status_label: "Повышенная нагрузка",
+    region_rank: 4,
+    region_n_ranked: 374,
+    queue_now: 18,
+    backlog_days: null,
+    queue_trend_raw_4w: 2.0,
+    queue_trend_4w: -0.6,
+    refusal_rate_28d: null,
+    reasons: ["Индекс нагрузки 71,2 ≥ 70: место 4 из 374 в регионе"],
   },
 ];

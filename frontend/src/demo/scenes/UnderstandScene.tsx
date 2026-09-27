@@ -1,12 +1,12 @@
 /** Scene 2 — UNDERSTAND: the forecast, its calibrated uncertainty and three human-readable blocks. */
 import { useState } from "react";
-import { useExplanation } from "../../api/operational";
+import { useExplanation, useIntervalCoverage } from "../../api/operational";
 import { t } from "../../i18n";
 import { fmtDate } from "../../lib/format";
 import { useObservedHistory } from "../api";
 import { ForecastStory } from "../charts/ForecastStory";
 import { DemoEvidenceDrawer } from "./DemoEvidenceDrawer";
-import { reasonLabel, translateList } from "../language";
+import { percent0, reasonLabel, translateList } from "../language";
 import {
   Bullets,
   Facts,
@@ -28,6 +28,7 @@ export function UnderstandScene() {
     signal?.profile ?? null,
     signal?.origin ?? "",
   );
+  const measured = useIntervalCoverage();
   return (
     <SubjectState subject={subject}>
       {(s) => {
@@ -45,7 +46,10 @@ export function UnderstandScene() {
               ? t.demo.understand.knows.supportFallback
               : t.demo.understand.knows.supportNone,
           s.rawInterval && coverage
-            ? t.demo.understand.knows.calibrated(coverage)
+            ? t.demo.understand.knows.calibrated(
+                coverage,
+                measured ? percent0(measured.final) : null,
+              )
             : t.demo.understand.knows.notCalibrated,
           t.demo.understand.knows.horizon,
           t.demo.understand.knows.hierarchy,

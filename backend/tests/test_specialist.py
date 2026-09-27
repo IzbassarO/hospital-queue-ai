@@ -50,9 +50,19 @@ async def test_specialist_decision_persists_and_replays(client, created_ids):
     body = created.json()
     created_ids.append(body["id"])
     assert {k: body[k] for k in payload} == payload and body["api_key_label"]
+    overview = await client.get(f"{API}/operational-intelligence/overview")
+    expected_identity = None
+    if overview.status_code == 200:
+        expected_identity = overview.json()["snapshot"]["publication_identity_sha256"]
+    assert body["publication_identity_sha256"] == expected_identity
 
     replay = await client.post(f"{API}/specialist-decisions", json=payload)
     assert replay.status_code == 200 and replay.json()["id"] == body["id"]
+    assert replay.json()["publication_identity_sha256"] == expected_identity
+    client_set = await client.post(
+        f"{API}/specialist-decisions", json={**payload, "publication_identity_sha256": "0" * 64}
+    )
+    assert client_set.status_code == 200 and client_set.json()["publication_identity_sha256"] == expected_identity
 
     conflict = await client.post(f"{API}/specialist-decisions", json={**payload, "action": "postpone"})
     assert conflict.status_code == 409

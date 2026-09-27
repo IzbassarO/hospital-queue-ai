@@ -6,11 +6,30 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+class PublicationRef(BaseModel):
+    """The active publication of one read model: enough for a stranger to tell which evidence the product serves."""
+
+    publication_id: str = Field(description="publication_id of the read model (assurance_id for model assurance)")
+    identity_sha256: str = Field(description="canonical identity of the published bundle, 64 hex characters")
+    published_at: dt.datetime
+
+
+class HealthPublications(BaseModel):
+    """null = nothing of that kind is published yet; the UI then shows that the published model is unavailable."""
+
+    operational_intelligence: PublicationRef | None
+    review_evidence: PublicationRef | None
+    model_assurance: PublicationRef | None
+
+
 class HealthResponse(BaseModel):
     status: str = Field(description="ok | degraded")
     database: str = Field(description="ok | unavailable")
     marts_as_of_date: dt.date | None
     marts_built_at: dt.datetime | None
+    publications: HealthPublications = Field(
+        description="active publications the control centre serves; all three null on a database without them"
+    )
 
 
 class ModelInfo(BaseModel):

@@ -874,6 +874,8 @@ class SpecialistDecision(Base):
     actor: Mapped[str | None] = mapped_column(Text)
     api_key_label: Mapped[str | None] = mapped_column(Text)
     idempotency_key: Mapped[str | None] = mapped_column(String(128))
+    # identity of the active operational-intelligence publication when the decision was written; null = none
+    publication_identity_sha256: Mapped[str | None] = mapped_column(String(64))
 
 
 # ------------------------------------------------------------------ access control
@@ -908,5 +910,13 @@ class AccessLog(Base):
     path: Mapped[str] = mapped_column(Text)
     status: Mapped[int] = mapped_column(SmallInteger)
     latency_ms: Mapped[float] = mapped_column(Double)
-    client_ip: Mapped[str | None] = mapped_column(String(64))  # TCP peer (the nginx container behind the proxy)
+    query: Mapped[str | None] = mapped_column(String(500))  # query string, truncated; never a request body
+    client_ip: Mapped[str | None] = mapped_column(String(64))  # first forwarded entry behind a trusted proxy, else peer
     forwarded_for: Mapped[str | None] = mapped_column(Text)  # X-Forwarded-For as received — not verified
+    request_id: Mapped[str | None] = mapped_column(String(128))  # X-Request-ID of the call, also in the log lines
+
+    # what an auditor filters by in /admin/access-log: one key's history, and every rejected call, newest first
+    __table_args__ = (
+        Index("ix_access_log_key_label_ts", "key_label", "ts"),
+        Index("ix_access_log_status_ts", "status", "ts"),
+    )

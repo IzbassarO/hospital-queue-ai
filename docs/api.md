@@ -21,7 +21,10 @@ predictions, serving marts and explicitly published assurance/operational-intell
   `409` for an `idempotency_key` reused with a different decision,
   `503 {"detail": "serving marts are not built yet: run `make marts`"}` before the first mart build.
 - **CORS**: origins `http(s)://localhost:<any port>` and `127.0.0.1:<any port>` (setting `CORS_ALLOW_ORIGIN_REGEX`);
-  the `X-API-Key` header is allowed, `Content-Disposition` is exposed.
+  the `X-API-Key` header is allowed, `Content-Disposition` and `X-Request-ID` are exposed.
+- **Request correlation**: every `/api` response carries `X-Request-ID`. Send your own (`[A-Za-z0-9._:-]{1,128}`)
+  and it is echoed back, so an integrating system can match its logs with ours; otherwise the server generates one.
+  It is not stored in `access_log` (no column yet).
 - **Latency**: every endpoint answers in < 70 ms on the current data (worst of 5 requests over HTTP against the
   docker backend, including 500-row pages); `tests/test_api.py::test_every_endpoint_under_500_ms` guards the 500 ms budget.
 
@@ -57,7 +60,7 @@ will be retired incrementally as frontend adapters migrate. `make audit` checks 
 runs that same audit so stale snapshots, changed operation IDs and stale TypeScript output fail continuously.
 
 Contents: [1 Serving layer](#1-serving-layer) · [2 Metrics](#2-metrics) · [3 load_index](#3-load_index) ·
-[4 Recommendation rule](#4-recommendation-rule-v1) · [5 Alerts](#5-alerts) · [6 Endpoints](#6-endpoints) ·
+[4 Legacy alternatives rule](#4-recommendation-rule-v1) · [5 Alerts](#5-alerts) · [6 Endpoints](#6-endpoints) ·
 [7 Limitations](#7-limitations)
 
 ---
@@ -169,7 +172,14 @@ against an independent pandas recomputation of every metric and score for all 6 
 
 ## 4. Recommendation rule (v1)
 
-`GET /hospitals/{org}/profiles/{profile}/recommendations` — `backend/app/services/recommend.py`.
+**Legacy, deprecated.** `GET /hospitals/{org}/profiles/{profile}/recommendations` — `backend/app/services/recommend.py`
+— is marked `deprecated: true` in OpenAPI and kept only for the legacy hospital × profile card and its file export.
+It is **not part of the control centre**: the control centre serves published flow-pressure signals
+(`historical_flow_proxy_v1`, `human_review_required = true`, `autonomous_action = false`) and, as review evidence,
+retrospective decision alternatives that are evaluation-only. What this endpoint returns is a comparison of
+historical medians between hospitals of the same region and profile, an association with no estimate of what a
+redirection would change; the response field names (`recommendation_id`, `alternatives`, `method`) are kept as the
+contract of the legacy client. New integrations should not depend on it.
 
 1. **Trigger**: the hospital × profile has a `load_index` in the **top 20% of its region** (`in_region_top`). Otherwise
    `eligible = false`, no alternatives, `reason` explains why.
@@ -178,7 +188,9 @@ against an independent pandas recomputation of every metric and score for all 6 
    says so).
 3. **Effect estimate** (`WaitEffectEstimator` protocol): v1 `HistoricalMedianEstimator` →
    `expected_wait = median_wait_28d`; `delta_days = expected_wait_current − expected_wait_alternative`. A candidate is
-   kept when `delta_days ≥ 3`.
+   kept when `delta_days ≥ 3`. The protocol exists so a later estimate can replace the historical median without
+   changing this contract; what such an estimate would have to identify is written down in
+   [wait-effect-estimator-seam.md](wait-effect-estimator-seam.md), and no such code is in the repository.
 4. **Up to 3** alternatives, largest `delta_days` first (then shorter backlog).
 
 Each alternative returns `expected_wait_current`, `expected_wait_alternative`, `delta_days`, `refusal_rate_current`,
@@ -223,11 +235,26 @@ request except `GET /health` carries `X-API-Key: <key>`; the role each endpoint 
 
 ### `GET /health`
 
-**Open (no key).** Database reachability and mart freshness (`503` if the database is unreachable). `GET /health`
-without the prefix is a database-free liveness probe used by the container healthcheck.
+**Open (no key).** Database reachability, mart freshness and the **active publications** (`503` if the database is
+unreachable). `status: ok` alone means the database answers and the marts are built; whether the control centre has
+anything to show is told by `publications`: each of `operational_intelligence`, `review_evidence` and
+`model_assurance` is either `{publication_id, identity_sha256, published_at}` (the `publication_id` of the read model,
+`assurance_id` for model assurance) or `null` when nothing of that kind is published — a fresh database after
+`make up` without `make demo` / the publish commands has all three `null`, and the UI then says the published model is
+unavailable. `GET /health` without the prefix is a database-free liveness probe used by the container healthcheck.
 
 ```json
-{"status": "ok", "database": "ok", "marts_as_of_date": "2025-03-31", "marts_built_at": "2026-09-15T09:11:25"}
+{
+  "status": "ok",
+  "database": "ok",
+  "marts_as_of_date": "2025-03-31",
+  "marts_built_at": "2026-09-17T21:21:04",
+  "publications": {
+    "operational_intelligence": {"publication_id": "operational-intelligence-slice5-final-test-2025-03-17-v1", "identity_sha256": "43da33ece7231a70348043c2bb8ec4b63161f94ed67dfe96e3c36de69c425cfd", "published_at": "2026-09-27T09:12:40.512Z"},
+    "review_evidence": {"publication_id": "review-evidence-slice6-final-test-2025-03-17-v1", "identity_sha256": "e07be2f158c69ed50c9da2286a9459424947d02266e5094c5627b7648be33c22", "published_at": "2026-09-27T09:14:02.118Z"},
+    "model_assurance": {"publication_id": "model-assurance-6b5-v1", "identity_sha256": "f504defefdd87bcbb01c670b68469ba4c0e016be7f40ca89452baf69b73f39f5", "published_at": "2026-09-27T09:11:58.004Z"}
+  }
+}
 ```
 
 ### `GET /me`
@@ -497,7 +524,8 @@ Each factor carries `short_label`, the raw `effect` in model units (days for `wa
 
 ### `GET /hospitals/{org}/profiles/{profile}/recommendations`
 
-**role: viewer.** Rule in [section 4](#4-recommendation-rule-v1).
+**role: viewer. Deprecated (legacy card only; not part of the control centre).** Rule and status in
+[section 4](#4-recommendation-rule-v1).
 
 ```json
 {
@@ -561,15 +589,19 @@ Not triggered or no alternatives — `alternatives: []` with a reason, e.g.:
 
 ### `GET /hospitals/{org}/profiles/{profile}/export?format=xlsx|pdf`
 
-**role: viewer.** The whole card as a file (`Content-Disposition: attachment; filename="hqai_card_<org>_<profile>_<as_of_date>.<ext>"`):
+**role: viewer.** The whole legacy card as a file (`Content-Disposition: attachment; filename="hqai_card_<org>_<profile>_<as_of_date>.<ext>"`):
 status and `load_index` components, KPIs, the daily series, the 14-day forecast (no queue forecast), explanation
-factors, recommendations with the disclaimer, and the decision history — built from the same services as the JSON
-endpoints.
+factors, the historical-median alternatives of §4 with the disclaimer, and the decision history — built from the same
+services as the JSON endpoints.
 
 | format | media type | content |
 |---|---|---|
-| `xlsx` (default) | `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` | sheets «Карточка», «Ряд по дням», «Прогноз 14 дней», «Почему», «Рекомендации», «Решения»; dates as Excel dates |
-| `pdf` | `application/pdf` | A4: header, KPI table, queue chart, registrations fact + dashed forecast, forecast table, factors, recommendations, decisions; footer «Решение принимает специалист…» |
+| `xlsx` (default) | `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` | sheets «Карточка», «Ряд по дням», «Прогноз 14 дней», «Почему», «Альтернативы (справочно)», «Решения»; dates as Excel dates |
+| `pdf` | `application/pdf` | A4: header, KPI table, queue chart, registrations fact + dashed forecast, forecast table, factors, «Альтернативы по историческим медианам (справочно)», decisions; footer «Решение принимает специалист…» |
+
+Text that people typed (comments, actors) and dictionary names are exported as text only: a cell that starts with
+`=`, `+`, `-`, `@`, tab or CR gets a leading apostrophe so a spreadsheet never evaluates it, and every string in the
+PDF is XML-escaped before reportlab renders it.
 
 PDF needs a TrueType font with Cyrillic glyphs (`PDF_FONT_PATHS`; the backend image installs DejaVu Sans); without
 one the endpoint answers `503`. `404` for an unknown hospital × profile, `422` for another format.
@@ -647,7 +679,11 @@ simulation run (a restart or a scenario change starts a new run; earlier runs st
 `sim_day` the simulated day (0 = origin), so the control centre can replay the decisions of its current run after
 a reload. An action that does not fit
 the subject kind → `422`. Idempotency works as for `POST /decisions` (same key + same content → `200` with the stored
-row; different content → `409`).
+row; different content → `409`). The response adds `publication_identity_sha256`: the identity of the
+operational-intelligence publication that was active when the decision was written (the same value as
+`GET /operational-intelligence/overview` → `snapshot.publication_identity_sha256`; `null` if nothing was published).
+It is set by the server and ignored in the request body, so a decision can later be read against the evidence the
+person saw; an idempotent replay returns the identity as first stored.
 
 ```json
 {"origin": "2025-03-17", "run_id": "run-m1x9k2-4f7a", "sim_day": 1, "subject_kind": "alert", "subject_id": "cc50965694cb0b6862928df5", "region_code": "39", "org_code": "000V", "profile_code": "391", "action": "accept", "comment": "согласовано с заведующим", "actor": "Иванова А.", "idempotency_key": "ui-5b1d9c0e-8f7a-4f5e-9d38-2a6f1b7c4e21"}
@@ -656,7 +692,7 @@ row; different content → `409`).
 → `201`
 
 ```json
-{"origin": "2025-03-17", "run_id": "run-m1x9k2-4f7a", "sim_day": 1, "subject_kind": "alert", "subject_id": "cc50965694cb0b6862928df5", "region_code": "39", "org_code": "000V", "profile_code": "391", "action": "accept", "comment": "согласовано с заведующим", "actor": "Иванова А.", "idempotency_key": "ui-5b1d9c0e-8f7a-4f5e-9d38-2a6f1b7c4e21", "id": 3, "created_at": "2026-09-23T21:10:02.114Z", "api_key_label": "demo"}
+{"origin": "2025-03-17", "run_id": "run-m1x9k2-4f7a", "sim_day": 1, "subject_kind": "alert", "subject_id": "cc50965694cb0b6862928df5", "region_code": "39", "org_code": "000V", "profile_code": "391", "action": "accept", "comment": "согласовано с заведующим", "actor": "Иванова А.", "idempotency_key": "ui-5b1d9c0e-8f7a-4f5e-9d38-2a6f1b7c4e21", "id": 3, "created_at": "2026-09-23T21:10:02.114Z", "api_key_label": "demo", "publication_identity_sha256": "43da33ece7231a70348043c2bb8ec4b63161f94ed67dfe96e3c36de69c425cfd"}
 ```
 
 ### `GET /specialist-decisions?origin=&run_id=&subject_kind=&limit=&offset=`
@@ -665,7 +701,7 @@ row; different content → `409`).
 subject kind.
 
 ```json
-{"items": [{"origin": "2025-03-17", "run_id": "run-m1x9k2-4f7a", "sim_day": 1, "subject_kind": "patient", "subject_id": "Н-1281", "region_code": "55", "org_code": "0K3V", "profile_code": "021", "action": "confirm", "comment": null, "actor": null, "idempotency_key": null, "id": 4, "created_at": "2026-09-23T21:11:40.002Z", "api_key_label": "demo"}], "total": 1, "limit": 50, "offset": 0}
+{"items": [{"origin": "2025-03-17", "run_id": "run-m1x9k2-4f7a", "sim_day": 1, "subject_kind": "patient", "subject_id": "Н-1281", "region_code": "55", "org_code": "0K3V", "profile_code": "021", "action": "confirm", "comment": null, "actor": null, "idempotency_key": null, "id": 4, "created_at": "2026-09-23T21:11:40.002Z", "api_key_label": "demo", "publication_identity_sha256": "43da33ece7231a70348043c2bb8ec4b63161f94ed67dfe96e3c36de69c425cfd"}], "total": 1, "limit": 50, "offset": 0}
 ```
 
 ### `GET /assistant/status`
@@ -853,12 +889,18 @@ the candidate-independent bundle and its canonical identity, verifies every sour
 published Model Assurance snapshot, then atomically publishes it to PostgreSQL. Publish Model Assurance first. API
 requests never inspect source artifacts.
 
-### `GET /operational-intelligence/signals?region=&org=&profile=&target=&severity=&signal_type=&support=&limit=&offset=`
+### `GET /operational-intelligence/signals?region=&org=&profile=&target=&severity=&signal_type=&support=&materiality=&limit=&offset=`
 
 **role: viewer.** Deterministically ordered Signals Inbox entries from the current snapshot. Each entry exposes the
 hospital/profile/target/origin, severity, source headline and reason, materiality, support/fallback, uncertainty,
 reason codes, evidence facts, limitations and versioned provenance. These are attention/triage signals for human
 review, not recommendations or autonomous actions.
+
+`materiality` filters on the stored `materiality_status`: `materiality_rule_not_triggered` (the primary inbox — the
+forecast is at or above the fixed floor of 1.0 expected count/day) or `zero_baseline_low_volume` (below the floor,
+kept for transparency, ranked after the primary inbox). Omitted = all signals, as before; observed-unusual-flow signals
+carry no materiality status and are only returned without the filter. Any other value → `422`. On the current
+publication: 2 642 primary, 1 047 low-volume, 505 without a status.
 
 ### `GET /operational-intelligence/signals/{signal_id}`
 

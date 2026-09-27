@@ -1,20 +1,35 @@
 """FastAPI application: /api/v1 (docs/api.md). Interactive docs at /docs."""
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.routes import router
+from app.core import access_log
 from app.core.access_log import AccessLogMiddleware
 from app.core.config import get_settings
+from app.core.logging import RequestIdMiddleware, configure_logging
 from app.core.security import API_KEY_HEADER
 from app.services.assistant import AssistantNotConfiguredError, AssistantUpstreamError
 from app.services.common import ConflictError, MartsNotBuiltError, NotFoundError, ValidationError
 from app.services.export import ExportUnavailableError
 
 settings = get_settings()
+configure_logging(settings.log_level)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """On shutdown, commit the access-log rows the background writer still holds."""
+    yield
+    await access_log.writer.drain()
+
 
 app = FastAPI(
+    lifespan=lifespan,
     title=settings.app_name,
     version="1.0.0",
     description=(
@@ -32,10 +47,12 @@ app.add_middleware(
     allow_origin_regex=settings.cors_allow_origin_regex,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
-    expose_headers=["Content-Disposition"],
+    expose_headers=["Content-Disposition", "X-Request-ID"],
 )
-# outermost: every /api request is logged, including CORS preflights and 401s
+# every /api request is logged except CORS preflights; 401s are logged without a key label
 app.add_middleware(AccessLogMiddleware, path_prefix="/api")
+# outermost: the request id every log line and every access-log row carries, echoed as X-Request-ID
+app.add_middleware(RequestIdMiddleware)
 app.include_router(router, prefix=settings.api_prefix)
 
 

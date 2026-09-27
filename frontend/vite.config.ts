@@ -14,6 +14,8 @@ const apiProxy = {
   changeOrigin: true,
   ...(apiKey ? { headers: { "X-API-Key": apiKey } } : {}),
 };
+// VITE_SYNTHETIC=off (build or dev) switches the synthetic layer of the control centre off; Vite exposes VITE_*
+// variables to the bundle as import.meta.env, and src/synthetic/index.ts reads this one (see src/synthetic/README.md).
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -28,7 +30,8 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
-    sourcemap: true,
+    // no source maps in the shipped image: the map would expose the full source to whoever reaches the UI port
+    sourcemap: false,
     chunkSizeWarningLimit: 900,
   },
   test: {

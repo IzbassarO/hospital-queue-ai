@@ -4,7 +4,8 @@
  */
 import { useMemo } from "react";
 import { t } from "../../i18n";
-import { fmtDate } from "../../lib/format";
+import { addDays } from "../../lib/dates";
+import { fmtDate, fmtNumber } from "../../lib/format";
 import {
   ACTIONABLE,
   clockLabel,
@@ -12,7 +13,9 @@ import {
   type SimEvent,
   type SimState,
 } from "../sim/simulation";
+import { SYNTHETIC_ENABLED } from "../synthetic";
 import type { Subject } from "../ui";
+import { SyntheticTag } from "./SyntheticState";
 
 const ICON: Record<SimEvent["kind"], string> = {
   arrivals: "↓",
@@ -32,11 +35,14 @@ const ICON: Record<SimEvent["kind"], string> = {
 
 export function Feed({
   state,
+  attention,
   limit,
   onOpen,
   onFocus,
 }: {
   state: SimState;
+  /** size of the attention queue the shown notifications were taken from */
+  attention: number;
   limit?: number;
   onOpen: (subject: Subject) => void;
   onFocus: (org: string) => void;
@@ -70,17 +76,24 @@ export function Feed({
       <header className="feed-head">
         <div>
           <h2>{t.control.feed.title}</h2>
-          <p>{t.control.feed.lead}</p>
+          <p>
+            {SYNTHETIC_ENABLED
+              ? t.control.feed.lead
+              : t.control.syntheticOff.feed}{" "}
+            <SyntheticTag published={!SYNTHETIC_ENABLED} />
+          </p>
         </div>
-        <span
-          className={`feed-clock ${state.playing ? "is-live" : ""}`}
-          role="status"
-        >
-          {state.day === 0
-            ? t.control.sim.day(0)
-            : t.control.feed.dayClock(clockLabel(state.clock))}
-          <i aria-hidden="true" />
-        </span>
+        {SYNTHETIC_ENABLED ? (
+          <span
+            className={`feed-clock ${state.playing ? "is-live" : ""}`}
+            role="status"
+          >
+            {state.day === 0
+              ? t.control.sim.day(0)
+              : t.control.feed.dayClock(clockLabel(state.clock))}
+            <i aria-hidden="true" />
+          </span>
+        ) : null}
       </header>
       <ol className="feed-list">
         {days.map((group) => (
@@ -88,7 +101,7 @@ export function Feed({
             <h3 className="feed-day-head">
               {t.control.sim.events.dayHeader(
                 group.day,
-                fmtDate(addDaysIso(state.origin, group.day)),
+                fmtDate(addDays(state.origin, group.day)),
               )}
             </h3>
             <ol>
@@ -155,7 +168,10 @@ export function Feed({
             {t.control.sim.events.originHeader(fmtDate(state.origin))}
           </h3>
           <p className="feed-origin-intro">
-            {t.control.sim.events.originIntro(state.alerts.length)}
+            {t.control.sim.events.originIntro(
+              state.alerts.length,
+              fmtNumber(attention, 0),
+            )}
           </p>
           <ol>
             {origin.map((a, i) => (
@@ -207,10 +223,4 @@ export function Feed({
       </ol>
     </section>
   );
-}
-
-function addDaysIso(iso: string, days: number): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
 }

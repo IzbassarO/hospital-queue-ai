@@ -1,9 +1,18 @@
-/** The full synthetic queue, thirty days deep, with the decision journal underneath. */
+/**
+ * The full synthetic queue, thirty days deep, with the decision journal underneath. With the synthetic layer off
+ * the queue is an explicit empty state; the journal of decisions on published notifications stays. The real queue of
+ * the data mart sits next to the synthetic counters (FactStrip) so the two are never read as one number, and both
+ * CSV downloads carry a `#` line saying what the rows are; the queue file is named `synthetic-queue-…` and every row
+ * repeats the source in its own column.
+ */
 import { t } from "../i18n";
 import { fmtDate } from "../lib/format";
+import { FactStrip } from "./components/FactStrip";
 import { PatientQueue } from "./components/PatientQueue";
+import { SyntheticTag } from "./components/SyntheticState";
 import { downloadCsv, toCsv } from "./export";
 import { WaitingStrip } from "./components/WaitingStrip";
+import { SYNTHETIC_ENABLED } from "./synthetic";
 import { openSubject } from "./ui";
 import { useNames, useTowerData, useTowerSimulation } from "./useTowerModel";
 import type { TowerModel } from "./useTowerData";
@@ -27,14 +36,19 @@ function QueueBoard({ model }: { model: TowerModel }) {
     <>
       <section className="tower-lead">
         <h1>{t.control.pages.queueTitle}</h1>
-        <p>{t.control.pages.queueLead}</p>
+        <p>
+          {SYNTHETIC_ENABLED
+            ? t.control.pages.queueLead
+            : t.control.syntheticOff.queue}
+        </p>
         <div className="export-row">
           <button
             type="button"
             className="btn-ghost btn-sm"
+            hidden={!SYNTHETIC_ENABLED}
             onClick={() =>
               downloadCsv(
-                `queue-${state.date}.csv`,
+                `synthetic-queue-${state.date}.csv`,
                 toCsv(
                   [
                     t.control.queue.columns.id,
@@ -45,6 +59,7 @@ function QueueBoard({ model }: { model: TowerModel }) {
                     t.control.queue.columns.wait,
                     t.control.queue.columns.urgency,
                     t.control.queue.columns.status,
+                    t.control.exportCsv.sourceColumn,
                   ],
                   state.patients.map((p) => [
                     p.id,
@@ -55,7 +70,9 @@ function QueueBoard({ model }: { model: TowerModel }) {
                     p.predictedWait,
                     t.control.urgency[p.urgency],
                     t.control.queue.status[p.status],
+                    t.control.exportCsv.sourceSynthetic,
                   ]),
+                  [t.control.exportCsv.syntheticNote(fmtDate(model.origin))],
                 ),
               )
             }
@@ -94,6 +111,7 @@ function QueueBoard({ model }: { model: TowerModel }) {
                         p.decision!.comment,
                       ]),
                   ],
+                  [t.control.exportCsv.decisionsNote(fmtDate(model.origin))],
                 ),
               )
             }
@@ -102,17 +120,36 @@ function QueueBoard({ model }: { model: TowerModel }) {
           </button>
         </div>
       </section>
-      <WaitingStrip state={state} />
-      <PatientQueue
-        patients={state.patients}
-        date={state.date}
-        focus={null}
-        hospitalName={names.hospital}
-        profileName={names.profile}
-        onFocus={() => undefined}
-        onOpen={(id) => openSubject({ kind: "patient", id })}
-        pageSize={25}
-      />
+      <div className="waiting-row">
+        <WaitingStrip state={state} />
+        <FactStrip regionName={model.regionName} />
+      </div>
+      {SYNTHETIC_ENABLED ? (
+        <PatientQueue
+          patients={state.patients}
+          date={state.date}
+          focus={null}
+          hospitalName={names.hospital}
+          profileName={names.profile}
+          onFocus={() => undefined}
+          onOpen={(id) => openSubject({ kind: "patient", id })}
+          pageSize={25}
+        />
+      ) : (
+        <section
+          className="queue queue-off panel-block"
+          role="status"
+          aria-label={t.control.queue.title}
+        >
+          <header className="block-head">
+            <h2>{t.control.queue.title}</h2>
+            <p>
+              {t.control.syntheticOff.title} <SyntheticTag />
+            </p>
+          </header>
+          <p className="empty">{t.control.syntheticOff.queue}</p>
+        </section>
+      )}
       <Journal state={state} names={names} />
     </>
   );

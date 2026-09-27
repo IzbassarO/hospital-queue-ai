@@ -1,0 +1,841 @@
+{
+  "description": "Provenance of the raw MoH files behind every number in this repository (tools/raw_manifest.py)",
+  "source": {
+    "publisher": "Министерство здравоохранения Республики Казахстан",
+    "distributed_by": "GovTech Camp 2026 (АО «Национальные информационные технологии»)",
+    "access": "папка с датасетами, выданная участникам программы; открытые обезличенные данные",
+    "note": "Файлы не входят в репозиторий (16 ГБ, data/ в .gitignore). Манифест позволяет сверить копию."
+  },
+  "datasets": [
+    {
+      "folder": "1 dataset",
+      "content": "Направления на плановую госпитализацию в стационары (ИС БГ)",
+      "system": "ИС «Бюро госпитализации»",
+      "ingested": true,
+      "used_for": "fact_referral, dim_region/dim_profile/dim_organization/dim_icd, agg_daily_*",
+      "file_count": 3,
+      "bytes": 690734815,
+      "rows": 767130,
+      "hashed": true,
+      "files": [
+        {
+          "file": "Направления на плановую госпитализацию в стационары Часть 1 из 3.csv",
+          "bytes": 235684172,
+          "rows": 255710,
+          "header": "hospitalization_code,referring_mo,hospital_mo,icd10_ref_diag_code,diagnosis_name,bed_profile,registration_dt,planned_dt,polyclinic_dt,hospitalization_dt,refusal_dt,territorial_type,referral_purpose,finance_source,sdu_load_date",
+          "sha256": "aaf601bdfb3451963ec741a8d2bca824af36f0c9d9873003baa3b96f8b901d63"
+        },
+        {
+          "file": "Направления на плановую госпитализацию в стационары Часть 2 из 3.csv",
+          "bytes": 225161201,
+          "rows": 255710,
+          "header": "hospitalization_code,referring_mo,hospital_mo,icd10_ref_diag_code,diagnosis_name,bed_profile,registration_dt,planned_dt,polyclinic_dt,hospitalization_dt,refusal_dt,territorial_type,referral_purpose,finance_source,sdu_load_date",
+          "sha256": "b43f03a117770a493a236fdac6f439398476a5e15f3d5d1cb60c5c644a7c9716"
+        },
+        {
+          "file": "Направления на плановую госпитализацию в стационары Часть 3 из 3.csv",
+          "bytes": 229889442,
+          "rows": 255710,
+          "header": "hospitalization_code,referring_mo,hospital_mo,icd10_ref_diag_code,diagnosis_name,bed_profile,registration_dt,planned_dt,polyclinic_dt,hospitalization_dt,refusal_dt,territorial_type,referral_purpose,finance_source,sdu_load_date",
+          "sha256": "07a59ecfb4b9637dffe5ef3314b1bede27a05046c6a7184814dfc9729bba64ad"
+        }
+      ]
+    },
+    {
+      "folder": "2 dataset",
+      "content": "Пациенты, ожидающие плановой госпитализации (ИС БГ)",
+      "system": "ИС «Бюро госпитализации»",
+      "ingested": true,
+      "used_for": "только список region_origin_code для dim_region (та же когорта, что и набор 1)",
+      "file_count": 1,
+      "bytes": 164407376,
+      "rows": 765182,
+      "hashed": true,
+      "files": [
+        {
+          "file": "Ожидающие плановую госпитализацию в стационары.csv",
+          "bytes": 164407376,
+          "rows": 765182,
+          "header": "region_origin_code,mo_destination_code,profile_code,patient_seq_no,icd10_ref_diag_code,diagnosis_name,operation_code,operation_name,registration_dt,planned_dt,sdu_load_date",
+          "sha256": "f4313c0b7641f0b10a51464214e638aeae427a4fc7b94753bcb6c229ded43f6a"
+        }
+      ]
+    },
+    {
+      "folder": "3 dataset",
+      "content": "Отказы в госпитализации в приёмном покое (ИС БГ)",
+      "system": "ИС «Бюро госпитализации»",
+      "ingested": true,
+      "used_for": "fact_admission_refusal, agg_daily_admission_refusals, регион стационара",
+      "file_count": 6,
+      "bytes": 1321643951,
+      "rows": 1508732,
+      "hashed": true,
+      "files": [
+        {
+          "file": "Отказы в плановой госпитализации (приёмный покой) Часть 1 из 6.csv",
+          "bytes": 219263517,
+          "rows": 251456,
+          "header": "region_in,org_in,resident,insured,benefit_cat,refuse_dt,attach_region,attach_org,icd10,icd_name,amount,finance_src,sdu_load_date",
+          "sha256": "4acd49d662df6b1c7c5fb8cf6e1aa972099aa29b128177d1a30625aaf471ba0b"
+        },
+        {
+          "file": "Отказы в плановой госпитализации (приёмный покой) Часть 2 из 6.csv",
+          "bytes": 208084717,
+          "rows": 251456,
+          "header": "region_in,org_in,resident,insured,benefit_cat,refuse_dt,attach_region,attach_org,icd10,icd_name,amount,finance_src,sdu_load_date",
+          "sha256": "d27f895847a596e6b4c3d055d4eb0d6a4287f3892d9ae6ad2851d7bfe1133e88"
+        },
+        {
+          "file": "Отказы в плановой госпитализации (приёмный покой) Часть 3 из 6.csv",
+          "bytes": 207427804,
+          "rows": 251456,
+          "header": "region_in,org_in,resident,insured,benefit_cat,refuse_dt,attach_region,attach_org,icd10,icd_name,amount,finance_src,sdu_load_date",
+          "sha256": "289f5ab522ada3e26ebf60198e1d1ef2c2890b32a3eeef6b3e6225c529b16581"
+        },
+        {
+          "file": "Отказы в плановой госпитализации (приёмный покой) Часть 4 из 6.csv",
+          "bytes": 220998379,
+          "rows": 251456,
+          "header": "region_in,org_in,resident,insured,benefit_cat,refuse_dt,attach_region,attach_org,icd10,icd_name,amount,finance_src,sdu_load_date",
+          "sha256": "32e77e0ce18cedb4b88fdd3bca31e9be9cd29c81a844940ec30e77ef718fc947"
+        },
+        {
+          "file": "Отказы в плановой госпитализации (приёмный покой) Часть 5 из 6.csv",
+          "bytes": 232808702,
+          "rows": 251456,
+          "header": "region_in,org_in,resident,insured,benefit_cat,refuse_dt,attach_region,attach_org,icd10,icd_name,amount,finance_src,sdu_load_date",
+          "sha256": "62dd2ebea99402783044b5d5232e1ef19f7c9cd7354c8a2e22fa15ef3bae2e18"
+        },
+        {
+          "file": "Отказы в плановой госпитализации (приёмный покой) Часть 6 из 6.csv",
+          "bytes": 233060832,
+          "rows": 251452,
+          "header": "region_in,org_in,resident,insured,benefit_cat,refuse_dt,attach_region,attach_org,icd10,icd_name,amount,finance_src,sdu_load_date",
+          "sha256": "0dc28960aca7c48f8d84ae1903fbbf30f030be08400ed0235a8bf82f55717e17"
+        }
+      ]
+    },
+    {
+      "folder": "4 dataset",
+      "content": "Количество пролеченных случаев в разрезе МО (ЕРСБ)",
+      "system": "ИС ЕРСБ",
+      "ingested": true,
+      "used_for": "ersb_snapshot (статичный признак пропускной способности)",
+      "file_count": 1,
+      "bytes": 591716,
+      "rows": 2196,
+      "hashed": true,
+      "files": [
+        {
+          "file": "Количество пролеченных случаев в разрезе МО.csv",
+          "bytes": 591716,
+          "rows": 2196,
+          "header": "medicine_organization,discharged_total,discharged_children,treated_budget,treated_paid,discharged_within_day,deaths_total,bed_days,amount_to_pay,sdu_load_date",
+          "sha256": "bbc6007982573599521bfaf50968fbfa2a6a2b173276f92af3e43c5ef41ee763"
+        }
+      ]
+    },
+    {
+      "folder": "5 dataset",
+      "content": "Факты проведённых вакцинаций (ИС Вакцинация)",
+      "system": "ИС «Вакцинация»",
+      "ingested": false,
+      "used_for": "не загружается: нет ключа связи с направлениями (docs/project-evidence-index.md §11)",
+      "file_count": 105,
+      "bytes": 14955279013,
+      "rows": 104245805,
+      "hashed": false,
+      "files": [
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 1 из 105.csv",
+          "bytes": 145137497,
+          "rows": 975375,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 10 из 105.csv",
+          "bytes": 146636257,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 100 из 105.csv",
+          "bytes": 145719672,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 101 из 105.csv",
+          "bytes": 144589680,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 102 из 105.csv",
+          "bytes": 144207999,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 103 из 105.csv",
+          "bytes": 139969209,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 104 из 105.csv",
+          "bytes": 142672940,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 105 из 105.csv",
+          "bytes": 143743478,
+          "rows": 994641,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 11 из 105.csv",
+          "bytes": 146957144,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 12 из 105.csv",
+          "bytes": 145498361,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 13 из 105.csv",
+          "bytes": 145915306,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 14 из 105.csv",
+          "bytes": 145928195,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 15 из 105.csv",
+          "bytes": 141677070,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 16 из 105.csv",
+          "bytes": 142404768,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 17 из 105.csv",
+          "bytes": 139684629,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 18 из 105.csv",
+          "bytes": 141429431,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 19 из 105.csv",
+          "bytes": 142150210,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 2 из 105.csv",
+          "bytes": 141516590,
+          "rows": 969062,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 20 из 105.csv",
+          "bytes": 142116420,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 21 из 105.csv",
+          "bytes": 143601705,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 22 из 105.csv",
+          "bytes": 141828536,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 23 из 105.csv",
+          "bytes": 140576882,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 24 из 105.csv",
+          "bytes": 141046885,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 25 из 105.csv",
+          "bytes": 141197121,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 26 из 105.csv",
+          "bytes": 138125729,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 27 из 105.csv",
+          "bytes": 137637669,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 28 из 105.csv",
+          "bytes": 140207194,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 29 из 105.csv",
+          "bytes": 139573145,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 3 из 105.csv",
+          "bytes": 142569201,
+          "rows": 976595,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 30 из 105.csv",
+          "bytes": 141372827,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 31 из 105.csv",
+          "bytes": 139102124,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 32 из 105.csv",
+          "bytes": 138383039,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 33 из 105.csv",
+          "bytes": 140848689,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 34 из 105.csv",
+          "bytes": 138245537,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 35 из 105.csv",
+          "bytes": 140056926,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 36 из 105.csv",
+          "bytes": 138609432,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 37 из 105.csv",
+          "bytes": 139209363,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 38 из 105.csv",
+          "bytes": 140602003,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 39 из 105.csv",
+          "bytes": 141711143,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 4 из 105.csv",
+          "bytes": 146710514,
+          "rows": 993161,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 40 из 105.csv",
+          "bytes": 143148727,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 41 из 105.csv",
+          "bytes": 142344923,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 42 из 105.csv",
+          "bytes": 142825649,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 43 из 105.csv",
+          "bytes": 142316212,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 44 из 105.csv",
+          "bytes": 144095412,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 45 из 105.csv",
+          "bytes": 143378307,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 46 из 105.csv",
+          "bytes": 142940690,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 47 из 105.csv",
+          "bytes": 142185766,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 48 из 105.csv",
+          "bytes": 142947103,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 49 из 105.csv",
+          "bytes": 140769195,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 5 из 105.csv",
+          "bytes": 126679513,
+          "rows": 863552,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 50 из 105.csv",
+          "bytes": 142763075,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 51 из 105.csv",
+          "bytes": 141804703,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 52 из 105.csv",
+          "bytes": 142591945,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 53 из 105.csv",
+          "bytes": 143078647,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 54 из 105.csv",
+          "bytes": 143005665,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 55 из 105.csv",
+          "bytes": 141180365,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 56 из 105.csv",
+          "bytes": 142157467,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 57 из 105.csv",
+          "bytes": 140811709,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 58 из 105.csv",
+          "bytes": 141131489,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 59 из 105.csv",
+          "bytes": 140437330,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 6 из 105.csv",
+          "bytes": 146056760,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 60 из 105.csv",
+          "bytes": 138811742,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 61 из 105.csv",
+          "bytes": 139013883,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 62 из 105.csv",
+          "bytes": 140008664,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 63 из 105.csv",
+          "bytes": 139008276,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 64 из 105.csv",
+          "bytes": 137660082,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 65 из 105.csv",
+          "bytes": 142072770,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 66 из 105.csv",
+          "bytes": 141892783,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 67 из 105.csv",
+          "bytes": 141927407,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 68 из 105.csv",
+          "bytes": 145767073,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 69 из 105.csv",
+          "bytes": 144385443,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 7 из 105.csv",
+          "bytes": 146289910,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 70 из 105.csv",
+          "bytes": 145309426,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 71 из 105.csv",
+          "bytes": 144706210,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 72 из 105.csv",
+          "bytes": 143376530,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 73 из 105.csv",
+          "bytes": 143427504,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 74 из 105.csv",
+          "bytes": 143568175,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 75 из 105.csv",
+          "bytes": 143911384,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 76 из 105.csv",
+          "bytes": 143083416,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 77 из 105.csv",
+          "bytes": 142685771,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 78 из 105.csv",
+          "bytes": 143223355,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 79 из 105.csv",
+          "bytes": 142031581,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 8 из 105.csv",
+          "bytes": 145464328,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 80 из 105.csv",
+          "bytes": 143397900,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 81 из 105.csv",
+          "bytes": 142859218,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 82 из 105.csv",
+          "bytes": 142357871,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 83 из 105.csv",
+          "bytes": 143142966,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 84 из 105.csv",
+          "bytes": 143306168,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 85 из 105.csv",
+          "bytes": 143505067,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 86 из 105.csv",
+          "bytes": 141877405,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 87 из 105.csv",
+          "bytes": 143233938,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 88 из 105.csv",
+          "bytes": 143356240,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 89 из 105.csv",
+          "bytes": 144600849,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 9 из 105.csv",
+          "bytes": 146795725,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 90 из 105.csv",
+          "bytes": 144767562,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 91 из 105.csv",
+          "bytes": 145033647,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 92 из 105.csv",
+          "bytes": 143858032,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 93 из 105.csv",
+          "bytes": 142783723,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 94 из 105.csv",
+          "bytes": 144565483,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 95 из 105.csv",
+          "bytes": 142945686,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 96 из 105.csv",
+          "bytes": 144496638,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 97 из 105.csv",
+          "bytes": 144144103,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 98 из 105.csv",
+          "bytes": 143193335,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        },
+        {
+          "file": "Факты проведённых вакцинаций с возможностью представления в разрезе возрастов Часть 99 из 105.csv",
+          "bytes": 145610572,
+          "rows": 994681,
+          "header": "id,vaccination_date,age,vaccination_plan,medicine_organization_code,region,sdu_load_date"
+        }
+      ]
+    },
+    {
+      "folder": "6 dataset",
+      "content": "Отказы от вакцинации и противопоказания (ИС Вакцинация)",
+      "system": "ИС «Вакцинация»",
+      "ingested": false,
+      "used_for": "не загружается",
+      "file_count": 1,
+      "bytes": 13379149,
+      "rows": 66709,
+      "hashed": false,
+      "files": [
+        {
+          "file": "Отказы от вакцинации и противопоказания.csv",
+          "bytes": 13379149,
+          "rows": 66709,
+          "header": "id,reason,contraindication,vaccination_plan_code,sdu_load_date"
+        }
+      ]
+    },
+    {
+      "folder": "7 dataset",
+      "content": "Онкобольные с впервые установленным диагнозом (ИС ЭРОБ)",
+      "system": "ИС ЭРОБ",
+      "ingested": false,
+      "used_for": "не загружается",
+      "file_count": 1,
+      "bytes": 1078723,
+      "rows": 0,
+      "hashed": false,
+      "files": [
+        {
+          "file": "Информация по онкобольным с впервые установленным диагнозом.xlsx",
+          "bytes": 1078723
+        }
+      ]
+    },
+    {
+      "folder": "8 dataset",
+      "content": "Запущенность злокачественных новообразований по локализациям (ИС ЭРОБ)",
+      "system": "ИС ЭРОБ",
+      "ingested": false,
+      "used_for": "не загружается",
+      "file_count": 1,
+      "bytes": 6562,
+      "rows": 0,
+      "hashed": false,
+      "files": [
+        {
+          "file": "Запущенность злокачественных новообразований по локализациям.xlsx",
+          "bytes": 6562
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "files": 119,
+    "bytes": 17147121305,
+    "ingested_bytes": 2177377858
+  }
+}

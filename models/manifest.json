@@ -1,0 +1,660 @@
+{
+  "built_with": {
+    "joblib": "1.6.0",
+    "lightgbm": "4.7.0",
+    "numpy": "2.5.3",
+    "pandas": "3.0.5",
+    "python": "3.14.7",
+    "xgboost": "3.4.1"
+  },
+  "files": {
+    "README.md": {
+      "bytes": 8010,
+      "origin": "hand-written",
+      "sha256": "27aab70be69bfd1c73b0ea23033f6ca187ca85e628ed7561ac38214fade81277"
+    },
+    "flow_quantile/README.md": {
+      "bytes": 10969,
+      "origin": "hand-written",
+      "sha256": "363434dac89466976ee8842a3f2cf69dd9a599476980fd7b7548a0def2e6284a"
+    },
+    "flow_quantile/categories_registrations.json": {
+      "bytes": 12657,
+      "origin": "generated",
+      "sha256": "98ee596874220b517dfd0aaab7394efbda4747c1547022ee2d152bf35fb269b4"
+    },
+    "flow_quantile/example.csv.gz": {
+      "bytes": 1625,
+      "origin": "generated",
+      "sha256": "96d94c74689a43fc0079e8f3f8327c8b175b9df4678cfb9a66e167a5c6887848"
+    },
+    "flow_quantile/example_expected.csv.gz": {
+      "bytes": 1738,
+      "origin": "generated",
+      "sha256": "f0aaf61d70cbd04871c7122222bfaf399d313b48ecd6fe042ac0c2431a891e65"
+    },
+    "flow_quantile/features.json": {
+      "bytes": 441,
+      "origin": "refit",
+      "sha256": "9587cad853ce6c73cfb3f853db36bf3b59eea100a94a878dff5439d797ea26aa"
+    },
+    "flow_quantile/meta.json": {
+      "bytes": 2201,
+      "origin": "refit",
+      "sha256": "c5e9b0866c32eb86c9bed10265925f3ff5f4efd6da4b3f948077400b1fd84b28"
+    },
+    "flow_quantile/model_registrations_p10.txt": {
+      "bytes": 3400287,
+      "origin": "refit",
+      "sha256": "f5f94213f0b9d8d47ceb87db3f88cc0a7a6ecd1d1441fa0ace95fd4daf32a820"
+    },
+    "flow_quantile/model_registrations_p50.txt": {
+      "bytes": 3920345,
+      "origin": "refit",
+      "sha256": "ade945e3b87dc6acb18313ef1b2dca20e3e2b8b7d234a8a737e7a279341ddd2e"
+    },
+    "flow_quantile/model_registrations_p90.txt": {
+      "bytes": 4237090,
+      "origin": "refit",
+      "sha256": "f959b971b2771e66c68e7d984073800fccddd077fda5afbf7ae5b3b6569778ec"
+    },
+    "flow_quantile/predict.py": {
+      "bytes": 6701,
+      "origin": "hand-written",
+      "sha256": "0ef522b5e1058077f0f0961aa3cc85e985a9b6c288800f974207dfe817b8fd40"
+    },
+    "flow_quantile/verification.json": {
+      "bytes": 9845,
+      "origin": "generated",
+      "sha256": "05cd5209a99441a97723fc30fbfde9013955bf0bed206e16718373ea8aa3ad7e"
+    },
+    "load_forecast/README.md": {
+      "bytes": 7153,
+      "origin": "hand-written",
+      "sha256": "69928b41a4035e6e1def637119f0a664ff9cbaaea611ab67e2d011d701afa384"
+    },
+    "load_forecast/artifact-manifest.json": {
+      "bytes": 1220,
+      "origin": "artifact (byte-identical)",
+      "sha256": "ccd9382aafe50524e65bdf323cced4a12223fc11d89cd5be74bdd2047087a690"
+    },
+    "load_forecast/bundle.joblib": {
+      "bytes": 4019418,
+      "origin": "generated",
+      "sha256": "175b524f13fdd4284618a5fe39593209889ee8a3896d28bfbee9c5b9c6b77c75"
+    },
+    "load_forecast/card.json": {
+      "bytes": 2231,
+      "origin": "generated",
+      "sha256": "98bdb3f2af2eb9c3a39b971b0e3711213084fae7db8b81f50117ff29319a85ce"
+    },
+    "load_forecast/categories.json": {
+      "bytes": 12704,
+      "origin": "artifact (byte-identical)",
+      "sha256": "7267e3b689b3d82df27e32e3f877472aad3760f82ecb72d0c8925c9e8709355d"
+    },
+    "load_forecast/example.csv.gz": {
+      "bytes": 1472,
+      "origin": "generated",
+      "sha256": "4da36522f2bc6cbd321b54fa5dfc85cbf2f01dd0f10983d79099e8332f7c9514"
+    },
+    "load_forecast/example_expected.csv.gz": {
+      "bytes": 901,
+      "origin": "generated",
+      "sha256": "04dae8ce4bf4123040f3222fcb332770c0d83ce45ffdc1f8fa286d65cba563b0"
+    },
+    "load_forecast/features.json": {
+      "bytes": 440,
+      "origin": "artifact (byte-identical)",
+      "sha256": "49d73328a7c61cd082560820c587b3f82536ac98ec7592c6dfd4f76043018501"
+    },
+    "load_forecast/meta.json": {
+      "bytes": 1143,
+      "origin": "artifact (byte-identical)",
+      "sha256": "3dcd6621a622ce69c65810f8f42accaf7f4b69229e736222874cd2f653346a29"
+    },
+    "load_forecast/metrics.json": {
+      "bytes": 82912,
+      "origin": "artifact (byte-identical)",
+      "sha256": "5d6eb3552a7d632016dac4b72011b2eda649337d4d1c4d323d41dd9169b9650a"
+    },
+    "load_forecast/model_hospitalizations.txt": {
+      "bytes": 4513622,
+      "origin": "artifact (byte-identical)",
+      "sha256": "290f7851d838e165a25e8c75f348473496edc65f5805627052095f7bfd7c69ba"
+    },
+    "load_forecast/model_registrations.txt": {
+      "bytes": 4591556,
+      "origin": "artifact (byte-identical)",
+      "sha256": "8ef35556f50650d953262bc16871fb6a5c65b09d760f3a368f4e1c73a6eda7ad"
+    },
+    "load_forecast/predict.py": {
+      "bytes": 5626,
+      "origin": "hand-written",
+      "sha256": "4cedf92ecbe9701dd3e4e6b5dc2c23116d515fe58c9314b8a44b039bbb0dfc47"
+    },
+    "load_forecast/series.json": {
+      "bytes": 724920,
+      "origin": "artifact (byte-identical)",
+      "sha256": "ea7effff097d5bafa82c4a61a6ed5533a4bd2e25e77557b31973ae1b56d17db9"
+    },
+    "patient_journey_aft/README.md": {
+      "bytes": 10185,
+      "origin": "hand-written",
+      "sha256": "adb285a8d10fbfdea43e75e2da192921b6830759126752a759f3a6800880b226"
+    },
+    "patient_journey_aft/artifact-manifest.json": {
+      "bytes": 750,
+      "origin": "artifact (byte-identical)",
+      "sha256": "e12e00069b346b05e2dc76b624fe83db383b8fcc7c03c61352449e85c1f500a9"
+    },
+    "patient_journey_aft/bundle.joblib": {
+      "bytes": 4588603,
+      "origin": "generated",
+      "sha256": "e087cbd4c5cbdc33afc99997fcdce5c5daad23bd51b478bfe0523324c0de1609"
+    },
+    "patient_journey_aft/categories.json": {
+      "bytes": 30321,
+      "origin": "artifact (byte-identical)",
+      "sha256": "fef63c6518389aca463db421363361a8359652521f3d65bbf47e4dfcf7d178f2"
+    },
+    "patient_journey_aft/example.csv.gz": {
+      "bytes": 3791,
+      "origin": "generated",
+      "sha256": "b87459183e539d327393547b08caae0cfc7dd7cc4a968d06b528aabfc2ae3111"
+    },
+    "patient_journey_aft/example_expected.csv.gz": {
+      "bytes": 3391,
+      "origin": "generated",
+      "sha256": "39f58b9b54f08e417e89bf5dd1cdfa6cdab60b7399224515f52a1d2659b95662"
+    },
+    "patient_journey_aft/features.json": {
+      "bytes": 725,
+      "origin": "generated",
+      "sha256": "4dba374fb3e595321e2e94951665a2a4f4f0af0cb897fdd869019a2ebeab0f9d"
+    },
+    "patient_journey_aft/inference.json": {
+      "bytes": 17128,
+      "origin": "generated",
+      "sha256": "894d2fe5306764680f488b9f02fa450df66e63c62beb872f6667bca90366fe16"
+    },
+    "patient_journey_aft/meta.json": {
+      "bytes": 126,
+      "origin": "artifact (byte-identical)",
+      "sha256": "b53d91cc30a8fbb0088498898bf010701ee022a59173f2da388731a83a9bdaf4"
+    },
+    "patient_journey_aft/metrics.json": {
+      "bytes": 105410,
+      "origin": "artifact (byte-identical)",
+      "sha256": "d968b66198c47c12ea845c2dfa44b80043a9eb8115dc8c89aaae5bcb464305ab"
+    },
+    "patient_journey_aft/model.json": {
+      "bytes": 35166009,
+      "origin": "artifact (byte-identical)",
+      "sha256": "7f5420e4d6bdd2d5fd4602c920e8149b434fe051e63ba7b01c6c11795bbf37b6"
+    },
+    "patient_journey_aft/predict.py": {
+      "bytes": 7251,
+      "origin": "hand-written",
+      "sha256": "9644fd02aded76db73a67aa452ce4a13631b1539709436da1709031e21143f54"
+    },
+    "patient_journey_hazard/README.md": {
+      "bytes": 10515,
+      "origin": "hand-written",
+      "sha256": "d515b9378bde8e7bc31ce9aec35382e47930ce273ac17899a437e6c2837268f0"
+    },
+    "patient_journey_hazard/artifact-manifest.json": {
+      "bytes": 748,
+      "origin": "artifact (byte-identical)",
+      "sha256": "f64331d033d012ec1b6a049108b4bb594ba3c7d2ade3b9be1a4bd6109536faf6"
+    },
+    "patient_journey_hazard/bundle.joblib": {
+      "bytes": 1173170,
+      "origin": "generated",
+      "sha256": "683e3d0fdebe287efcbea8f9c003acfb000b886268ba167ace98718505a5a1f3"
+    },
+    "patient_journey_hazard/categories.json": {
+      "bytes": 30321,
+      "origin": "artifact (byte-identical)",
+      "sha256": "fef63c6518389aca463db421363361a8359652521f3d65bbf47e4dfcf7d178f2"
+    },
+    "patient_journey_hazard/example.csv.gz": {
+      "bytes": 3791,
+      "origin": "generated",
+      "sha256": "b87459183e539d327393547b08caae0cfc7dd7cc4a968d06b528aabfc2ae3111"
+    },
+    "patient_journey_hazard/example_expected.csv.gz": {
+      "bytes": 2706,
+      "origin": "generated",
+      "sha256": "11dedbd5d7282adf78ae45393260ca759f93ac307ffc0d6ab20d39197fd3f05f"
+    },
+    "patient_journey_hazard/features.json": {
+      "bytes": 725,
+      "origin": "generated",
+      "sha256": "4dba374fb3e595321e2e94951665a2a4f4f0af0cb897fdd869019a2ebeab0f9d"
+    },
+    "patient_journey_hazard/inference.json": {
+      "bytes": 27648,
+      "origin": "generated",
+      "sha256": "ecf4f5e3af983fed0c0a92dbc2ae074a0beb2f3469c1a720580c1217a45d19b2"
+    },
+    "patient_journey_hazard/meta.json": {
+      "bytes": 146,
+      "origin": "artifact (byte-identical)",
+      "sha256": "6c7f00be86e480bf4b7874c677615004293635579c7838b894700fc7a8d60b6a"
+    },
+    "patient_journey_hazard/metrics.json": {
+      "bytes": 130169,
+      "origin": "artifact (byte-identical)",
+      "sha256": "aca5554039e19dd355ca99d3e60a18f29c53321f43ccaf86a566bcd6a72aec33"
+    },
+    "patient_journey_hazard/model.txt": {
+      "bytes": 2934756,
+      "origin": "artifact (byte-identical)",
+      "sha256": "2a355548b82990d1e11f4ea98d4d622409bf7f3ce22b72230aac9d3c09e486b8"
+    },
+    "patient_journey_hazard/predict.py": {
+      "bytes": 7214,
+      "origin": "hand-written",
+      "sha256": "084372caaf65ca7451196872b4ece00e8ccc6dbfce45507108a41f44f4ea2cca"
+    },
+    "refusal_risk/README.md": {
+      "bytes": 7083,
+      "origin": "hand-written",
+      "sha256": "a2711284753348a75559f0b2a22fcdfe84b913daf0a74b9e1a0020d127b83693"
+    },
+    "refusal_risk/artifact-manifest.json": {
+      "bytes": 1043,
+      "origin": "artifact (byte-identical)",
+      "sha256": "5be17dc8e0ed44fc8d155cdaa72779d670350ed385c3a9f1508535cc444ce7d0"
+    },
+    "refusal_risk/bundle.joblib": {
+      "bytes": 1364680,
+      "origin": "generated",
+      "sha256": "c9b963161c1a30995d3148bc43befed64bfbc6ae803fe196b272d0a5605d0709"
+    },
+    "refusal_risk/card.json": {
+      "bytes": 2109,
+      "origin": "generated",
+      "sha256": "a81b0de694edb2df4172bdbe1840003ed9d706724689b84d6e08918f09f6892b"
+    },
+    "refusal_risk/categories.json": {
+      "bytes": 30827,
+      "origin": "artifact (byte-identical)",
+      "sha256": "f741a9b9e075e11a3f7f0389d52561fa58fe26facdb88b62956f89dcbfd11bd3"
+    },
+    "refusal_risk/display.json": {
+      "bytes": 176133,
+      "origin": "artifact (byte-identical)",
+      "sha256": "4b182e4240365fd69664a3fb74cfa9cc770f55a06620bf465832413fd0dd7ea3"
+    },
+    "refusal_risk/example.csv.gz": {
+      "bytes": 3742,
+      "origin": "generated",
+      "sha256": "cee038b24e7f89ce509cbbf8264246fbc44b937acb67035543edf3693e9c43b2"
+    },
+    "refusal_risk/example_expected.csv.gz": {
+      "bytes": 776,
+      "origin": "generated",
+      "sha256": "d9d5542df14c1861d37144fdc414ee317ec232ca08eb20d19a69970ee0e8f4cb"
+    },
+    "refusal_risk/features.json": {
+      "bytes": 745,
+      "origin": "artifact (byte-identical)",
+      "sha256": "9e542ef7dfe538d7feb7bcc2624250bbd243787944e6da5e1ac3b86bd97d6780"
+    },
+    "refusal_risk/meta.json": {
+      "bytes": 1079,
+      "origin": "artifact (byte-identical)",
+      "sha256": "102a7ec83aac9c3f224195d7d9034a00615b684449513233f0b7a715c659ffc1"
+    },
+    "refusal_risk/metrics.json": {
+      "bytes": 27570,
+      "origin": "artifact (byte-identical)",
+      "sha256": "e0841fc5d6057424d54a3dea30aaa69010f9f7590399a7dc0a51f235d653623e"
+    },
+    "refusal_risk/model.txt": {
+      "bytes": 3232599,
+      "origin": "artifact (byte-identical)",
+      "sha256": "e71246027ece17eb88709e6adea0a36df03dc3b743546bc1ea1dd2ad223519c6"
+    },
+    "refusal_risk/predict.py": {
+      "bytes": 4480,
+      "origin": "hand-written",
+      "sha256": "722e50c826db50c108facfa4fff915baedfb8c7e51995150fd7eff9a34831f12"
+    },
+    "wait_time/README.md": {
+      "bytes": 6847,
+      "origin": "hand-written",
+      "sha256": "4ca09301d42ba945ac1b43f883074dcd94f501c50b667351f28b74bc784b3323"
+    },
+    "wait_time/artifact-manifest.json": {
+      "bytes": 1043,
+      "origin": "artifact (byte-identical)",
+      "sha256": "a82db5ab4cb11b25afc3765ee4d59efed65fae0ef766435b083889ec1e7f837a"
+    },
+    "wait_time/bundle.joblib": {
+      "bytes": 1797485,
+      "origin": "generated",
+      "sha256": "6e4e45d18dc21aa6801ee52369c95d30cfca568c818a50ef5c095785922f67f8"
+    },
+    "wait_time/card.json": {
+      "bytes": 2112,
+      "origin": "generated",
+      "sha256": "53705707c301678023357de0cefce76a549484d2059db951392ffa22da425248"
+    },
+    "wait_time/categories.json": {
+      "bytes": 26219,
+      "origin": "artifact (byte-identical)",
+      "sha256": "167a8f6b1cc6428b9be6b4056061ac3abf83bed619045501a5553e93572788b7"
+    },
+    "wait_time/display.json": {
+      "bytes": 176133,
+      "origin": "artifact (byte-identical)",
+      "sha256": "4b182e4240365fd69664a3fb74cfa9cc770f55a06620bf465832413fd0dd7ea3"
+    },
+    "wait_time/example.csv.gz": {
+      "bytes": 3215,
+      "origin": "generated",
+      "sha256": "a95928fb5db3ce27515591629aa68f5d4b785ebe92d5e0c04451ce36a283ebeb"
+    },
+    "wait_time/example_expected.csv.gz": {
+      "bytes": 757,
+      "origin": "generated",
+      "sha256": "6ac0d21a833b94da2b433cc445ae2b8d2dda3337984cc16d40d1c8730b9e99a6"
+    },
+    "wait_time/features.json": {
+      "bytes": 691,
+      "origin": "artifact (byte-identical)",
+      "sha256": "aea20cd4a33993bab64e1574034691ba5471e04e2249b80b59b69fdb50290d02"
+    },
+    "wait_time/meta.json": {
+      "bytes": 1040,
+      "origin": "artifact (byte-identical)",
+      "sha256": "c9871c8044b00f8fe2043dc22ec57065d12cbfefa7782678a61bb77d381fd562"
+    },
+    "wait_time/metrics.json": {
+      "bytes": 24855,
+      "origin": "artifact (byte-identical)",
+      "sha256": "f75922645cc3b99c0c2d77bc91020e286bd194693156a0e22dacc794578829ad"
+    },
+    "wait_time/model.txt": {
+      "bytes": 4680470,
+      "origin": "artifact (byte-identical)",
+      "sha256": "1b987d6a18218e65141c0b1646cefc0ea935f1792e65bf1b8d6123bb10cafe54"
+    },
+    "wait_time/predict.py": {
+      "bytes": 4462,
+      "origin": "hand-written",
+      "sha256": "ecbdcd7353cdefc0c1002d4ed4b29dd7c261a3e353559a1f7b9740536533b3a2"
+    }
+  },
+  "models": {
+    "flow_quantile": {
+      "algorithm": "three independent LightGBM quantile objectives per target (alpha 0.1, 0.5, 0.9)",
+      "example": {
+        "population": "sample of origin rows of directly supported series",
+        "rows": null
+      },
+      "native_files": [
+        "model_registrations_p10.txt",
+        "model_registrations_p50.txt",
+        "model_registrations_p90.txt"
+      ],
+      "source": {
+        "code_identity": "e3c3bb7a4a491a0a8350f75dd3d3877fbdf0f28fec1e5d5c4609ef6fcefd4225",
+        "config_identity": "3d0e7a4652f811404ac33585c53d3f37fff4fababd063ef67554d98d4c6e0a74",
+        "dataset_identity": "49d7e69546b0dee53c89fa23964edfa40b823aa9829a972414f28dad74bd7dc0",
+        "forecast_origin": "2025-03-17",
+        "kind": "deterministic refit of the accepted run's final_test-origin boosters, verified against its published raw quantiles",
+        "model_threads": 4,
+        "origin_artifact": "artifacts/flow_quantile/flow-quantile-6b2b2-real-v1/origins/final_test-2025-03-17-f511b8990d57",
+        "run_id": "flow-quantile-6b2b2-real-v1",
+        "scientific_identity_sha256": "f55dff24f115e23d2d0510dc230d0a0e89d4fa43d36daa55c078d00ffa44ddde",
+        "verification": {
+          "cohort_hospitalizations": {
+            "all_direct_cells": {
+              "cells": 47782,
+              "max_abs_difference": 0.0,
+              "max_relative_difference": 0.0,
+              "relative_denominator": "max(|published|, 1)",
+              "series": 3413,
+              "within_tolerance": true
+            },
+            "cells_compared": 47782,
+            "hospital_sample_200_series": {
+              "cells": 2800,
+              "max_abs_difference": 0.0,
+              "max_relative_difference": 0.0,
+              "relative_denominator": "max(|published|, 1)",
+              "series": 200,
+              "within_tolerance": true
+            },
+            "published_source": "artifacts/flow_quantile/flow-quantile-6b2b2-real-v1/origins/final_test-2025-03-17-f511b8990d57/evaluation.parquet",
+            "series_compared": 1987,
+            "tolerance_relative": 0.001,
+            "within_tolerance": true
+          },
+          "registrations": {
+            "all_direct_cells": {
+              "cells": 47782,
+              "max_abs_difference": 0.0,
+              "max_relative_difference": 0.0,
+              "relative_denominator": "max(|published|, 1)",
+              "series": 3413,
+              "within_tolerance": true
+            },
+            "cells_compared": 47782,
+            "hospital_sample_200_series": {
+              "cells": 2800,
+              "max_abs_difference": 0.0,
+              "max_relative_difference": 0.0,
+              "relative_denominator": "max(|published|, 1)",
+              "series": 200,
+              "within_tolerance": true
+            },
+            "published_source": "artifacts/flow_quantile/flow-quantile-6b2b2-real-v1/origins/final_test-2025-03-17-f511b8990d57/evaluation.parquet",
+            "series_compared": 1987,
+            "tolerance_relative": 0.001,
+            "within_tolerance": true
+          }
+        }
+      }
+    },
+    "load_forecast": {
+      "algorithm": "two global LightGBM Poisson boosters (registrations, hospitalizations), horizons 1..14",
+      "example": {
+        "population": "forecast rows at origin 2025-03-31, modelled series",
+        "rows": 50
+      },
+      "native_files": [
+        "model_registrations.txt",
+        "model_hospitalizations.txt"
+      ],
+      "source": {
+        "artifact_path": "artifacts/models/load_forecast/20260914-1918",
+        "artifact_sha256": "f7a12afa660cfdcaf02bd374b93239c92bab27061c9234171d6ae1931225eb5a",
+        "card_source": "ml/configs/model_cards.yaml",
+        "lineage": "legacy_unattributed",
+        "run_id": null,
+        "trained_at": "2026-09-14T19:18:03",
+        "training_window": {
+          "backtest_origins": [
+            "2025-03-03",
+            "2025-03-10",
+            "2025-03-17"
+          ],
+          "final_model_data_through": "2025-03-31",
+          "series_selection": [
+            "2025-01-01",
+            "2025-02-28"
+          ]
+        },
+        "version": "20260914-1918"
+      }
+    },
+    "patient_journey_aft": {
+      "algorithm": "XGBoost survival:aft (normal), hospitalization-only estimand",
+      "example": {
+        "population": "eligible referrals registered in the q1_final test fold",
+        "rows": 50
+      },
+      "native_files": [
+        "model.json"
+      ],
+      "source": {
+        "artifact_path": "artifacts/tournaments/journey-full-confirmation-6b2a-final-20260917/patient_journey--xgboost_aft-final-confirmation--trial-008--70e6db266e97c959",
+        "artifact_sha256": "9b2b8a9787c029f7488bd19cab4e6cbd7caf8567093f70f7ff9f180d1a86b2f0",
+        "candidate": "xgboost_aft",
+        "concordance": 0.8475523667458033,
+        "decision": "retain both pending product/serving tradeoff",
+        "fold": "q1_final",
+        "fold_windows": {
+          "calibration": [
+            "2025-02-22",
+            "2025-02-28"
+          ],
+          "id": "q1_final",
+          "test": [
+            "2025-03-01",
+            "2025-03-31"
+          ],
+          "train": [
+            "2025-01-01",
+            "2025-02-14"
+          ],
+          "validation": [
+            "2025-02-15",
+            "2025-02-21"
+          ]
+        },
+        "full_cohort_rows": 767084,
+        "label_cutoff": "2026-05-13T00:00:00",
+        "mean_calibration_error": 0.009749939050085567,
+        "mean_hospitalization_brier_7_14_30": 0.10975260226338394,
+        "parameter_source_checkpoint_ids": [
+          "82642e53085154e975dc44cd45e5d35d9c4fa1bb3f0c1a71a4b1e23167031466",
+          "b7ac901f9760c1381b00963a95a96d64ae0c3d19e98f0c0a9ef5a8dbc41ae1c0"
+        ],
+        "run_id": "journey-full-confirmation-6b2a-final-20260917",
+        "selection_note": "q1_final fold of the accepted full-cohort confirmation; its test metrics are the ones the evidence index cites. The q1_fold_1 sibling is a shorter-history fold kept as evidence only.",
+        "source_tournament": "journey-overnight-6b2a-corrected-20260917",
+        "trial_id": "trial-008"
+      }
+    },
+    "patient_journey_hazard": {
+      "algorithm": "LightGBM discrete-time hospitalization hazard over fixed day intervals",
+      "example": {
+        "population": "eligible referrals registered in the q1_final test fold",
+        "rows": 50
+      },
+      "native_files": [
+        "model.txt"
+      ],
+      "source": {
+        "artifact_path": "artifacts/tournaments/journey-full-confirmation-6b2a-final-20260917/patient_journey--discrete_hospitalization_hazard-final-confirmation--trial-030--d8872d7434eb1e26",
+        "artifact_sha256": "db678bfa061510655c984746b22425f15cc45c34144469d376fa5bc0865c2012",
+        "candidate": "discrete_hospitalization_hazard",
+        "concordance": 0.8026447745306077,
+        "decision": "retain both pending product/serving tradeoff",
+        "fold": "q1_final",
+        "fold_windows": {
+          "calibration": [
+            "2025-02-22",
+            "2025-02-28"
+          ],
+          "id": "q1_final",
+          "test": [
+            "2025-03-01",
+            "2025-03-31"
+          ],
+          "train": [
+            "2025-01-01",
+            "2025-02-14"
+          ],
+          "validation": [
+            "2025-02-15",
+            "2025-02-21"
+          ]
+        },
+        "full_cohort_rows": 767084,
+        "label_cutoff": "2026-05-13T00:00:00",
+        "mean_calibration_error": 0.010724734073412318,
+        "mean_hospitalization_brier_7_14_30": 0.1085750331244424,
+        "parameter_source_checkpoint_ids": [
+          "69698ceac058b30c1b11e82e4fb5f682ef8adc12fa8a09b25185420409271eb5",
+          "93127e9445a5394c16fee01c6d5490d2b3eb055279b7a5e6b36ce844d9c79169"
+        ],
+        "run_id": "journey-full-confirmation-6b2a-final-20260917",
+        "selection_note": "q1_final fold of the accepted full-cohort confirmation; its test metrics are the ones the evidence index cites. The q1_fold_1 sibling is a shorter-history fold kept as evidence only.",
+        "source_tournament": "journey-overnight-6b2a-corrected-20260917",
+        "trial_id": "trial-030"
+      }
+    },
+    "refusal_risk": {
+      "algorithm": "LightGBM binary classifier",
+      "example": {
+        "population": "outcome in (hospitalized, refused)",
+        "rows": 50
+      },
+      "native_files": [
+        "model.txt"
+      ],
+      "source": {
+        "artifact_path": "artifacts/models/refusal_risk/20260914-1831",
+        "artifact_sha256": "c674f3a281f19316f5153c3c488ed73eebf925360fa232ff02e5cb82ada276a2",
+        "card_source": "ml/configs/model_cards.yaml",
+        "lineage": "legacy_unattributed",
+        "run_id": null,
+        "trained_at": "2026-09-14T18:31:15",
+        "training_window": {
+          "date_column": "registration_date",
+          "early_stopping_holdout_days": 14,
+          "test": [
+            "2025-03-01",
+            "2025-03-31"
+          ],
+          "train": [
+            "2025-01-01",
+            "2025-02-28"
+          ]
+        },
+        "version": "20260914-1831"
+      }
+    },
+    "wait_time": {
+      "algorithm": "LightGBM regression on log1p(wait_days)",
+      "example": {
+        "population": "hospitalized, same_day_registration = false",
+        "rows": 50
+      },
+      "native_files": [
+        "model.txt"
+      ],
+      "source": {
+        "artifact_path": "artifacts/models/wait_time/20260914-1830",
+        "artifact_sha256": "74b3df0fd566244e3467c8671d4a090c8a875393354c7ce43bce2262223aef8f",
+        "card_source": "ml/configs/model_cards.yaml",
+        "lineage": "legacy_unattributed",
+        "run_id": null,
+        "trained_at": "2026-09-14T18:30:40",
+        "training_window": {
+          "date_column": "registration_date",
+          "early_stopping_holdout_days": 14,
+          "test": [
+            "2025-03-01",
+            "2025-03-31"
+          ],
+          "train": [
+            "2025-01-01",
+            "2025-02-28"
+          ]
+        },
+        "version": "20260914-1830"
+      }
+    }
+  },
+  "rule": "Frozen artefacts identified by sha256: a file whose digest differs from this manifest is a different model. Rebuild with `make models-export`; never edit shipped files by hand.",
+  "schema_version": 1,
+  "total_bytes": 81411021
+}

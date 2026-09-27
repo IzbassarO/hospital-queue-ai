@@ -4,8 +4,21 @@
 one dot per registry hospital coloured by published severity, the model's predictive notifications (plain-language
 explanation built deterministically from published facts, specialist decision dialog), the queue of expected
 admissions, and a fourteen-day simulation on labelled synthetic flow (scenarios: baseline, surge, seasonal peak,
-data outage; the clock stops whenever the model asks the specialist). `/demo/flow` … `/demo/trust` is the six-step
-story of how the system works (`src/demo/*`). Both are documented in
+data outage; the clock stops whenever the model asks the specialist). What the simulation checks a crossing
+against is **not** synthetic: the observed daily registrations of the data mart after the published origin are read
+from the hospital card the page already fetches and shown as «факт»; only a day the mart does not cover falls back
+to a generated flow, labelled «синтетика». Every interval on screen names its measured final-test coverage (read
+from the assurance capability `flow_temporal_calibration`) next to its nominal 80 %. Beside the synthetic waiting
+counters stands the mart's real queue (`FactStrip`), and under the inbox a separate descriptive list of the longest
+queues at the as-of date (`QueueFacts`, from the legacy load-index mart) — labelled as a level of description, never
+as a model warning. The inbox itself carries a profile facet (day-hospital series apart, counts visible) and order
+chips by published rank, by queue and by historical wait. Everything synthetic — the queue `Н-####`, the
+parameters of the day simulation, the scenario multipliers — lives in one switchable folder,
+`frontend/src/synthetic/` (its RU/EN README says what is synthetic, what is published, how to edit the JSON and how
+to switch the layer off with `VITE_SYNTHETIC=off` or `config.json`); the product imports it through
+`src/tower/synthetic.ts` only, and with the layer off the control centre shows the published model alone. Hospital
+positions on the map are derived from the registry (`src/tower/geo/place.ts`), not synthetic. `/demo/flow` …
+`/demo/trust` is the six-step story of how the system works (`src/demo/*`). Both are documented in
 [demo-frontend-handoff.md](demo-frontend-handoff.md). The former Control Tower operations view (`/operations`,
 `/signals`, `/regions/:code`, `/hospitals/...`, `/assurance`) and its pages, components, legacy mart hooks and copy
 were removed; the sections below are kept as the historical description of that view and of the data boundary that

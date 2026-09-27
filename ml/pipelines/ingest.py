@@ -3,9 +3,14 @@
 
 Run:  make ingest          (applies Alembic migrations first)
       PYTHONPATH=ml .venv/bin/python ml/pipelines/ingest.py [--skip-load]
+      PYTHONPATH=ml .venv/bin/python ml/pipelines/ingest.py --check-quality   (read-only, no ingest)
+
+Before anything becomes Parquet the data-quality gateway (hqai_ml/ingest/quality.py) applies an explicit contract
+per table and stops the run on a hard violation, so a broken refresh never replaces the previous data layer.
 
 Writes:
   data/processed/<table>.parquet (incl. dim_icd: ICD-10 code -> most frequent source spelling), _manifest.json
+  data/processed/_quality_report.json (per-table rules, counts and thresholds)
   ml/configs/regions.yaml           (region code dictionary, manual overrides preserved)
   reports/01_org_matching.csv       (fuzzy hospital <-> ERSB matches for review)
 Reads:
@@ -22,7 +27,7 @@ import time
 
 import duckdb
 
-from hqai_ml.ingest import aggregates, dictionaries, facts, sources, staging
+from hqai_ml.ingest import aggregates, dictionaries, facts, quality, sources, staging
 from hqai_ml.ingest.config import IngestSettings
 from hqai_ml.ingest.load_postgres import LOAD_ORDER, load_all
 
@@ -36,11 +41,28 @@ def log(msg: str) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--skip-load", action="store_true", help="only build Parquet, do not touch Postgres")
+    ap.add_argument(
+        "--check-quality",
+        action="store_true",
+        help="run the data-quality gateway read-only over the existing data/processed/*.parquet and exit",
+    )
     args = ap.parse_args()
 
     settings = IngestSettings()
     params = settings.params()
     out = settings.processed_dir
+
+    if args.check_quality:
+        report_path = out / "_quality_report.json"
+        try:
+            report = quality.check_processed(out, params, settings.configs_dir, report_path)
+        except quality.QualityGateError as exc:
+            print(exc, file=sys.stderr)
+            return 1
+        rows = sum(t["rows"] for t in report["tables"].values())
+        log(f"quality {report['status']}: {len(report['tables'])} tables, {rows:,} rows -> {report_path}")
+        return 0
+
     out.mkdir(parents=True, exist_ok=True)
     work_db = out / "_work.duckdb"
     work_db.unlink(missing_ok=True)
@@ -107,6 +129,16 @@ def main() -> int:
     aggregates.build_agg_daily_region_profile(con)
     aggregates.build_agg_daily_admission_refusals(con)
     log("aggregates built")
+
+    # ---- data-quality gateway: contracts before anything is written
+    report_path = out / "_quality_report.json"
+    report = quality.gate(con, params, settings.configs_dir, report_path, enforce=True)
+    manifest["quality"] = {
+        "status": report["status"],
+        "report": report_path.name,
+        "thresholds_source": report["thresholds_source"],
+    }
+    log(f"quality gateway {report['status']} ({len(report['tables'])} tables) -> {report_path.name}")
 
     # ---- parquet
     for table in LOAD_ORDER:

@@ -30,6 +30,8 @@ UncertaintyStatus = Literal["CALIBRATED", "INSUFFICIENT_CALIBRATION_SUPPORT", "U
 CalibrationStatus = Literal["CALIBRATED", "INSUFFICIENT_SUPPORT", "NOT_APPLICABLE"]
 SignalType = Literal["preventive_flow_pressure", "observed_unusual_flow"]
 Severity = Literal["HIGH", "ELEVATED", "WATCH", "NORMAL", "UNSUPPORTED"]
+# stored by the signal-prioritization step: the low-volume materiality rule fired, or it did not
+MaterialityStatus = Literal["materiality_rule_not_triggered", "zero_baseline_low_volume"]
 
 
 class SourceProvenance(BaseModel):

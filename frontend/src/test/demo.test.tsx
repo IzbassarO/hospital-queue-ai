@@ -75,6 +75,8 @@ function demoMock(override?: Override) {
       return jsonResponse(d.exampleSet);
     if (path === "/model-assurance/capabilities")
       return jsonResponse(d.demoCapabilities);
+    if (path === "/model-assurance/capabilities/flow_temporal_calibration")
+      return jsonResponse(f.calibrationCapability);
     return undefined;
   });
 }
@@ -301,7 +303,9 @@ describe("Guided decision journey", () => {
       ),
     ).toBeVisible();
     expect(
-      screen.getByText(t.demo.understand.knows.calibrated("80,0%").value),
+      screen.getByText(
+        t.demo.understand.knows.calibrated("80,0%", "70%").value,
+      ),
     ).toBeVisible();
     expect(screen.getByText(t.demo.understand.askTitle)).toBeVisible();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();

@@ -39,6 +39,7 @@ def _signal_query(
     severity: str | None = None,
     signal_type: str | None = None,
     support_status: str | None = None,
+    materiality_status: str | None = None,
 ) -> Select:
     row = OperationalSignal
     query = select(row).where(row.snapshot_id == snapshot_id)
@@ -50,6 +51,7 @@ def _signal_query(
         (row.severity, severity),
         (row.signal_type, signal_type),
         (row.support_status, support_status),
+        (row.materiality_status, materiality_status),
     )
     for column, value in filters:
         if value is not None:
@@ -73,6 +75,7 @@ def signals(
     severity: str | None = None,
     signal_type: str | None = None,
     support_status: str | None = None,
+    materiality_status: str | None = None,
     limit: int,
     offset: int,
 ) -> tuple[list[OperationalSignal], int]:
@@ -85,6 +88,7 @@ def signals(
         severity=severity,
         signal_type=signal_type,
         support_status=support_status,
+        materiality_status=materiality_status,
     )
     count_query = select(func.count()).select_from(query.order_by(None).subquery())
     total = session.scalar(count_query) or 0

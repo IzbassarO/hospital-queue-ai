@@ -1,5 +1,5 @@
 /** The specialist's inbox: every open request, first come first served, then by urgency. */
-import type { Urgency } from "../synthetic";
+import type { Urgency } from "../urgency";
 import {
   minutesOf,
   type SimAlert,

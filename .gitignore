@@ -4,6 +4,10 @@ data/
 *.xlsx
 *.parquet
 *.duckdb
+# committed release data stays tracked whatever the rules above say: the demo seed (seed/, gzipped CSV + publish
+# bundles, loaded by `make demo`) and the released models (models/)
+!seed/**
+!models/**
 # reports with raw samples stay local until reviewed
 reports/
 notebooks/
@@ -11,7 +15,11 @@ artifacts/
 # agent/developer scratch work: temporary scripts, ad-hoc checks, dumps
 scratch/
 .venv/
+# every local environment file, whatever the suffix (.env.local, .env.production); the committed template is the
+# one exception
 .env
+.env.*
+!.env.example
 *.log
 # database backups (make backup) — contain all data, API key hashes and the access log
 backups/
@@ -22,5 +30,13 @@ coverage/
 # python
 __pycache__/
 *.pyc
+.ruff_cache/
+.pytest_cache/
 .ipynb_checkpoints/
+# editor and OS clutter: never part of the product
 .DS_Store
+.idea/
+.vscode/
+# local AI-assistant guidelines and code-graph output: developer-machine files, not part of the product
+CLAUDE.md
+graphify-out/

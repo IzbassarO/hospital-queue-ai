@@ -1,18 +1,20 @@
 /** fetch stub answering /api/v1 requests with real responses captured from the running API (src/test/fixtures). */
 import { vi } from "vitest";
 
+import alerts from "./fixtures/alerts.json";
 import card from "./fixtures/card_ZIQ9_241.json";
 import dictionaries from "./fixtures/dictionaries.json";
 import health from "./fixtures/health.json";
 import overview from "./fixtures/overview.json";
 
-export const fixtures = { card, dictionaries, health, overview };
+export const fixtures = { alerts, card, dictionaries, health, overview };
 
 const ROUTES: [RegExp, unknown][] = [
   [/\/api\/v1\/health$/, health],
   [/\/api\/v1\/overview$/, overview],
   [/\/api\/v1\/dictionaries$/, dictionaries],
   [/\/api\/v1\/hospitals\/ZIQ9\/profiles\/241$/, card],
+  [/\/api\/v1\/alerts$/, alerts],
 ];
 
 export function jsonResponse(body: unknown, status = 200): Response {

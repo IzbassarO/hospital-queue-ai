@@ -1,0 +1,42 @@
+{
+  "adopted_legacy": true,
+  "content_sha256": "f7a12afa660cfdcaf02bd374b93239c92bab27061c9234171d6ae1931225eb5a",
+  "files": [
+    {
+      "bytes": 12704,
+      "path": "categories.json",
+      "sha256": "7267e3b689b3d82df27e32e3f877472aad3760f82ecb72d0c8925c9e8709355d"
+    },
+    {
+      "bytes": 440,
+      "path": "features.json",
+      "sha256": "49d73328a7c61cd082560820c587b3f82536ac98ec7592c6dfd4f76043018501"
+    },
+    {
+      "bytes": 1143,
+      "path": "meta.json",
+      "sha256": "3dcd6621a622ce69c65810f8f42accaf7f4b69229e736222874cd2f653346a29"
+    },
+    {
+      "bytes": 82912,
+      "path": "metrics.json",
+      "sha256": "5d6eb3552a7d632016dac4b72011b2eda649337d4d1c4d323d41dd9169b9650a"
+    },
+    {
+      "bytes": 4513622,
+      "path": "model_hospitalizations.txt",
+      "sha256": "290f7851d838e165a25e8c75f348473496edc65f5805627052095f7bfd7c69ba"
+    },
+    {
+      "bytes": 4591556,
+      "path": "model_registrations.txt",
+      "sha256": "8ef35556f50650d953262bc16871fb6a5c65b09d760f3a368f4e1c73a6eda7ad"
+    },
+    {
+      "bytes": 724920,
+      "path": "series.json",
+      "sha256": "ea7effff097d5bafa82c4a61a6ed5533a4bd2e25e77557b31973ae1b56d17db9"
+    }
+  ],
+  "schema_version": 1
+}

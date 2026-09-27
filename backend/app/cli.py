@@ -7,6 +7,7 @@
   python -m app.cli publish-assurance --bundle /path/to/model_assurance.json
   python -m app.cli publish-operational-intelligence --bundle /path/to/operational_intelligence.json
   python -m app.cli publish-review-evidence --bundle /path/to/review_evidence.json
+  python -m app.cli load-seed --dir /seed [--replace]   demo seed: tables + the three publications (make demo)
 
 create-key prints the key once; only its SHA-256 is stored.
 """
@@ -46,6 +47,11 @@ def main(argv: list[str] | None = None) -> int:
         help="validate and publish a review-evidence JSON bundle (stress tests, decision alternatives)",
     )
     publish_review.add_argument("--bundle", type=Path, required=True)
+    load_seed = sub.add_parser("load-seed", help="load the committed demo seed: tables + publications (seed/README.md)")
+    load_seed.add_argument("--dir", type=Path, required=True, help="seed directory holding manifest.json")
+    load_seed.add_argument(
+        "--replace", action="store_true", help="truncate the seeded data tables of a non-empty database first"
+    )
     args = parser.parse_args(argv)
 
     with SessionLocal() as session:
@@ -115,6 +121,29 @@ def main(argv: list[str] | None = None) -> int:
                 f"Review evidence {result.publication_id} {state} "
                 f"(snapshot {result.snapshot_id}, identity {result.publication_identity_sha256})"
             )
+            return 0
+        if args.command == "load-seed":
+            from sqlalchemy.exc import OperationalError, ProgrammingError
+
+            from app.services import seed
+
+            try:
+                summary = seed.load(session, args.dir, replace=args.replace)
+            except (seed.SeedError, ValidationError, ConflictError) as exc:
+                print(f"seed load failed: {exc}", file=sys.stderr)
+                return 2
+            except (OperationalError, ProgrammingError) as exc:
+                reason = str(exc.orig or exc).strip().splitlines()[0]
+                print(
+                    f"seed load failed: database not reachable or not migrated (run `alembic upgrade head` first): "
+                    f"{reason}",
+                    file=sys.stderr,
+                )
+                return 2
+            except (OSError, EOFError) as exc:  # gzip.BadGzipFile is an OSError
+                print(f"seed load failed: cannot read a seed file: {exc}", file=sys.stderr)
+                return 2
+            print(seed.format_summary(summary, get_settings().postgres_db))
             return 0
         info = admin.revoke_key(session, args.id)
         print(f"key {info.id} ({info.label}) revoked at {info.revoked_at}")

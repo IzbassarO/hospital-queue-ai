@@ -1,0 +1,8 @@
+# Build context for ml/Dockerfile: only the pinned dependency list and the ML sources. Keeps data/ (16 GB) and
+# artifacts/ (1.3 GB) out of the context; they are mounted at run time (BuildKit reads this file for this Dockerfile).
+*
+!requirements.txt
+!ml
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache

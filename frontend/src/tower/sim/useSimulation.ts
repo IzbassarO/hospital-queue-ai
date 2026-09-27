@@ -5,7 +5,12 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { t } from "../../i18n";
 import { fmtDate, fmtNumber } from "../../lib/format";
-import type { ScenarioId, SyntheticPatient } from "../synthetic";
+import {
+  SIMULATION,
+  SYNTHETIC_ENABLED,
+  type ScenarioId,
+  type SyntheticPatient,
+} from "../synthetic";
 import {
   DAY_MINUTES,
   initialState,
@@ -19,9 +24,9 @@ import {
   type SimText,
 } from "./simulation";
 
-/** Real milliseconds to walk one synthetic day (08:00 → 18:00) at speed ×1. */
-export const DAY_MS = 14000;
-const TICK_MS = 120;
+/** Real milliseconds to walk one synthetic day (08:00 → 18:00) at speed ×1 (config.json → simulation). */
+export const DAY_MS = SIMULATION.dayMs;
+const TICK_MS = SIMULATION.tickMs;
 
 let state: SimState | null = null;
 let seedKey = "";
@@ -29,9 +34,12 @@ const listeners = new Set<() => void>();
 const STORAGE_KEY = "hqai.sim.v1";
 let saveTimer: number | null = null;
 
-/** Persist the running simulation (debounced) so a reload of the page continues where it stopped. */
+/**
+ * Persist the running simulation (debounced) so a reload of the page continues where it stopped. With the synthetic
+ * layer off nothing is saved or restored: a remembered run must not bring synthetic days back on screen.
+ */
 function scheduleSave() {
-  if (typeof window === "undefined" || !state) return;
+  if (typeof window === "undefined" || !state || !SYNTHETIC_ENABLED) return;
   if (saveTimer !== null) window.clearTimeout(saveTimer);
   saveTimer = window.setTimeout(() => {
     saveTimer = null;
@@ -99,10 +107,16 @@ function ensureStore(
 ) {
   if (state && seedKey === key) return;
   seedKey = key;
-  state =
-    restoreSaved(key) ??
-    initialState(origin, alerts, patients, dailyBase, outageRegion);
+  const fresh = initialState(origin, alerts, patients, dailyBase, outageRegion);
+  // Off mode has no run to remember, so the run id is a constant per origin: decisions stored on the server come
+  // back after a reload instead of hiding behind a fresh id.
+  state = SYNTHETIC_ENABLED
+    ? (restoreSaved(key) ?? fresh)
+    : { ...fresh, runId: publishedRunId(origin) };
 }
+
+/** The run id of the published-only mode: one per origin, stable across reloads. */
+export const publishedRunId = (origin: string) => `published-${origin}`;
 
 /** The sentences the reducer writes into the feed, in the current language. */
 export function useSimText(regionName: (code: string) => string): SimText {

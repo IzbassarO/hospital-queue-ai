@@ -1,0 +1,51 @@
+{
+  "enabled": true,
+  "seed": 20250317,
+  "crossingFallbackDay": 4,
+  "queue": {
+    "idPrefix": "Н-",
+    "idDigits": 4,
+    "counterStart": 1000,
+    "counterStepMax": 7,
+    "centralFallback": 2,
+    "perDay": { "divisor": 1.5, "min": 1, "max": 8 },
+    "fromQueue": { "share": 0.12, "min": 2, "max": 14 },
+    "count": { "base": 3, "perDayFactor": 2, "max": 14 },
+    "windowShare": 0.66,
+    "window": { "offset": -2, "spread": 11, "min": 1, "max": 14 },
+    "tail": { "start": 15, "spread": 16 },
+    "wait": { "fallbackDays": 10, "jitterMin": 0.65, "jitterSpread": 0.7 }
+  },
+  "simulation": {
+    "days": 14,
+    "dayStartHour": 8,
+    "dayMinutes": 600,
+    "dayMs": 14000,
+    "tickMs": 120,
+    "daySeedStep": 7919,
+    "dailyBaseFallback": 7400,
+    "arrivalsNoise": { "min": 0.94, "spread": 0.12 },
+    "decisionsPerDay": 2,
+    "requestsPerDay": 2,
+    "askDaysBefore": 1,
+    "elevatedAskWithinDays": 3,
+    "observedNoiseLog": 0.5,
+    "escalationLeadFallback": 2,
+    "slipChance": { "normal": 0.16, "stressed": 0.3 },
+    "slipDays": { "min": 1, "spread": 3 },
+    "postponeDays": 3,
+    "hours": {
+      "arrivals": 8,
+      "decision": 9,
+      "request": 10,
+      "requestSpread": 2,
+      "crossing": 12,
+      "confirmed": 13,
+      "confirmedSpread": 2,
+      "notConfirmed": 15,
+      "escalated": 16,
+      "admissions": 17,
+      "finished": "18:00"
+    }
+  }
+}

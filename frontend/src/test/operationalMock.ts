@@ -86,6 +86,8 @@ export function operationalMock(override?: Override) {
     if (path === "/model-assurance") return jsonResponse(f.assurance);
     if (path === "/model-assurance/capabilities")
       return jsonResponse(f.capabilities);
+    if (path === "/model-assurance/capabilities/flow_temporal_calibration")
+      return jsonResponse(f.calibrationCapability);
     // No fallback to legacy endpoints: migration tests must fail if one is mounted.
     return jsonResponse({ detail: `Unexpected endpoint: ${path}` }, 404);
   });

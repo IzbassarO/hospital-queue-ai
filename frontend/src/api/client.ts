@@ -7,7 +7,9 @@ import {
   dictionariesSchema,
   healthSchema,
   hospitalCardSchema,
+  loadAlertSchema,
   overviewSchema,
+  pageSchema,
 } from "./types";
 
 export const API_BASE: string = import.meta.env.VITE_API_BASE ?? "/api/v1";
@@ -153,4 +155,7 @@ export const api = {
       hospitalCardSchema,
       `/hospitals/${enc(org)}/profiles/${enc(profile)}`,
     ),
+  /** Legacy load-index mart rows, ordered by load index as the API returns them (descriptive, not a forecast). */
+  loadAlerts: (limit: number) =>
+    request(pageSchema(loadAlertSchema), buildPath("/alerts", { limit })),
 };

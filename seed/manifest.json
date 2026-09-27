@@ -1,0 +1,222 @@
+{
+  "description": "demo seed for `make demo` (tools/seed_bundle.py): MoH open-data derived tables and the accepted publish bundles; no raw MoH files, no credentials",
+  "built_at": "2026-09-26T17:40:18+00:00",
+  "as_of_date": "2025-03-31",
+  "slice": {
+    "tables": [
+      "fact_referral",
+      "pred_referral",
+      "pred_daily_forecast"
+    ],
+    "regions": [
+      "62",
+      "59"
+    ],
+    "note": "these tables hold only the listed regions (referrals and predictions since series_start, test-period predictions, forecasts from the serving origin); every other table is national",
+    "since": "2025-02-02",
+    "test_start": "2025-03-01",
+    "test_end": "2025-03-31"
+  },
+  "tables": [
+    {
+      "table": "dim_region",
+      "file": "tables/dim_region.csv.gz",
+      "scope": "national",
+      "rows": 20,
+      "bytes": 850,
+      "sha256": "4f45747207414f78056256fcf08a33b4d9e5343b211790d0fb7bd00329ee095d"
+    },
+    {
+      "table": "dim_profile",
+      "file": "tables/dim_profile.csv.gz",
+      "scope": "national",
+      "rows": 97,
+      "bytes": 1660,
+      "sha256": "1f42e4b20e277a2698726976851f6537106c06f4a7b888a30a631ebeef3fcf2b"
+    },
+    {
+      "table": "dim_icd",
+      "file": "tables/dim_icd.csv.gz",
+      "scope": "national",
+      "rows": 6479,
+      "bytes": 102681,
+      "sha256": "09ec9ae6fb27743b00aeff04a11ea96fa6f63e34b2210f280aba014de136381c"
+    },
+    {
+      "table": "ersb_snapshot",
+      "file": "tables/ersb_snapshot.csv.gz",
+      "scope": "national",
+      "rows": 2196,
+      "bytes": 141373,
+      "sha256": "46745630ea467ec60d802d1ec34c43a467803066a54db464c9228739e91cc1d3"
+    },
+    {
+      "table": "dim_organization",
+      "file": "tables/dim_organization.csv.gz",
+      "scope": "national",
+      "rows": 1406,
+      "bytes": 54662,
+      "sha256": "4df796da5e13d1f207473388ea5401540bb99065a6154d6bb85611dba0aca12b"
+    },
+    {
+      "table": "fact_referral",
+      "file": "tables/fact_referral.csv.gz",
+      "scope": "regions",
+      "rows": 19698,
+      "bytes": 1062288,
+      "sha256": "4b441771093078d89c705d3a7cb97dcb17a9c7031d346ab4b3fec6b0e010ddcf"
+    },
+    {
+      "table": "agg_daily_hospital_profile",
+      "file": "tables/agg_daily_hospital_profile.csv.gz",
+      "scope": "national",
+      "rows": 588330,
+      "bytes": 2900210,
+      "sha256": "afe65524be99e0d7dc2c344cbc1f3adfa5a4b94edc833e2e669f858e5ae48200"
+    },
+    {
+      "table": "agg_daily_region_profile",
+      "file": "tables/agg_daily_region_profile.csv.gz",
+      "scope": "national",
+      "rows": 128340,
+      "bytes": 590681,
+      "sha256": "43d2c8d2c32631beb987510fb441e5938ee56d93b4a8fdbb1f88f68e451601d4"
+    },
+    {
+      "table": "agg_daily_admission_refusals",
+      "file": "tables/agg_daily_admission_refusals.csv.gz",
+      "scope": "national",
+      "rows": 29570,
+      "bytes": 121996,
+      "sha256": "5e26bb41134a61dbb7486df246e14e379abcdaa9d812d3a842736086284e298d"
+    },
+    {
+      "table": "pred_referral",
+      "file": "tables/pred_referral.csv.gz",
+      "scope": "regions",
+      "rows": 8320,
+      "bytes": 978309,
+      "sha256": "2f1ee4de815493ff41b20ac1434e6c25699979a31747b159d66de53d90065cdf"
+    },
+    {
+      "table": "pred_daily_forecast",
+      "file": "tables/pred_daily_forecast.csv.gz",
+      "scope": "regions",
+      "rows": 5544,
+      "bytes": 187725,
+      "sha256": "40abd8b3b55acfe90312113eaa986664496864184786619e26afd785022fa816"
+    },
+    {
+      "table": "model_registry",
+      "file": "tables/model_registry.csv.gz",
+      "scope": "national",
+      "rows": 3,
+      "bytes": 4460,
+      "sha256": "04d2cbd1036ca2a1fff714e8169b1c6aefc202f9dc7a797de65f34acc7b97cad"
+    },
+    {
+      "table": "mart_hospital_profile_status",
+      "file": "tables/mart_hospital_profile_status.csv.gz",
+      "scope": "national",
+      "rows": 6537,
+      "bytes": 515683,
+      "sha256": "caae45190a60faa0904ab1d3524503f6373c795c945c133cd75dccb187b4644c"
+    },
+    {
+      "table": "mart_region_profile_status",
+      "file": "tables/mart_region_profile_status.csv.gz",
+      "scope": "national",
+      "rows": 1426,
+      "bytes": 117122,
+      "sha256": "e2593541bc5c1898578a59b7361a9cee085f7d9fa222d693368a896ebf2fdf1f"
+    },
+    {
+      "table": "mart_area_status",
+      "file": "tables/mart_area_status.csv.gz",
+      "scope": "national",
+      "rows": 21,
+      "bytes": 2033,
+      "sha256": "2a8a8083506b6baa5749a4f799f4253fa9d2c46b7bf9643597b09412e2ba1602"
+    },
+    {
+      "table": "mart_build_info",
+      "file": "tables/mart_build_info.csv.gz",
+      "scope": "national",
+      "rows": 1,
+      "bytes": 15930,
+      "sha256": "0985ff33bbe63bedb0d9dab1ab9f749ac90e1a7503b47ffcf686fbf9ab5c4406"
+    }
+  ],
+  "bundles": [
+    {
+      "kind": "model_assurance",
+      "file": "model_assurance.json",
+      "bytes": 76086,
+      "sha256": "d7a44cb57f85d41ab1577e71e048513d52cc20e63d613dcbdc09c6cbf998af77",
+      "raw_bytes": 76086,
+      "raw_sha256": "d7a44cb57f85d41ab1577e71e048513d52cc20e63d613dcbdc09c6cbf998af77",
+      "publication_id": "model-assurance-6b5-v1",
+      "identity_sha256": "f504defefdd87bcbb01c670b68469ba4c0e016be7f40ca89452baf69b73f39f5",
+      "source_code_commit": "1dcda96b8d8bf760e481c61357b98d98c914b9ed",
+      "generated_at": "2026-09-22T18:00:00+00:00",
+      "counts": {
+        "capability_count": 13
+      }
+    },
+    {
+      "kind": "operational_intelligence",
+      "file": "operational_intelligence.json.gz",
+      "bytes": 13972898,
+      "sha256": "83c7305ed9cc32893d91329c078ca2bd5ad88d6b221b9cec5c9fb07169993c8a",
+      "raw_bytes": 370837656,
+      "raw_sha256": "4143f3f498cc5175c27ae652e6f062c9b086308ef663c4d0da8cea4e9c688ce2",
+      "publication_id": "operational-intelligence-slice5-final-test-2025-03-17-v1",
+      "identity_sha256": "43da33ece7231a70348043c2bb8ec4b63161f94ed67dfe96e3c36de69c425cfd",
+      "source_code_commit": "1dcda96b8d8bf760e481c61357b98d98c914b9ed",
+      "generated_at": null,
+      "counts": {
+        "forecast_count": 225680,
+        "signal_count": 4194
+      },
+      "current_origin": "2025-03-17",
+      "source_runs": {
+        "flow_forecast": "flow-evidence-6b2b1-corrected-v3",
+        "flow_pressure": "flow-pressure-6b2c1-real-v2",
+        "flow_quantile": "flow-quantile-6b2b2-real-v1",
+        "flow_scenario": "flow-scenario-6b3-real-v1",
+        "flow_hierarchy": "flow-hierarchy-6b2b3-real-v1",
+        "flow_calibration": "flow-calibration-6b2b2b-real-v1",
+        "decision_alternatives": "decision-alternatives-6b4-real-v3",
+        "signal_prioritization": "signal-prioritization-6b2c2-real-v2"
+      }
+    },
+    {
+      "kind": "review_evidence",
+      "file": "review_evidence.json.gz",
+      "bytes": 9015315,
+      "sha256": "95d9bf809ccfd9a26fc81605f71381d69dbba6c93838117ff6557d702d4ae6ce",
+      "raw_bytes": 109314098,
+      "raw_sha256": "a3bd340c8474700760766aa7d2952e572670834ffec050e93ea0fa8cf9487573",
+      "publication_id": "review-evidence-slice6-final-test-2025-03-17-v1",
+      "identity_sha256": "e07be2f158c69ed50c9da2286a9459424947d02266e5094c5627b7648be33c22",
+      "source_code_commit": "1dcda96b8d8bf760e481c61357b98d98c914b9ed",
+      "generated_at": null,
+      "counts": {
+        "scenario_count": 4,
+        "scenario_entity_count": 10084,
+        "scenario_cell_count": 141176,
+        "alternative_set_count": 460,
+        "alternative_count": 430
+      },
+      "current_origin": "2025-03-17",
+      "source_runs": {
+        "flow_pressure": "flow-pressure-6b2c1-real-v2",
+        "flow_scenario": "flow-scenario-6b3-real-v1",
+        "flow_hierarchy": "flow-hierarchy-6b2b3-real-v1",
+        "decision_alternatives": "decision-alternatives-6b4-real-v3",
+        "signal_prioritization": "signal-prioritization-6b2c2-real-v2"
+      }
+    }
+  ],
+  "total_bytes": 29861962
+}

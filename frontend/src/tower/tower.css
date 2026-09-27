@@ -2532,3 +2532,137 @@
     padding: 0.8rem 1rem 1rem;
   }
 }
+
+/* ------------------------------------------------------------------ synthetic layer labels */
+.synthetic-tag {
+  display: inline-block;
+  padding: 0.08rem 0.5rem;
+  border: 1px dashed currentColor;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  line-height: 1.5;
+  opacity: 0.72;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.synthetic-tag.is-published {
+  border-style: solid;
+}
+.waiting-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.waiting-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--c-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+.simbar.simbar-off {
+  display: block;
+}
+.simbar-off strong {
+  display: block;
+  font-size: 1.05rem;
+  color: #fff;
+}
+.simbar-off p {
+  margin: 0.3rem 0 0;
+  max-width: 70ch;
+  color: var(--c-on-dark-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* ------------------------------------------------- published facts beside the synthetic counters */
+.waiting-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+.fact-strip {
+  border-radius: var(--radius);
+  background: var(--c-paper);
+  border: 1px solid var(--c-line);
+  padding: 0.9rem 1.1rem;
+}
+.fact-strip-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.86rem;
+}
+.fact-strip-scope {
+  color: var(--c-muted);
+  font-size: 0.78rem;
+}
+.fact-cells {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0.7rem 0 0;
+}
+.fact-cells dd {
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.fact-cells dt {
+  margin-top: 0.3rem;
+  color: var(--c-muted);
+  font-size: 0.74rem;
+  line-height: 1.3;
+}
+.fact-strip-note {
+  margin: 0.7rem 0 0;
+  color: var(--c-muted);
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+.fact-pill {
+  display: inline-block;
+  padding: 0.08rem 0.5rem;
+  border: 1px solid var(--c-line);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.queue-facts {
+  margin-top: 1.1rem;
+}
+.facet-label {
+  color: var(--c-muted);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-right: 0.15rem;
+}
+.sim-counters .is-synthetic dt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+@media (max-width: 1100px) {
+  .waiting-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .fact-cells {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

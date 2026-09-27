@@ -14,9 +14,9 @@ labelled synthetic layer, side by side, with the specialist in the loop. Two lan
 
 | Route | Component | Contents |
 | --- | --- | --- |
-| `/` | `TowerPage.tsx` | lead, `WaitingStrip` (waiting within 7 / 14 / 30 days + open tasks), `SimulationBar`, map + `Feed`, `FocusPanel` (when a hospital is selected), `PriorityList` (top 5 tasks), non-claims |
-| `/notifications` | `NotificationsPage.tsx` | master–detail: list on the left (filters: all / pending / confirmed / forecast), `SubjectContent` on the right |
-| `/queue` | `QueuePage.tsx` | waiting strip, the full 30-day synthetic queue (`PatientQueue`, 25 per page), decision journal |
+| `/` | `TowerPage.tsx` | lead, `WaitingStrip` (waiting within 7 / 14 / 30 days + open tasks, synthetic) beside `FactStrip` (the mart's real queue / median wait / refusal share at the as-of date, published), `SimulationBar`, map + `Feed`, `FocusPanel` (when a hospital is selected), `PriorityList` (top 5 tasks), non-claims |
+| `/notifications` | `NotificationsPage.tsx` | master–detail: list on the left (filters: all / pending / confirmed / forecast; profile facet «без дневного стационара» by default, «только дневной стационар», «все профили», each with its count; order chips «по рангу» / «по очереди» / «по ожиданию»), `SubjectContent` on the right, `QueueFacts` (the longest queues of the mart, a labelled fact list) underneath |
+| `/queue` | `QueuePage.tsx` | waiting strip + `FactStrip`, the full 30-day synthetic queue (`PatientQueue`, 25 per page; a labelled empty state when the synthetic layer is off), decision journal. Both CSV downloads open with a `#` comment line saying what the rows are; the queue file is `synthetic-queue-<date>.csv` and repeats «Источник = синтетика» in every row |
 | shell | `TowerLayout.tsx` + `TaskHost.tsx` | brand, nav (centre, notifications, queue, "how it works" menu → `/demo/*`), origin state, `LanguageSwitch` (RU/KZ), `TaskBell` (open-task count) → `Explorer` drawer; `SubjectDialog` host. `DemoLayout` mounts the same `TaskHost`, switch and bell, so tasks are reachable from the story too |
 
 State that must survive navigation lives outside React: the simulation (`sim/useSimulation.ts`, module store,
@@ -28,24 +28,56 @@ Full page reloads reset both (nothing is persisted to storage except the languag
 | Block | Real input | Synthetic (labelled) |
 | --- | --- | --- |
 | Lead / counters | `OI/overview` (origin, counts), mart overview (`registrations_28d / 28` = daily base) | — |
-| Map (`components/KazMap.tsx`) | registry (1 406 orgs), HIGH + ELEVATED signals (`severity=` filter, limit 500 each), region counts | hospital positions: `synthetic.ts: placeHospitals` — town stem in the legal name → town anchor, else region capital; hospitals of one anchor spread on a golden-angle disc and are pushed back inside the region polygon (`geo/project.ts: pointInRegion`), so no dot sits outside a border; tooltips name the neighbours of the same town |
-| Alerts | up to 60 readable alerts (central ≥ 0.5): HIGH by rank, then ELEVATED | phase (forecast → decision → confirmed / not confirmed / unverified / escalated), observed flow, the specialist's decision |
-| Queue | crossing windows of the alerts | pseudonymous referrals `Н-####` (`generatePatients`, ⅔ in the 14-day window, ⅓ up to day 30), statuses: waiting → request → confirmed / admitted / delayed / declined / unverified |
+| Map (`components/KazMap.tsx`) | registry (1 406 orgs), HIGH + ELEVATED signals (`severity=` filter, limit 500 each), region counts; hospital positions are derived from the registry, not synthetic data: `geo/place.ts: placeHospitals` — town stem in the legal name → town anchor, else region capital; hospitals of one anchor spread on a golden-angle disc and are pushed back inside the region polygon (`geo/project.ts: pointInRegion`), so no dot sits outside a border; tooltips name the neighbours of the same town |
+| Alerts | up to 60 readable alerts (central ≥ 0.5): HIGH by rank, then ELEVATED; per hospital × profile the mart card also supplies `median_wait_28d`, `queue_now`, `backlog_days` and the **observed registrations after the origin** | phase (forecast → decision → confirmed / not confirmed / unverified / escalated), the specialist's decision; the observed flow only for a day the mart does not cover |
+| Facts of the mart | `/overview` national or region row (queue, median wait, refusal share at the as-of date) → `FactStrip`; `/alerts` (legacy load-index mart, one 500-row page) → `QueueFacts`; `/model-assurance/capabilities/flow_temporal_calibration` → the measured interval coverage shown next to the nominal 80 % | — |
+| Queue | crossing windows of the alerts | pseudonymous referrals `Н-####` (`src/synthetic/generate.ts: generatePatients`, parameters in `src/synthetic/config.json → queue`: ⅔ in the 14-day window, ⅓ up to day 30), statuses: waiting → request → confirmed / admitted / delayed / declined / unverified; empty when the layer is off |
+
+### Synthetic layer (`frontend/src/synthetic/`, one switchable folder)
+
+Everything generated in the browser lives in `src/synthetic/`: `config.json` (`enabled`, `seed`, every parameter of
+the queue generator and of the day simulation), `scenarios.json` (the four scenarios: multipliers, national factor,
+escalation chance, seasonal profile pattern), `generate.ts` (the generators, reading and validating the JSON),
+`index.ts` (`SYNTHETIC_ENABLED = config.enabled && import.meta.env.VITE_SYNTHETIC !== "off"`, the data, the
+generators) and a RU/EN `README.md`. The product imports the folder through one line, the last
+`export … from "../synthetic"` in `src/tower/synthetic.ts`, which also holds the types the product consumes
+(`QueueParams`, `SimulationParams`, `SyntheticPatient`, `ScenarioDef`); `src/tower/synthetic-off.ts` is the
+stand-in to point that line at when the folder is deleted. Helpers that are not synthetic moved out of the way:
+`lib/dates.ts` (`addDays`, `daysBetween`), `lib/seeded.ts` (`hashString`, `rng`), `lib/format.ts: flowDecimals`,
+`tower/urgency.ts` (`urgencyOf`, `URGENCY_FLOOR_PER_DAY`), `tower/geo/place.ts` (`placeHospitals`).
+
+With the layer off (`VITE_SYNTHETIC=off` at build or dev time, or `"enabled": false`): the map coloured by published
+signals, the notifications inbox with decisions persisted, the story and the model passport all work; `useTowerData`
+generates no queue, `TowerPage` shows `SyntheticOffNote` instead of the simulation bar, the feed shows the published
+origin only, the waiting strip reads "—" with a note, `/queue` is an explicit empty state above the decision
+journal, and `useSimulation` neither saves nor restores a run. Every generated element carries the `SyntheticTag`
+("синтетика" in both languages; the feed's tag turns into "опубликовано" when the layer is off) —
+`components/SyntheticState.tsx`. Tests: `test/synthetic.test.ts` (JSON validation, the shipped config replays the
+queue and all four scenarios exactly as captured before the move — `test/fixtures/synthetic-baseline.json`),
+`test/synthetic-off.test.tsx` (`/`, `/queue`, `/notifications` with the layer off: no crash, no NaN, no console
+errors, decisions still recorded).
 
 ### Simulation (`sim/simulation.ts`, pure reducer, seeded `mulberry32`)
 
 A day is a clock from 08:00 to 18:00 (`clock` minutes since 08:00). `tick` computes the whole day's events, each
-with a synthetic time; `advance` moves the clock (`useSimulation`: 120 ms per tick, `DAY_MS = 14 s` at ×1) and
+with a synthetic time; `advance` moves the clock (`useSimulation`: `simulation.tickMs` = 120 ms per tick,
+`simulation.dayMs` = 14 s at ×1, both from `src/synthetic/config.json`) and
 reveals events as it passes their time (`visibleEvents`). **The clock stops on the first actionable event**
 (`ACTIONABLE`: decision_needed, patient_request, escalated) and sets `pausedForDecision`; the specialist answers
 through the dialog or presses play again. "Next day" (`tick` action) reveals a whole day at once.
 
-Per day: 08:xx arrivals = daily base × scenario multiplier × noise; 09–11 the model asks the specialist (HIGH, or
-ELEVATED crossing within 3 days; ≤ 2 per day); 10–11 urgent requests for tomorrow's admissions at pressured
-hospitals (≤ 2 per day, `patient_request`); 12–15 crossings compared with a synthetic observed flow (central ×
-multiplier × noise) → confirmed / not confirmed; outage region → unverified (never filled in); 16:xx one ELEVATED
-series may escalate on observed flow under stress; 17:xx admissions happen or slip 1–3 days (confirmed ones never
-slip). Human actions: alerts `accept | decline | clarify`, patients `confirm | decline | postpone` (+3 days);
+Per day (every number below is a field of `config.json → simulation`): 08:xx arrivals = daily base × scenario
+multiplier × noise (`arrivalsNoise`); 09–11 the model asks the specialist (HIGH, or ELEVATED crossing within
+`elevatedAskWithinDays` = 3 days; `decisionsPerDay` = 2); 10–11 urgent requests for tomorrow's admissions at
+pressured hospitals (`requestsPerDay` = 2, `patient_request`); 12–15 crossings compared with the **real observed count** of that day
+when the mart has it (`AlertSeed.observed`, from the hospital card series; `SimAlert.observedSource = "fact"`,
+labelled «факт») and only otherwise with a synthetic flow (central × multiplier × noise, `observedNoiseLog`;
+`observedSource = "synthetic"`, labelled «синтетика») → confirmed / not confirmed. The noise is drawn on every
+crossing whether or not a fact is used, so the seeded replay does not depend on which series carry facts
+(`test/synthetic.test.ts`: "facts never move the seeded stream"); outage region → unverified
+(never filled in); 16:xx one ELEVATED series may escalate on observed flow under stress; 17:xx admissions happen or
+slip (`slipChance`, `slipDays` = 1–3 days; confirmed ones never slip). Human actions: alerts
+`accept | decline | clarify`, patients `confirm | decline | postpone` (`postponeDays` = 3);
 both are logged as events and counted. Scenario or reset re-initialises from the seeds. Published values
 (forecast, threshold, crossing, severity) are never recomputed.
 
@@ -67,7 +99,7 @@ renders `{ text }`. No provider is called from the browser.
 
 ### Persistence, database, assistant (v3)
 
-- **The simulation survives a reload.** `sim/useSimulation.ts` saves the store (debounced) to `localStorage`
+- **The simulation survives a reload** (while the synthetic layer is on). `sim/useSimulation.ts` saves the store (debounced) to `localStorage`
   (`hqai.sim.v1`) keyed by origin + alert ids and restores it on the next load (paused). `clearSavedSimulation()`
   for tests. The language (`hqai.lang`) and the walkthrough flag (`hqai.tour.v1`) are the only other keys.
 - **Decisions live in Postgres.** `POST/GET /api/v1/specialist-decisions` (table `specialist_decision`, Alembic
@@ -82,16 +114,17 @@ renders `{ text }`. No provider is called from the browser.
   `ASSISTANT_MODEL`, `ASSISTANT_BASE_URL` in `.env` (never in the browser). The bubble badge reads the status;
   the browser module `tower/ai/assistant.ts` only talks to the proxy. Groq needs a real `User-Agent` (Cloudflare).
 - **Wait forecast and the urgency floor.** `useTowerData` fetches the legacy mart card of every alert's
-  hospital × profile (`api.hospitalCard`: `median_wait_28d`, `queue_now`) and seeds the synthetic queue with it
+  hospital × profile (`api.hospitalCard`: `median_wait_28d`, `queue_now`, `backlog_days`, plus the daily series
+  that supplies the real observed counts after the origin) and seeds the synthetic queue with it
   (`generatePatients`: wait = the hospital's historical median ± 35 %, queue size ∝ the mart queue; fallback =
-  the national median). `synthetic.ts: urgencyOf` applies `URGENCY_FLOOR_PER_DAY = 1`: a series whose forecast
+  the national median). `tower/urgency.ts: urgencyOf` applies `URGENCY_FLOOR_PER_DAY = 1`: a series whose forecast
   is below one registration a day is never "high" urgency, and a fallback-supported forecast is capped at
   "medium"; the verdict lists the floor as a reason and never answers "yes" for such a series. Published
   severity is still shown as published.
 - **Borders and anchors.** `geo/kaz-regions-2022.json`: the twenty current regions from OpenStreetMap (relations
   admin_level 4, ways stitched and simplified, ~91 KB); `geo/project.ts: MAP_VARIANT` switches back to the
   legacy Natural Earth file, which stays on disk. `geo/towns.generated.json`: 215 settlements / districts geocoded
-  once from the hospital legal names (Nominatim); `placeHospitals` prefers a geocoded anchor of the same region,
+  once from the hospital legal names (Nominatim); `geo/place.ts: placeHospitals` prefers a geocoded anchor of the same region,
   then the hand-made list, and drops any anchor outside the region polygon.
 - **Walkthrough and export.** `components/Tour.tsx` (+ `tour-state.ts`): seven `data-tour` anchors, opens on the
   first visit of `/` once the page has rendered, re-opened by the "?" button. `export.ts`: CSV (UTF-8 BOM,
@@ -106,10 +139,33 @@ every component re-renders. Kazakh copies live in `control.kk.ts`, `demo.kk.ts`,
 abstention codes, capability names and the English published sentences, selected by `getLang()`. Registry names
 (regions, profiles, hospitals) come from the API in Russian and are not translated.
 
+### Honesty rules the control centre keeps (and their tests)
+
+- **A crossing is confirmed by a fact where one exists.** Never by a number derived from the forecast it checks.
+  The fact comes from `agg_daily_hospital_profile` through the hospital card; on the published origin 2025-03-17
+  every one of the 60 alerts on screen has real days 2025-03-18…03-31, so the synthetic fall-back is a code path,
+  not what the demo shows. Labels: «факт» / «синтетика» on the observed fact, in the feed line, in the plain
+  explanation, in the verdict reason, and as two counters in the simulation bar.
+- **An interval never shows only its nominal coverage.** `useTowerData` reads the measured one from
+  `/model-assurance/capabilities/flow_temporal_calibration`
+  (`hospital_registrations_final_coverage` = 0.6992) and the hint reads «номинальное 80 % · на финальном тесте
+  70 % (по будням 75,1 %, в праздники 66,7 %, на выходных 59,7 %)». The date-class split is not in the API; it is
+  copy taken from `docs/project-evidence-index.md` §6 and repeated in the Trust scene.
+- **A synthetic number never sits unlabelled next to a published one.** `WaitingStrip` carries the synthetic tag on
+  every cell and `FactStrip` states the mart's real queue beside it; the queue CSV says so in its name, in a `#`
+  comment line and in an «Источник» column.
+- **No patient-level clinical or action claim.** The verdict reads urgency off ИС БГ («Срочность направления по
+  данным ИС БГ: плановая»), «Принять» says the specialist sends the request through their own channels, and
+  «Запросить данные» says the signal stays open. `test/tower.test.tsx` asserts `/без риска/`, `/сдвигается/` and
+  `/получит запрос/` are absent in both languages.
+
 Copy: `i18n/control.ts` (`t.control.*`). Styles: `tower/tower.css` (shares the tokens of `demo.css`; the map and
 the simulation bar are the only dark surfaces; the feed is the phone-like column). Tests: `test/tower.test.tsx`
 (big picture, the clock stopping on a task, dialog → verdict → decision → journal, click-outside, state surviving
-navigation, notifications page, language switch). Forbidden vocabulary and machine tokens are checked on the
+navigation, notifications page, language switch, the fact strip, fact-confirmed crossings, the measured coverage,
+the profile facet and order chips, the descriptive queue list, the claim guard and the labelled queue CSV;
+shared scaffolding in `test/towerHarness.tsx`),
+`test/synthetic.test.ts` and `test/synthetic-off.test.tsx` (see the synthetic layer above). Forbidden vocabulary and machine tokens are checked on the
 primary text; the verdict, plain explanations and non-claims sit in `data-nonclaim`.
 
 ## B. Six-scene story (`/demo/*`, `frontend/src/demo`)

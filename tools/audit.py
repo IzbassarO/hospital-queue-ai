@@ -7,7 +7,8 @@ Checks
   secrets    no tracked-candidate file is a .env or contains a common secret pattern (private keys, cloud / GitHub /
              Slack / API tokens, hqai_ API keys, hard-coded passwords, tokens or keys in assignments or connection
              URLs);
-             placeholders such as change-me and ${VAR} are allowed. scratch/ is ignored by .gitignore, so never scanned
+             placeholders such as change-me and ${VAR} are allowed. scratch/ is ignored by .gitignore, so never scanned;
+             files over 4 MB (the gzipped publish bundles in seed/, model files in models/) are not decompressed or read
   architecture  AST-based backend/ML dependency boundaries and API raw-SQL guard (tools/architecture_check.py)
   openapi    stable operation IDs and a current deterministic backend/openapi.json snapshot
   alembic    `alembic check`: the SQLAlchemy models and the migrations agree (needs the database)
@@ -44,11 +45,14 @@ BACKEND = ROOT / "backend"
 FRONTEND = ROOT / "frontend"
 ML = ROOT / "ml"
 
-ALLOWED_DIRS = {"backend", "ml", "frontend", "db", "docs", "tools", ".github"}
+ALLOWED_DIRS = {"backend", "ml", "frontend", "db", "docs", "tools", "seed", "models", ".github"}
 ALLOWED_ROOT_FILES = {
     "README.md",
+    "README.en.md",
+    "LICENSE",
     "Makefile",
     "docker-compose.yml",
+    "docker-compose.prod.yml",
     "requirements.txt",
     "pyproject.toml",
     ".gitignore",
@@ -72,10 +76,11 @@ SECRET_PATTERNS: dict[str, re.Pattern] = {
     ),
     "password in URL": re.compile(r"\b[a-z][a-z0-9+.-]*://[^\s:/@]+:(?P<value>[^\s@/]{3,})@"),
 }
-# values that are clearly not secrets: placeholders, variable references, code expressions
+# values that are clearly not secrets: placeholders, variable references ($VAR, ${VAR}, $(VAR) and the
+# Make-escaped $$VAR), code expressions
 PLACEHOLDER = re.compile(
     r"(?i)^(?:change-?me|changeme|postgres|example|placeholder|dummy|test|secret|password|x+|\*+|<[^>]*>|"
-    r"\$\{?\w+(?::?-[^}]*)?\}?|\$\(\w+\)|\{\{.*\}\}|%\(\w+\)s|settings\.\w+|self\.\w+|os\.environ.*|none|null|true|false|str|int|"
+    r"\$\$?\{?\w+(?::?-[^}]*)?\}?|\$\(\w+\)|\{\{.*\}\}|%\(\w+\)s|settings\.\w+|self\.\w+|os\.environ.*|none|null|true|false|str|int|"
     r"bool|required|optional)$"
 )
 # in source files an unquoted value is an expression (apiKey, process.env.X), not a hard-coded secret; a real
@@ -102,6 +107,8 @@ def looks_like_secret(value: str) -> bool:
 
 
 TEXT_SUFFIXES_SKIP = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".woff", ".woff2", ".parquet", ".duckdb"}
+# larger files are release data (seed/*.json.gz, models/*): decompressing and scanning them would dominate the audit
+SECRET_SCAN_MAX_BYTES = 4 * 1024 * 1024
 
 
 # ------------------------------------------------------------------------------------------ .gitignore
@@ -174,7 +181,7 @@ def check_layout(files: list[str]) -> Result:
 
 
 def _read_text(path: Path) -> str | None:
-    if path.suffix in TEXT_SUFFIXES_SKIP:
+    if path.suffix in TEXT_SUFFIXES_SKIP or path.stat().st_size > SECRET_SCAN_MAX_BYTES:
         return None
     try:
         data = gzip.decompress(path.read_bytes()) if path.suffix == ".gz" else path.read_bytes()

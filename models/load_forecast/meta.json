@@ -1,0 +1,56 @@
+{
+  "model_name": "load_forecast",
+  "version": "20260914-1918",
+  "trained_at": "2026-09-14T19:18:03",
+  "model_files": [
+    "model_registrations.txt",
+    "model_hospitalizations.txt"
+  ],
+  "training_window": {
+    "series_selection": [
+      "2025-01-01",
+      "2025-02-28"
+    ],
+    "backtest_origins": [
+      "2025-03-03",
+      "2025-03-10",
+      "2025-03-17"
+    ],
+    "final_model_data_through": "2025-03-31"
+  },
+  "targets": [
+    "registrations",
+    "hospitalizations"
+  ],
+  "holidays": [
+    "2025-01-01",
+    "2025-01-02",
+    "2025-01-07",
+    "2025-03-08",
+    "2025-03-10",
+    "2025-03-21",
+    "2025-03-22",
+    "2025-03-23",
+    "2025-03-24",
+    "2025-03-25"
+  ],
+  "lightgbm_params": {
+    "learning_rate": 0.05,
+    "num_leaves": 63,
+    "min_data_in_leaf": 100,
+    "feature_fraction": 0.8,
+    "bagging_fraction": 0.8,
+    "bagging_freq": 1,
+    "lambda_l2": 1.0,
+    "cat_smooth": 10,
+    "cat_l2": 10,
+    "min_data_per_group": 50,
+    "max_cat_threshold": 64,
+    "seed": 42,
+    "deterministic": true,
+    "verbose": -1,
+    "objective": "poisson",
+    "metric": "poisson",
+    "num_boost_round": 400
+  }
+}

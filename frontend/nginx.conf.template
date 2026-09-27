@@ -12,17 +12,39 @@ map $http_x_api_key $hqai_api_key {
     default $http_x_api_key;
 }
 
+# Request rate per client address, so one open laptop cannot hold the API's worker threads (docs/security.md §2).
+# The API zone is set well above what the control centre needs (it fires a handful of requests per tick and a
+# burst of 40 is absorbed without delay). The assistant zone is strict on purpose: POST /api/v1/assistant blocks a
+# worker thread while it waits for the language-model provider, and every call costs tokens on the team's key.
+# Both zones key on the address nginx sees, so clients behind one NAT share a bucket.
+# The control centre's first paint is a burst, not a stream: the signal pages plus up to ~120 hospital-card
+# requests leave the browser together, so the limit has to sit above that or the jury sees 429s. It is a
+# flood guard, not a quota.
+limit_req_zone $binary_remote_addr zone=hqai_api:10m rate=100r/s;
+limit_req_zone $binary_remote_addr zone=hqai_assistant:10m rate=1r/s;
+limit_req_status 429;
+limit_req_log_level warn;
+
 server {
     listen 80;
     server_name _;
     root /usr/share/nginx/html;
+    server_tokens off;
 
     gzip on;
     gzip_types text/css application/javascript application/json image/svg+xml;
     gzip_min_length 1024;
 
+    # Security headers for every response, static and proxied. nginx drops inherited add_header lines in any
+    # location that declares its own, so the locations below set caching with `expires` instead of add_header
+    # and this set stays the only one.
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy same-origin always;
+    add_header X-Frame-Options DENY always;
+    # What the bundle needs and nothing more: hashed scripts and styles from this origin, inline style attributes
+    # (recharts and the map set them), the data: favicon, no fonts from outside, API calls to this origin only,
+    # no plugins, no framing. Downloads use blob: object URLs on <a download>, which CSP does not govern.
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
 
     # container healthcheck; does not depend on the backend
     location = /healthz {
@@ -34,30 +56,47 @@ server {
     # Docker's embedded DNS, re-resolved every 10 s: a recreated backend container (new IP) keeps working
     resolver 127.0.0.11 valid=10s ipv6=off;
 
-    location /api/ {
-        set $backend_upstream http://backend:8000;
+    # Proxy settings shared by the two /api locations below. They are inherited, so neither location repeats them;
+    # a location that declared one proxy_set_header of its own would lose all of these.
+    set $backend_upstream http://backend:8000;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    # This nginx IS the edge for the demo stack, so the chain is replaced, not appended: with
+    # $proxy_add_x_forwarded_for a caller who sends its own X-Forwarded-For would put a value of its
+    # choosing in front of the real peer, and that value is what the access log would record. Behind a
+    # real reverse proxy that terminates TLS, forward its chain instead and trust it in the backend
+    # (TRUSTED_PROXY_CIDRS, docs/security.md §3).
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    # server-side credential injection (see the note above); never echoed back to the browser
+    proxy_set_header X-API-Key $hqai_api_key;
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 30s;
+
+    # The assistant call waits for an external provider: the backend gives up after 40 s
+    # (backend/app/services/assistant.py), so nginx must wait longer or the caller gets a 504 from the proxy while
+    # the backend thread is still busy. No `nodelay`: a burst here is queued, not served at once.
+    location = /api/v1/assistant {
+        limit_req zone=hqai_assistant burst=3;
+        proxy_read_timeout 50s;
         proxy_pass $backend_upstream;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        # server-side credential injection (see the note above); never echoed back to the browser
-        proxy_set_header X-API-Key $hqai_api_key;
-        proxy_connect_timeout 5s;
-        proxy_read_timeout 30s;
     }
 
-    # hashed build assets never change
+    location /api/ {
+        limit_req zone=hqai_api burst=300 nodelay;
+        proxy_pass $backend_upstream;
+    }
+
+    # hashed build assets never change (Cache-Control: max-age=31536000)
     location /assets/ {
         expires 1y;
-        add_header Cache-Control "public, immutable";
         try_files $uri =404;
     }
 
-    # client-side routes (/regions/71, /hospitals/…): always index.html, never cached
+    # client-side routes (/regions/71, /hospitals/…): always index.html, never cached (Cache-Control: no-cache)
     location / {
-        add_header Cache-Control "no-cache";
+        expires epoch;
         try_files $uri $uri/ /index.html;
     }
 }

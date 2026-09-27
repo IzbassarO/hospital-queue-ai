@@ -27,6 +27,12 @@ Rules:
 - preserve source lineage / artifact SHA / scientific identity;
 - generated outputs remain under ignored artifact directories.
 
+Repository packaging (ADR 0007, 2026-09-26): `seed/` and `models/` hold committed, digest-identified copies of the
+accepted publications (`43da33ec…5cfd`, `e07be2f1…3c22`, `f504defe…39f5`), the national serving tables and the
+frozen models so that a fresh clone runs the product. They are derived release data, not evidence: `artifacts/`
+stays the ignored authority, and the copies are rebuilt by `tools/seed_bundle.py` and `ml/pipelines/export_models.py`
+only. No number or identity in this index changes because of them.
+
 ---
 
 ## 2. Architecture / experiment foundation

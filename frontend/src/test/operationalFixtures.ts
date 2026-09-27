@@ -262,6 +262,22 @@ export const capability: ModelAssuranceCapabilityResponse = {
   allowed_claims: ["Forecast evidence for human review"],
   forbidden_claims: [],
 };
+/**
+ * The capability the product reads for the measured interval coverage it shows next to the nominal 80 %; the values
+ * are the published ones of the final-test origin.
+ */
+export const calibrationCapability: ModelAssuranceCapabilityResponse = {
+  ...capability,
+  capability_id: "flow_temporal_calibration",
+  display_name: "Temporal count interval calibration",
+  acceptance_verdict: "ACCEPT",
+  evidence: {
+    calibration_evidence: {
+      hospital_registrations_final_coverage: 0.6992,
+      hospital_registrations_validation_coverage: 0.8297,
+    },
+  },
+};
 export const capabilities: ModelAssuranceCapabilityResponse[] = [
   capability,
   {

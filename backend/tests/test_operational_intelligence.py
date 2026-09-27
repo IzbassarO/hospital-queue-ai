@@ -120,7 +120,7 @@ def _pressure_signal(*, fallback: bool = False) -> dict:
         "severity": "ELEVATED" if fallback else "HIGH",
         "headline": "Historical-flow pressure requires attention.",
         "concise_reason": "Forecast evidence crosses its historical-flow reference.",
-        "materiality_status": "MATERIAL",
+        "materiality_status": "zero_baseline_low_volume" if fallback else "materiality_rule_not_triggered",
         "support_status": "FALLBACK_LIMITED" if fallback else "DIRECT_SUPPORTED",
         "fallback_status": "REGION_PROFILE_FALLBACK" if fallback else "NOT_APPLICABLE",
         "uncertainty_status": "INSUFFICIENT_CALIBRATION_SUPPORT" if fallback else "CALIBRATED",
@@ -488,6 +488,21 @@ async def test_overview_signals_filters_and_signal_provenance(
     assert body["total"] == 1
     assert body["items"][0]["signal_id"] == "signal-direct"
     assert body["items"][0]["pressure_basis"] == "historical_flow_proxy_v1"
+
+    unfiltered = (await client.get(f"{API}/operational-intelligence/signals")).json()
+    assert unfiltered["total"] == 3
+    primary = await client.get(
+        f"{API}/operational-intelligence/signals", params={"materiality": "materiality_rule_not_triggered"}
+    )
+    assert primary.status_code == 200
+    assert [row["signal_id"] for row in primary.json()["items"]] == ["signal-direct"]
+    low_volume = (
+        await client.get(f"{API}/operational-intelligence/signals", params={"materiality": "zero_baseline_low_volume"})
+    ).json()
+    assert [row["signal_id"] for row in low_volume["items"]] == ["signal-fallback"]
+    assert (
+        await client.get(f"{API}/operational-intelligence/signals", params={"materiality": "MATERIAL"})
+    ).status_code == 422
 
     detail = (await client.get(f"{API}/operational-intelligence/signals/signal-direct")).json()
     assert set(detail["source_provenance"]) == {

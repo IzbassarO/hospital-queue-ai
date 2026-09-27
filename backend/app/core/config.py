@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import quote
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -38,18 +39,43 @@ class Settings(BaseSettings):
     assistant_model: str = ""  # empty = the provider's default model (app/services/assistant.py)
     assistant_base_url: str = ""  # empty = the provider's public endpoint
 
+    # level of the application and uvicorn loggers; one JSON line per event on stdout (app/core/logging.py)
+    log_level: str = "INFO"
+    # X-Forwarded-For is believed only when the TCP peer is one of these networks (the docker bridge by default);
+    # every other peer is recorded as it connected, so a forged header cannot rewrite the audit trail
+    trusted_proxy_cidrs: list[str] = ["172.16.0.0/12", "127.0.0.0/8", "::1/128"]
+
     postgres_user: str = "hqai"
     postgres_password: str = "change-me"
     postgres_db: str = "hqai"
     postgres_host: str = "localhost"
     postgres_port: int = 5432
+    # login role the API uses when the database provides one (db/init.sql): not a superuser and without DDL rights.
+    # Empty = connect as postgres_user, which is what the demo stack does (docs/security.md §2).
+    app_db_user: str = ""
+    app_db_password: str = ""
+
+    # Connection pool of the API process and the per-statement limit every request inherits (docs/security.md §2)
+    db_pool_size: int = 10
+    db_max_overflow: int = 20
+    db_pool_timeout: int = 5
+    db_statement_timeout_ms: int = 15000
+
+    def _database_url(self, user: str, password: str) -> str:
+        credentials = f"{quote(user, safe='')}:{quote(password, safe='')}"
+        return f"postgresql+psycopg://{credentials}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
 
     @property
     def database_url(self) -> str:
-        return (
-            f"postgresql+psycopg://{self.postgres_user}:{self.postgres_password}"
-            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
-        )
+        """Owner role: Alembic migrations, the seed loader and the ML pipelines."""
+        return self._database_url(self.postgres_user, self.postgres_password)
+
+    @property
+    def api_database_url(self) -> str:
+        """What the API connects with: the application role when one is configured, the owner role otherwise."""
+        if self.app_db_user and self.app_db_password:
+            return self._database_url(self.app_db_user, self.app_db_password)
+        return self.database_url
 
 
 @lru_cache

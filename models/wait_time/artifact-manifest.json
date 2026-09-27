@@ -1,0 +1,37 @@
+{
+  "adopted_legacy": true,
+  "content_sha256": "74b3df0fd566244e3467c8671d4a090c8a875393354c7ce43bce2262223aef8f",
+  "files": [
+    {
+      "bytes": 26219,
+      "path": "categories.json",
+      "sha256": "167a8f6b1cc6428b9be6b4056061ac3abf83bed619045501a5553e93572788b7"
+    },
+    {
+      "bytes": 176133,
+      "path": "display.json",
+      "sha256": "4b182e4240365fd69664a3fb74cfa9cc770f55a06620bf465832413fd0dd7ea3"
+    },
+    {
+      "bytes": 691,
+      "path": "features.json",
+      "sha256": "aea20cd4a33993bab64e1574034691ba5471e04e2249b80b59b69fdb50290d02"
+    },
+    {
+      "bytes": 1040,
+      "path": "meta.json",
+      "sha256": "c9871c8044b00f8fe2043dc22ec57065d12cbfefa7782678a61bb77d381fd562"
+    },
+    {
+      "bytes": 24855,
+      "path": "metrics.json",
+      "sha256": "f75922645cc3b99c0c2d77bc91020e286bd194693156a0e22dacc794578829ad"
+    },
+    {
+      "bytes": 4680470,
+      "path": "model.txt",
+      "sha256": "1b987d6a18218e65141c0b1646cefc0ea935f1792e65bf1b8d6123bb10cafe54"
+    }
+  ],
+  "schema_version": 1
+}

@@ -175,6 +175,27 @@ export type HospitalCard = Infer<typeof hospitalCardSchema>;
 export type DailyPoint = HospitalCard["series"][number];
 export type ForecastPoint = HospitalCard["forecast"]["points"][number];
 
+/**
+ * One row of the legacy load-index mart (`GET /alerts`): a descriptive picture of hospital × profile at the mart
+ * as-of date. It is not a forecast and not a published signal; the control centre shows it as a separate fact list.
+ */
+export const loadAlertSchema = object({
+  region_code: str,
+  region_name: str,
+  org_code: str,
+  org_name: str,
+  profile_code: str,
+  profile_name: str,
+  load_index: nullable(num),
+  status: statusSchema,
+  status_label: str,
+  queue_now: num,
+  backlog_days: nullable(num),
+  refusal_rate_28d: nullable(num),
+  reasons: array(str),
+});
+export type LoadAlert = Infer<typeof loadAlertSchema>;
+
 const organizationsSchema = array(
   object({ code: str, name: str, region_code: nullable(str) }),
 );

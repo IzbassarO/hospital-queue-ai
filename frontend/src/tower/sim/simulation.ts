@@ -1,19 +1,27 @@
 /**
  * Fourteen-day simulation of the control centre. Pure reducer, seeded: the same scenario always replays the same
- * way. Published values (forecast, threshold, crossing date, severity) are never changed; the synthetic part is the
- * observed flow, the queue, the intra-day feed and the human's decisions. Every event carries a synthetic time of
- * day so the feed reads like a day unfolding.
+ * way. Published values (forecast, threshold, crossing date, severity) are never changed.
+ *
+ * A crossing is checked against the real outcome whenever the data mart has that day for the series: `seed.observed`
+ * carries observed registrations after the origin and the day is marked `fact`. Only a day the mart does not cover
+ * uses the synthetic flow (central x scenario multiplier x noise), marked `synthetic`; the noise is drawn either way
+ * so the seeded stream does not depend on which series happen to have facts. The rest of the synthetic part is the
+ * queue, the intra-day feed and the human's decisions. Every event carries a synthetic time of
+ * day so the feed reads like a day unfolding. Every number that shapes the synthetic day comes from
+ * src/synthetic/config.json (SIMULATION); the reducer holds no magic numbers of its own.
  */
+import { addDays, daysBetween } from "../../lib/dates";
+import { rng } from "../../lib/seeded";
 import {
-  addDays,
-  daysBetween,
-  rng,
+  CROSSING_FALLBACK_DAY,
   scenarioDef,
+  SIMULATION,
+  SYNTHETIC_SEED,
   type ScenarioId,
   type SyntheticPatient,
 } from "../synthetic";
 
-export const SIM_DAYS = 14;
+export const SIM_DAYS = SIMULATION.days;
 
 export interface AlertSeed {
   id: string;
@@ -30,6 +38,8 @@ export interface AlertSeed {
   lower: number | null;
   upper: number | null;
   coverage: string | null;
+  /** measured interval coverage on the final test, shown next to the nominal one; null when not published */
+  coverageFinal?: string | null;
   crossing: string | null;
   lead: number | null;
   support: string;
@@ -38,6 +48,10 @@ export interface AlertSeed {
   medianWait: number | null;
   /** queue of referrals waiting for this hospital × profile at the mart as-of date */
   queueNow: number | null;
+  /** days the queue of this hospital × profile needs at the observed 28-day throughput, null when unknown */
+  backlogDays?: number | null;
+  /** real observed registrations per day after the origin, from the data mart; absent when the mart has none */
+  observed?: Record<string, number> | null;
 }
 
 /** A decision replayed from the database (persisted through the API). */
@@ -73,10 +87,14 @@ export interface PatientDecision {
   comment: string;
 }
 
+/** Where the number a crossing was checked against came from. */
+export type ObservedSource = "fact" | "synthetic";
+
 export interface SimAlert extends AlertSeed {
   phase: AlertPhase;
   phaseDay: number;
-  observed: number | null;
+  observedFlow: number | null;
+  observedSource: ObservedSource | null;
   decision: SimDecision | null;
   missed: boolean;
 }
@@ -159,8 +177,8 @@ export interface SimState {
   clock: number;
 }
 
-export const DAY_START_HOUR = 8;
-export const DAY_MINUTES = 600;
+export const DAY_START_HOUR = SIMULATION.dayStartHour;
+export const DAY_MINUTES = SIMULATION.dayMinutes;
 export const minutesOf = (time: string): number => {
   const [h, m] = time.split(":").map(Number);
   return (h - DAY_START_HOUR) * 60 + m;
@@ -194,7 +212,12 @@ export interface SimText {
     profile: string,
     date: string,
   ) => string;
-  confirmed: (hospital: string, observed: string, threshold: string) => string;
+  confirmed: (
+    hospital: string,
+    observed: string,
+    threshold: string,
+    source: ObservedSource,
+  ) => string;
   notConfirmed: (hospital: string) => string;
   unverified: (hospital: string) => string;
   escalated: (hospital: string, profile: string) => string;
@@ -258,7 +281,8 @@ export function initialState(
       ...a,
       phase: "forecast",
       phaseDay: 0,
-      observed: null,
+      observedFlow: null,
+      observedSource: null,
       decision: null,
       missed: false,
     })),
@@ -289,9 +313,6 @@ export function initialState(
   };
 }
 
-const MAX_DECISIONS_PER_DAY = 2;
-const MAX_REQUESTS_PER_DAY = 2;
-
 const clock = (hour: number, random: () => number): string =>
   `${String(hour).padStart(2, "0")}:${String(Math.floor(random() * 60)).padStart(2, "0")}`;
 
@@ -299,7 +320,9 @@ function tick(state: SimState, text: SimText, clockAt: number): SimState {
   if (state.finished) return state;
   const day = state.day + 1;
   const date = addDays(state.origin, day);
-  const random = rng(20250317 + day * 7919 + state.scenario.length);
+  const random = rng(
+    SYNTHETIC_SEED + day * SIMULATION.daySeedStep + state.scenario.length,
+  );
   const def = scenarioDef(state.scenario, state.outageRegion);
   const events: SimEvent[] = [];
   let nextId = (state.events.at(-1)?.id ?? 0) + 1;
@@ -325,38 +348,43 @@ function tick(state: SimState, text: SimText, clockAt: number): SimState {
 
   // 08:xx — referrals of the day (synthetic, around the national daily mean of the mart).
   const arrivals = Math.round(
-    state.dailyBase * def.national * (0.94 + random() * 0.12),
+    state.dailyBase *
+      def.national *
+      (SIMULATION.arrivalsNoise.min +
+        random() * SIMULATION.arrivalsNoise.spread),
   );
   stats.arrivalsToday = arrivals;
   stats.arrivalsTotal += arrivals;
   push(
     "arrivals",
-    clock(8, random),
+    clock(SIMULATION.hours.arrivals, random),
     text.arrivals(text.formatNumber(arrivals, 0)),
   );
   if (def.outageRegion)
     push(
       "unverified",
-      clock(8, random),
+      clock(SIMULATION.hours.arrivals, random),
       text.arrivalsOutage(text.regionName(def.outageRegion)),
     );
 
-  // 09–11 — the model asks the specialist ahead of crossings; crossings are checked on their day.
+  // 09–11 — the model asks the specialist ahead of crossings (a cap per day); crossings are checked on their day.
   let requested = 0;
   let askedHuman = false;
   const alerts = state.alerts.map((alert) => {
     const a = { ...alert };
     const crossDay = a.crossing
       ? Math.max(1, daysBetween(state.origin, a.crossing))
-      : 4;
+      : CROSSING_FALLBACK_DAY;
     const outage = def.outageRegion !== null && a.region === def.outageRegion;
     const asksHuman =
-      a.severity === "HIGH" || (a.severity === "ELEVATED" && crossDay <= 3);
+      a.severity === "HIGH" ||
+      (a.severity === "ELEVATED" &&
+        crossDay <= SIMULATION.elevatedAskWithinDays);
     if (
       a.phase === "forecast" &&
       asksHuman &&
-      day >= crossDay - 1 &&
-      requested < MAX_DECISIONS_PER_DAY &&
+      day >= crossDay - SIMULATION.askDaysBefore &&
+      requested < SIMULATION.decisionsPerDay &&
       !outage
     ) {
       requested += 1;
@@ -365,7 +393,7 @@ function tick(state: SimState, text: SimText, clockAt: number): SimState {
       a.phaseDay = day;
       push(
         "decision_needed",
-        clock(9 + requested, random),
+        clock(SIMULATION.hours.decision + requested, random),
         text.decisionNeeded(a.hospitalName, a.profileName),
         a.org,
         a.id,
@@ -384,7 +412,7 @@ function tick(state: SimState, text: SimText, clockAt: number): SimState {
         stats.unverified += 1;
         push(
           "unverified",
-          clock(12, random),
+          clock(SIMULATION.hours.crossing, random),
           text.unverified(a.hospitalName),
           a.org,
           a.id,
@@ -396,7 +424,7 @@ function tick(state: SimState, text: SimText, clockAt: number): SimState {
         stats.missed += 1;
         push(
           "missed",
-          clock(12, random),
+          clock(SIMULATION.hours.crossing, random),
           text.missed(a.hospitalName),
           a.org,
           a.id,
@@ -404,20 +432,32 @@ function tick(state: SimState, text: SimText, clockAt: number): SimState {
       }
       const mult = def.multiplier(a.region, a.profileName);
       const central = a.central ?? 0;
-      const noise = Math.exp((random() - 0.5) * 0.5);
-      const observed = Math.round(central * mult * noise * 10) / 10;
-      a.observed = observed;
+      // Drawn on every crossing, used only without a fact, so the seeded stream is the same either way.
+      const noise = Math.exp((random() - 0.5) * SIMULATION.observedNoiseLog);
+      const fact = a.observed?.[date];
+      const hasFact = typeof fact === "number";
+      const observed = hasFact
+        ? fact
+        : Math.round(central * mult * noise * 10) / 10;
+      const source: ObservedSource = hasFact ? "fact" : "synthetic";
+      a.observedFlow = observed;
+      a.observedSource = source;
       a.phaseDay = day;
       if (a.threshold !== null && observed > a.threshold) {
         a.phase = "confirmed";
         stats.confirmed += 1;
         push(
           "confirmed",
-          clock(13 + Math.floor(random() * 2), random),
+          clock(
+            SIMULATION.hours.confirmed +
+              Math.floor(random() * SIMULATION.hours.confirmedSpread),
+            random,
+          ),
           text.confirmed(
             a.hospitalName,
             text.formatNumber(observed, 1),
             text.formatNumber(a.threshold, 1),
+            source,
           ),
           a.org,
           a.id,
@@ -427,7 +467,7 @@ function tick(state: SimState, text: SimText, clockAt: number): SimState {
         stats.notConfirmed += 1;
         push(
           "not_confirmed",
-          clock(15, random),
+          clock(SIMULATION.hours.notConfirmed, random),
           text.notConfirmed(a.hospitalName),
           a.org,
           a.id,
@@ -448,12 +488,14 @@ function tick(state: SimState, text: SimText, clockAt: number): SimState {
       candidate.phaseDay = day;
       candidate.lead = Math.max(
         1,
-        candidate.crossing ? daysBetween(date, candidate.crossing) : 2,
+        candidate.crossing
+          ? daysBetween(date, candidate.crossing)
+          : SIMULATION.escalationLeadFallback,
       );
       askedHuman = true;
       push(
         "escalated",
-        clock(16, random),
+        clock(SIMULATION.hours.escalated, random),
         text.escalated(candidate.hospitalName, candidate.profileName),
         candidate.org,
         candidate.id,
@@ -480,13 +522,21 @@ function tick(state: SimState, text: SimText, clockAt: number): SimState {
     }
     if (p.predictedDate === date) {
       const slip =
-        p.status !== "confirmed" && random() < (def.national > 1 ? 0.3 : 0.16);
+        p.status !== "confirmed" &&
+        random() <
+          (def.national > 1
+            ? SIMULATION.slipChance.stressed
+            : SIMULATION.slipChance.normal);
       if (slip) {
         delayed += 1;
         return {
           ...p,
           status: "delayed" as const,
-          predictedDate: addDays(date, 1 + Math.floor(random() * 3)),
+          predictedDate: addDays(
+            date,
+            SIMULATION.slipDays.min +
+              Math.floor(random() * SIMULATION.slipDays.spread),
+          ),
         };
       }
       admitted += 1;
@@ -496,7 +546,7 @@ function tick(state: SimState, text: SimText, clockAt: number): SimState {
       p.status === "waiting" &&
       p.predictedDate === tomorrow &&
       pressured.has(p.org) &&
-      requests < MAX_REQUESTS_PER_DAY
+      requests < SIMULATION.requestsPerDay
     ) {
       requests += 1;
       askedHuman = true;
@@ -509,7 +559,11 @@ function tick(state: SimState, text: SimText, clockAt: number): SimState {
       const alert = alerts.find((a) => a.org === p.org);
       push(
         "patient_request",
-        clock(10 + Math.floor(random() * 2), random),
+        clock(
+          SIMULATION.hours.request +
+            Math.floor(random() * SIMULATION.hours.requestSpread),
+          random,
+        ),
         text.patientRequest(
           p.id,
           alert?.hospitalName ?? p.org,
@@ -523,8 +577,18 @@ function tick(state: SimState, text: SimText, clockAt: number): SimState {
     }
   stats.admitted += admitted;
   stats.delayed += delayed;
-  if (admitted) push("admitted", clock(17, random), text.admitted(admitted));
-  if (delayed) push("delayed", clock(17, random), text.delayed(delayed));
+  if (admitted)
+    push(
+      "admitted",
+      clock(SIMULATION.hours.admissions, random),
+      text.admitted(admitted),
+    );
+  if (delayed)
+    push(
+      "delayed",
+      clock(SIMULATION.hours.admissions, random),
+      text.delayed(delayed),
+    );
 
   const finished = day >= SIM_DAYS;
   if (finished) {
@@ -536,7 +600,7 @@ function tick(state: SimState, text: SimText, clockAt: number): SimState {
       : 0;
     push(
       "finished",
-      "18:00",
+      SIMULATION.hours.finished,
       text.finished(
         stats.confirmed,
         stats.decisions + stats.patientDecisions,
@@ -742,7 +806,7 @@ export function reduce(state: SimState, action: SimAction): SimState {
             : "declined";
       const predictedDate =
         action.action === "postpone"
-          ? addDays(patient.predictedDate, 3)
+          ? addDays(patient.predictedDate, SIMULATION.postponeDays)
           : patient.predictedDate;
       return {
         ...state,
@@ -789,12 +853,15 @@ const seedOf = (a: SimAlert): AlertSeed => ({
   lower: a.lower,
   upper: a.upper,
   coverage: a.coverage,
+  coverageFinal: a.coverageFinal,
   crossing: a.crossing,
   lead: a.lead,
   support: a.support,
   reasons: a.reasons,
   medianWait: a.medianWait,
   queueNow: a.queueNow,
+  backlogDays: a.backlogDays,
+  observed: a.observed,
 });
 const patientSeedOf = (p: SimPatient): SyntheticPatient => ({
   id: p.id,
@@ -807,6 +874,14 @@ const patientSeedOf = (p: SimPatient): SyntheticPatient => ({
   urgency: p.urgency,
 });
 
+/** Crossings already checked against a real observed day, and those checked against the synthetic flow. */
+export const confirmedBySource = (
+  state: SimState,
+  source: ObservedSource,
+): SimAlert[] =>
+  state.alerts.filter(
+    (a) => a.phase === "confirmed" && a.observedSource === source,
+  );
 export const pendingDecisions = (state: SimState): SimAlert[] =>
   state.alerts.filter(
     (a) => (a.phase === "decision" || a.phase === "escalated") && !a.decision,

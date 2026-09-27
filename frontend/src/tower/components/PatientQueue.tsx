@@ -1,9 +1,10 @@
 /** The queue of expected admissions: pseudonymous synthetic referrals around the published crossing windows. */
 import { useMemo, useState } from "react";
 import { t } from "../../i18n";
+import { addDays } from "../../lib/dates";
 import { fmtDate } from "../../lib/format";
-import { addDays } from "../synthetic";
 import type { SimPatient } from "../sim/simulation";
+import { SyntheticTag } from "./SyntheticState";
 
 type Filter = "all" | "focus" | "soon" | "delayed";
 
@@ -56,7 +57,9 @@ export function PatientQueue({
     <section className="queue" aria-label={t.control.queue.title}>
       <header className="block-head">
         <h2>{t.control.queue.title}</h2>
-        <p>{t.control.queue.lead}</p>
+        <p>
+          {t.control.queue.lead} <SyntheticTag />
+        </p>
       </header>
       <div
         className="queue-filters"

@@ -14,6 +14,8 @@ export type ForecastFilters = NonNullable<
   OperationalForecastsListData["query"]
 >;
 const base = "/operational-intelligence";
+export const SIGNALS_PAGE = 500;
+export const SIGNALS_MAX_PAGES = 20;
 const enc = encodeURIComponent;
 export const operationalApi = {
   overview: async () =>
@@ -31,6 +33,26 @@ export const operationalApi = {
       limit: d.limit,
       offset: d.offset,
     };
+  },
+  /**
+   * Every page of one filtered listing. The API pages at 500; the loop is bounded (20 pages) and stops as soon as
+   * a page is short or the total is reached, so a publication with more signals than the cap reports `complete:
+   * false` instead of hanging. Presentation only: nothing is re-ranked or re-scored here.
+   */
+  signalsAll: async (filters: Omit<SignalFilters, "limit" | "offset">) => {
+    const items: a.SignalView[] = [];
+    let total = 0;
+    for (let page = 0; page < SIGNALS_MAX_PAGES; page++) {
+      const d = await operationalApi.signals({
+        ...filters,
+        limit: SIGNALS_PAGE,
+        offset: page * SIGNALS_PAGE,
+      });
+      items.push(...d.items);
+      total = d.total;
+      if (d.items.length < SIGNALS_PAGE || items.length >= total) break;
+    }
+    return { items, total, complete: items.length >= total };
   },
   signal: async (id: string) =>
     a.signalView(await request(s.signalSchema, `${base}/signals/${enc(id)}`)),
@@ -64,6 +86,13 @@ export const operationalApi = {
       offset: d.offset,
     };
   },
+  capability: async (id: string) =>
+    a.capabilityView(
+      await request(
+        s.capabilitySchema,
+        `/model-assurance/capabilities/${enc(id)}`,
+      ),
+    ),
   assurance: async () => {
     const before = await request(s.assuranceSnapshotSchema, "/model-assurance");
     const capabilities = await request(
@@ -95,6 +124,14 @@ export const useSignals = (filters: SignalFilters) =>
   useQuery({
     queryKey: ["operational", "signals", filters],
     queryFn: () => operationalApi.signals(filters),
+    ...settings,
+  });
+export const useAllSignals = (
+  filters: Omit<SignalFilters, "limit" | "offset">,
+) =>
+  useQuery({
+    queryKey: ["operational", "signals", "all", filters],
+    queryFn: () => operationalApi.signalsAll(filters),
     ...settings,
   });
 export const useSignal = (id: string) =>
@@ -133,3 +170,18 @@ export const useAssurance = () =>
     queryFn: operationalApi.assurance,
     ...settings,
   });
+/** The assurance capability that carries the measured interval coverage shown next to every nominal 80 % band. */
+export const CALIBRATION_CAPABILITY = "flow_temporal_calibration";
+/**
+ * Measured interval coverage of the published calibration, for screens that show a nominal 80 % interval. One
+ * cached request; a failure leaves the nominal alone instead of blocking the page.
+ */
+export const useIntervalCoverage = () => {
+  const query = useQuery({
+    queryKey: ["assurance", "capability", CALIBRATION_CAPABILITY],
+    queryFn: () => operationalApi.capability(CALIBRATION_CAPABILITY),
+    staleTime: Infinity,
+    retry: false,
+  });
+  return a.calibrationCoverage(query.data?.evidence);
+};

@@ -8,6 +8,7 @@ import { GlyphMark } from "../demo/glyphs";
 import { t, useLang } from "../i18n";
 import { fmtDate } from "../lib/format";
 import { Tour } from "./components/Tour";
+import { SYNTHETIC_ENABLED } from "./synthetic";
 import { tourSeen } from "./tour-state";
 import { LanguageSwitch, TaskBell, TaskHost } from "./TaskHost";
 import { useUi } from "./ui";
@@ -22,11 +23,15 @@ export function TowerLayout() {
   // First visit of the control centre: open the walkthrough once the page has its anchors.
   useEffect(() => {
     if (location.pathname !== "/" || tourSeen()) return;
-    // Wait until the page has rendered its anchors (data arrives asynchronously), then open once.
+    // Wait until the page has rendered its anchors (data arrives asynchronously), then open once. The simulation
+    // bar exists only while the synthetic layer is on; the map is there in both modes.
+    const anchor = SYNTHETIC_ENABLED
+      ? '[data-tour="play"]'
+      : '[data-tour="map"]';
     let tries = 0;
     const timer = window.setInterval(() => {
       tries += 1;
-      if (document.querySelector('[data-tour="play"]')) {
+      if (document.querySelector(anchor)) {
         window.clearInterval(timer);
         setTour(true);
       } else if (tries > 40) window.clearInterval(timer);

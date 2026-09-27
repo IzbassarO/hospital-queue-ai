@@ -1,0 +1,78 @@
+{
+  "algorithm": "three independent LightGBM quantile objectives per target (alpha 0.1, 0.5, 0.9)",
+  "feature_contract": "hqai_ml.features.load.build_rows (feature_names in features.json)",
+  "forecast_origin": "2025-03-17",
+  "horizons": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14
+  ],
+  "lightgbm_params": {
+    "bagging_fraction": 0.8,
+    "bagging_freq": 1,
+    "bagging_seed": 42,
+    "cat_l2": 10,
+    "cat_smooth": 10,
+    "data_random_seed": 42,
+    "deterministic": true,
+    "feature_fraction": 0.8,
+    "feature_fraction_seed": 42,
+    "force_row_wise": true,
+    "lambda_l2": 1.0,
+    "learning_rate": 0.05,
+    "max_cat_threshold": 64,
+    "metric": "quantile",
+    "min_data_in_leaf": 100,
+    "min_data_per_group": 50,
+    "num_leaves": 63,
+    "num_threads": 4,
+    "objective": "quantile",
+    "seed": 42,
+    "verbose": -1
+  },
+  "model_files": [
+    "model_registrations_p10.txt",
+    "model_registrations_p50.txt",
+    "model_registrations_p90.txt"
+  ],
+  "model_name": "flow_quantile",
+  "num_boost_round": 400,
+  "quantiles": {
+    "p10": 0.1,
+    "p50": 0.5,
+    "p90": 0.9
+  },
+  "refit_of": {
+    "code_identity": "e3c3bb7a4a491a0a8350f75dd3d3877fbdf0f28fec1e5d5c4609ef6fcefd4225",
+    "config_identity": "3d0e7a4652f811404ac33585c53d3f37fff4fababd063ef67554d98d4c6e0a74",
+    "dataset_identity": "49d7e69546b0dee53c89fa23964edfa40b823aa9829a972414f28dad74bd7dc0",
+    "model_threads": 4,
+    "origin_artifact": "artifacts/flow_quantile/flow-quantile-6b2b2-real-v1/origins/final_test-2025-03-17-f511b8990d57",
+    "run_id": "flow-quantile-6b2b2-real-v1",
+    "scientific_identity_sha256": "f55dff24f115e23d2d0510dc230d0a0e89d4fa43d36daa55c078d00ffa44ddde"
+  },
+  "targets": {
+    "cohort_hospitalizations": {
+      "exported": false,
+      "verified_against_published": true
+    },
+    "registrations": {
+      "exported": true,
+      "verified_against_published": true
+    }
+  },
+  "training_data_through": "2025-03-17",
+  "training_rows": "every directly supported series, cutoffs from day index 6 up to the origin, targets on or before the origin",
+  "version": "flow-quantile-6b2b2-real-v1-refit-2025-03-17"
+}

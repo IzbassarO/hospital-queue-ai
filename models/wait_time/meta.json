@@ -1,0 +1,47 @@
+{
+  "model_name": "wait_time",
+  "version": "20260914-1830",
+  "trained_at": "2026-09-14T18:30:40",
+  "model_files": [
+    "model.txt"
+  ],
+  "training_window": {
+    "train": [
+      "2025-01-01",
+      "2025-02-28"
+    ],
+    "test": [
+      "2025-03-01",
+      "2025-03-31"
+    ],
+    "date_column": "registration_date",
+    "early_stopping_holdout_days": 14
+  },
+  "population": {
+    "definition": "hospitalized, same_day_registration = false",
+    "train_rows": 203431,
+    "test_rows": 80436,
+    "train_median_wait": 7.0,
+    "test_median_wait": 9.0
+  },
+  "target": "log1p(wait_days)",
+  "best_iteration": 405,
+  "lightgbm_params": {
+    "learning_rate": 0.05,
+    "num_leaves": 63,
+    "min_data_in_leaf": 100,
+    "feature_fraction": 0.8,
+    "bagging_fraction": 0.8,
+    "bagging_freq": 1,
+    "lambda_l2": 1.0,
+    "cat_smooth": 10,
+    "cat_l2": 10,
+    "min_data_per_group": 50,
+    "max_cat_threshold": 64,
+    "seed": 42,
+    "deterministic": true,
+    "verbose": -1,
+    "objective": "regression",
+    "metric": "l2"
+  }
+}

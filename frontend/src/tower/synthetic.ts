@@ -1,158 +1,11 @@
 /**
- * Synthetic layer of the control centre. Everything here is generated in the browser from a fixed seed so the
- * demo is reproducible; nothing is presented as measured. Real inputs: the registry (hospital names, regions,
- * profiles) and the published signals (central forecast, threshold, first crossing, severity).
+ * Seam between the product and the synthetic layer (src/synthetic): the only product module that imports it.
+ * The types below describe what the product consumes; the layer fills them from its JSON files. To ship without
+ * any synthetic data, delete src/synthetic and point the export line at the end of this file at "./synthetic-off".
  */
-import {
-  GENERATED_TOWNS,
-  POLYGON_CHILDREN,
-  REGION_CAPITALS,
-  TOWNS,
-  type LonLat,
-} from "./geo/places";
-import { MAP_VARIANT, pointInRegion, project } from "./geo/project";
-
-export function hashString(value: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < value.length; i++) {
-    h ^= value.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-
-/** mulberry32: small, fast, deterministic. */
-export function rng(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/** Small daily flows need two decimals; anything ≥ 1 reads fine with one. */
-export const flowDecimals = (v: number | null): number =>
-  v !== null && Math.abs(v) < 1 ? 2 : 1;
-
-export const addDays = (iso: string, days: number): string => {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-};
-export const daysBetween = (from: string, to: string): number =>
-  Math.round(
-    (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) /
-      86400000,
-  );
-
-export interface HospitalPoint {
-  org: string;
-  region: string;
-  lonLat: LonLat;
-  x: number;
-  y: number;
-  /** true when a town in the legal name fixed the position */
-  placed: boolean;
-  /** anchor shared by hospitals of the same town: the map groups them */
-  anchor: string;
-}
-
-export const polygonForRegion = (region: string): string =>
-  MAP_VARIANT === "2022"
-    ? region
-    : (Object.entries(POLYGON_CHILDREN).find(([, kids]) =>
-        kids.includes(region),
-      )?.[0] ?? region);
-
-/**
- * Place every hospital inside its region: by the town in its legal name, else around the capital. Positions are
- * jittered deterministically per org and pushed back inside the region polygon, so no dot ever sits outside the
- * country or its region. Hospitals of one town share an anchor and spread on a small disc.
- */
-export function placeHospitals(
-  orgs: { code: string; name: string; region_code: string | null }[],
-): Map<string, HospitalPoint> {
-  const groups = new Map<
-    string,
-    { anchor: LonLat; region: string; placed: boolean; orgs: string[] }
-  >();
-  for (const o of orgs) {
-    const region = o.region_code ?? "";
-    const lower = o.name.toLowerCase();
-    const polygon = polygonForRegion(region);
-    const capital = REGION_CAPITALS[region]?.at ?? [68, 48];
-    // Geocoded settlements of this region first (longest stem wins), then the hand-made town list; an anchor
-    // outside the hospital's own region is a naming coincidence or a geocoding miss: fall back to the capital.
-    const geocoded = GENERATED_TOWNS.filter(
-      (g) => g.region === region && lower.includes(g.stem),
-    ).sort((a, b) => b.stem.length - a.stem.length)[0];
-    const hand = TOWNS.find(([stem]) => lower.includes(stem));
-    const candidate: [string, LonLat] | null = geocoded
-      ? [geocoded.stem, geocoded.at]
-      : hand
-        ? [hand[0], hand[1]]
-        : null;
-    const town =
-      candidate && pointInRegion(polygon, candidate[1]) ? candidate : null;
-    const byTown = town !== null;
-    const anchorAt: LonLat = town ? town[1] : capital;
-    const key = `${region}:${town ? town[0] : "capital"}`;
-    const group = groups.get(key) ?? {
-      anchor: anchorAt,
-      region,
-      placed: byTown,
-      orgs: [],
-    };
-    group.orgs.push(o.code);
-    groups.set(key, group);
-  }
-  const out = new Map<string, HospitalPoint>();
-  for (const [key, group] of groups) {
-    const polygon = polygonForRegion(group.region);
-    const n = group.orgs.length;
-    // Disc radius grows with the group: a capital with 80 hospitals needs room, a district town does not.
-    const spread = group.placed
-      ? 0.06 + Math.sqrt(n) * 0.045
-      : 0.25 + Math.sqrt(n) * 0.09;
-    group.orgs.forEach((org, i) => {
-      const random = rng(hashString(org));
-      const golden = i * 2.399963;
-      const radius = spread * Math.sqrt((i + 0.5) / n);
-      let lonLat: LonLat = [
-        group.anchor[0] +
-          Math.cos(golden) * radius * 1.45 +
-          (random() - 0.5) * 0.02,
-        group.anchor[1] + Math.sin(golden) * radius + (random() - 0.5) * 0.02,
-      ];
-      // Shrink towards the anchor until the point is inside the region; the anchor itself always is.
-      for (let step = 0; step < 6 && !pointInRegion(polygon, lonLat); step++)
-        lonLat = [
-          group.anchor[0] + (lonLat[0] - group.anchor[0]) * 0.5,
-          group.anchor[1] + (lonLat[1] - group.anchor[1]) * 0.5,
-        ];
-      if (!pointInRegion(polygon, lonLat)) lonLat = group.anchor;
-      const [x, y] = project(lonLat);
-      out.set(org, {
-        org,
-        region: group.region,
-        lonLat,
-        x,
-        y,
-        placed: group.placed,
-        anchor: key,
-      });
-    });
-  }
-  return out;
-}
+import type { Urgency } from "./urgency";
 
 export type ScenarioId = "baseline" | "surge" | "season" | "outage";
-
-/** Profiles hit by the seasonal scenario: infectious and paediatric profile names in the registry. */
-const SEASONAL = /инфекц|детск|педиатр|пульмон|отоларинг/i;
 
 export interface ScenarioDef {
   id: ScenarioId;
@@ -166,65 +19,18 @@ export interface ScenarioDef {
   escalation: number;
 }
 
-export function scenarioDef(id: ScenarioId, outageRegion: string): ScenarioDef {
-  switch (id) {
-    case "surge":
-      return {
-        id,
-        multiplier: () => 1.25,
-        national: 1.25,
-        outageRegion: null,
-        escalation: 0.45,
-      };
-    case "season":
-      return {
-        id,
-        multiplier: (_r, profile) => (SEASONAL.test(profile) ? 1.5 : 1.03),
-        national: 1.12,
-        outageRegion: null,
-        escalation: 0.3,
-      };
-    case "outage":
-      return {
-        id,
-        multiplier: () => 1,
-        national: 1,
-        outageRegion,
-        escalation: 0,
-      };
-    default:
-      return {
-        id,
-        multiplier: () => 1,
-        national: 1,
-        outageRegion: null,
-        escalation: 0.05,
-      };
-  }
-}
-
-export type Urgency = "high" | "medium" | "planned";
-
-/**
- * Below this daily flow a series is too small for "high" attention, whatever its published severity: a hospital
- * that usually sees one referral a week is not in trouble because the forecast says two. Published severity is
- * shown as published; urgency is the product's own reading and applies this floor.
- */
-export const URGENCY_FLOOR_PER_DAY = 1;
-
-export function urgencyOf(
-  severity: string,
-  leadDays: number | null,
-  central: number | null = null,
-  support: string | null = null,
-): Urgency {
-  if (central !== null && central < URGENCY_FLOOR_PER_DAY) return "planned";
-  const weak = support !== null && support !== "DIRECT_SUPPORTED";
-  if (severity === "HIGH" && leadDays !== null && leadDays <= 2 && !weak)
-    return "high";
-  if (severity === "HIGH" || (leadDays !== null && leadDays <= 5))
-    return "medium";
-  return "planned";
+/** What one published alert contributes to the queue generator (an AlertSeed satisfies it). */
+export interface QueueSeed {
+  org: string;
+  region: string;
+  profile: string;
+  severity: string;
+  central: number | null;
+  crossing: string | null;
+  lead: number | null;
+  support?: string;
+  medianWait?: number | null;
+  queueNow?: number | null;
 }
 
 export interface SyntheticPatient {
@@ -238,63 +44,85 @@ export interface SyntheticPatient {
   urgency: Urgency;
 }
 
-/** Pseudonymous queue entries around each alert's crossing window. Counts scale with the central forecast. */
-export function generatePatients(
-  seeds: {
-    org: string;
-    region: string;
-    profile: string;
-    severity: string;
-    central: number | null;
-    crossing: string | null;
-    lead: number | null;
-    support?: string;
-    medianWait?: number | null;
-    queueNow?: number | null;
-  }[],
-  origin: string,
-  fallbackWait = 10,
-  seed = 20250317,
-): SyntheticPatient[] {
-  const random = rng(seed);
-  const out: SyntheticPatient[] = [];
-  let counter = 1000;
-  for (const s of seeds) {
-    // Queue size follows the mart's queue for this hospital × profile (a slice of it), else the daily flow.
-    const perDay = Math.max(1, Math.min(8, Math.round((s.central ?? 2) / 1.5)));
-    const fromQueue =
-      s.queueNow != null && s.queueNow > 0
-        ? Math.round(Math.min(14, Math.max(2, s.queueNow * 0.12)))
-        : null;
-    const count =
-      fromQueue ?? Math.min(14, 3 + Math.floor(random() * perDay * 2));
-    const typicalWait = Math.max(1, Math.round(s.medianWait ?? fallbackWait));
-    const crossDay = s.crossing
-      ? Math.max(1, daysBetween(origin, s.crossing))
-      : 4;
-    for (let i = 0; i < count; i++) {
-      // Two thirds sit in the forecast window around the crossing, one third further down the queue (≤ 30 days).
-      const predictedDay =
-        random() < 0.66
-          ? Math.max(1, Math.min(14, crossDay + Math.floor(random() * 11) - 2))
-          : 15 + Math.floor(random() * 16);
-      // Wait = the hospital's historical median for this profile, jittered ±35 % per referral.
-      const wait = Math.max(
-        1,
-        Math.round(typicalWait * (0.65 + random() * 0.7)),
-      );
-      counter += 1 + Math.floor(random() * 7);
-      out.push({
-        id: `Н-${String(counter).padStart(4, "0")}`,
-        org: s.org,
-        region: s.region,
-        profile: s.profile,
-        referralDate: addDays(origin, predictedDay - wait),
-        predictedDate: addDays(origin, predictedDay),
-        predictedWait: wait,
-        urgency: urgencyOf(s.severity, s.lead, s.central, s.support ?? null),
-      });
-    }
-  }
-  return out.sort((a, b) => a.predictedDate.localeCompare(b.predictedDate));
+/** Parameters of the pseudonymous queue (config.json → queue). Waits and queue days are never below one. */
+export interface QueueParams {
+  /** id = prefix + zero-padded counter, "Н-1034" */
+  idPrefix: string;
+  idDigits: number;
+  counterStart: number;
+  /** the counter jumps by 1..counterStepMax between two ids */
+  counterStepMax: number;
+  /** central forecast assumed for a series that has none */
+  centralFallback: number;
+  /** referrals per day of a series = clamp(round(central / divisor), min, max) */
+  perDay: { divisor: number; min: number; max: number };
+  /** queue size when the mart knows the queue: round(clamp(queueNow × share, min, max)) */
+  fromQueue: { share: number; min: number; max: number };
+  /** queue size otherwise: min(max, base + random × perDay × perDayFactor) */
+  count: { base: number; perDayFactor: number; max: number };
+  /** share of referrals placed in the forecast window around the crossing; the rest go further down the queue */
+  windowShare: number;
+  /** window day = clamp(crossDay + offset + random × spread, min, max) */
+  window: { offset: number; spread: number; min: number; max: number };
+  /** tail day = start + random × spread */
+  tail: { start: number; spread: number };
+  /** wait = median wait of the hospital × profile (or fallbackDays) × (jitterMin + random × jitterSpread) */
+  wait: { fallbackDays: number; jitterMin: number; jitterSpread: number };
 }
+
+/** Parameters of the day simulation (config.json → simulation). */
+export interface SimulationParams {
+  days: number;
+  dayStartHour: number;
+  dayMinutes: number;
+  /** real milliseconds to walk one synthetic day at speed ×1, and the interval between clock steps */
+  dayMs: number;
+  tickMs: number;
+  /** seed of a day = seed + day × daySeedStep (+ the length of the scenario name) */
+  daySeedStep: number;
+  /** national referrals per day when the mart has no 28-day total */
+  dailyBaseFallback: number;
+  /** arrivals = daily base × national multiplier × (min + random × spread) */
+  arrivalsNoise: { min: number; spread: number };
+  decisionsPerDay: number;
+  requestsPerDay: number;
+  /** the model asks the specialist this many days before the crossing */
+  askDaysBefore: number;
+  /** an ELEVATED series asks the specialist only when it crosses within this many days */
+  elevatedAskWithinDays: number;
+  /** observed flow = central × multiplier × exp((random − 0.5) × observedNoiseLog) */
+  observedNoiseLog: number;
+  /** lead time given to an escalated series without a crossing date */
+  escalationLeadFallback: number;
+  /** chance that a planned admission slips (stressed = national multiplier above 1) */
+  slipChance: { normal: number; stressed: number };
+  /** a slipped admission moves by min + random × spread days */
+  slipDays: { min: number; spread: number };
+  /** days a specialist's "postpone" moves an admission */
+  postponeDays: number;
+  /** synthetic hour of each event kind; a spread adds random whole hours */
+  hours: {
+    arrivals: number;
+    decision: number;
+    request: number;
+    requestSpread: number;
+    crossing: number;
+    confirmed: number;
+    confirmedSpread: number;
+    notConfirmed: number;
+    escalated: number;
+    admissions: number;
+    finished: string;
+  };
+}
+
+export {
+  CROSSING_FALLBACK_DAY,
+  generatePatients,
+  QUEUE,
+  SCENARIO_IDS,
+  scenarioDef,
+  SIMULATION,
+  SYNTHETIC_ENABLED,
+  SYNTHETIC_SEED,
+} from "../synthetic";

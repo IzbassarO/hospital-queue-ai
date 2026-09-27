@@ -88,6 +88,24 @@ async def test_health(client):
     body = await get_json(client, "/health")
     assert body["status"] == "ok" and body["database"] == "ok"
     assert dt.date.fromisoformat(body["marts_as_of_date"]) == dt.date(2025, 3, 31)
+    publications = body["publications"]
+    assert set(publications) == {"operational_intelligence", "review_evidence", "model_assurance"}
+    for kind, ref in publications.items():
+        if ref is None:
+            continue
+        assert set(ref) == {"publication_id", "identity_sha256", "published_at"}, kind
+        assert re.fullmatch(r"[0-9a-f]{64}", ref["identity_sha256"]) and ref["publication_id"], kind
+        dt.datetime.fromisoformat(ref["published_at"])
+    overview = await client.get(f"{API}/operational-intelligence/overview")
+    if overview.status_code == 200:
+        snapshot = overview.json()["snapshot"]
+        assert publications["operational_intelligence"] == {
+            "publication_id": snapshot["publication_id"],
+            "identity_sha256": snapshot["publication_identity_sha256"],
+            "published_at": snapshot["published_at"],
+        }
+    else:
+        assert publications["operational_intelligence"] is None
 
 
 async def test_cors_allows_localhost_dev_ports_only(client):

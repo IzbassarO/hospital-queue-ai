@@ -1,0 +1,2288 @@
+{
+  "origin": "2025-03-17",
+  "fallbackWait": 10,
+  "dailyBase": 7400,
+  "outageRegion": "39",
+  "alerts": [
+    {
+      "id": "a1",
+      "org": "000V",
+      "region": "39",
+      "profile": "391",
+      "hospitalName": "H1",
+      "profileName": "Инфекционные болезни",
+      "regionName": "R39",
+      "severity": "HIGH",
+      "rank": 1,
+      "central": 6.4,
+      "threshold": 5.1,
+      "lower": 4.2,
+      "upper": 8.9,
+      "coverage": "80%",
+      "crossing": "2025-03-18",
+      "lead": 1,
+      "support": "DIRECT_SUPPORTED",
+      "reasons": ["THRESHOLD_CROSSING"],
+      "medianWait": 12,
+      "queueNow": 40
+    },
+    {
+      "id": "a2",
+      "org": "ZIQ9",
+      "region": "71",
+      "profile": "241",
+      "hospitalName": "H2",
+      "profileName": "Педиатрия",
+      "regionName": "R71",
+      "severity": "ELEVATED",
+      "rank": 7,
+      "central": 3.2,
+      "threshold": 3.9,
+      "lower": 2.1,
+      "upper": 4.8,
+      "coverage": "80%",
+      "crossing": "2025-03-20",
+      "lead": 3,
+      "support": "DIRECT_SUPPORTED",
+      "reasons": [],
+      "medianWait": 9,
+      "queueNow": null
+    },
+    {
+      "id": "a3",
+      "org": "AAA1",
+      "region": "39",
+      "profile": "100",
+      "hospitalName": "H3",
+      "profileName": "Кардиология",
+      "regionName": "R39",
+      "severity": "HIGH",
+      "rank": 3,
+      "central": 0.8,
+      "threshold": 0.6,
+      "lower": 0.3,
+      "upper": 1.4,
+      "coverage": "80%",
+      "crossing": null,
+      "lead": null,
+      "support": "FALLBACK_LIMITED",
+      "reasons": [],
+      "medianWait": null,
+      "queueNow": 3
+    },
+    {
+      "id": "a4",
+      "org": "BBB2",
+      "region": "71",
+      "profile": "200",
+      "hospitalName": "H4",
+      "profileName": "Хирургия",
+      "regionName": "R71",
+      "severity": "ELEVATED",
+      "rank": 12,
+      "central": 14.5,
+      "threshold": 15.2,
+      "lower": 11,
+      "upper": 19,
+      "coverage": "80%",
+      "crossing": "2025-03-25",
+      "lead": 8,
+      "support": "DIRECT_SUPPORTED",
+      "reasons": [],
+      "medianWait": 21,
+      "queueNow": 120
+    }
+  ],
+  "patients": [
+    {
+      "id": "Н-1034",
+      "org": "AAA1",
+      "region": "39",
+      "profile": "100",
+      "referralDate": "2025-03-06",
+      "predictedDate": "2025-03-19",
+      "predictedWait": 13,
+      "urgency": "planned"
+    },
+    {
+      "id": "Н-1028",
+      "org": "ZIQ9",
+      "region": "71",
+      "profile": "241",
+      "referralDate": "2025-03-13",
+      "predictedDate": "2025-03-23",
+      "predictedWait": 10,
+      "urgency": "medium"
+    },
+    {
+      "id": "Н-1037",
+      "org": "BBB2",
+      "region": "71",
+      "profile": "200",
+      "referralDate": "2025-03-01",
+      "predictedDate": "2025-03-24",
+      "predictedWait": 23,
+      "urgency": "planned"
+    },
+    {
+      "id": "Н-1058",
+      "org": "BBB2",
+      "region": "71",
+      "profile": "200",
+      "referralDate": "2025-03-04",
+      "predictedDate": "2025-03-24",
+      "predictedWait": 20,
+      "urgency": "planned"
+    },
+    {
+      "id": "Н-1014",
+      "org": "000V",
+      "region": "39",
+      "profile": "391",
+      "referralDate": "2025-03-15",
+      "predictedDate": "2025-03-25",
+      "predictedWait": 10,
+      "urgency": "high"
+    },
+    {
+      "id": "Н-1082",
+      "org": "BBB2",
+      "region": "71",
+      "profile": "200",
+      "referralDate": "2025-03-08",
+      "predictedDate": "2025-03-25",
+      "predictedWait": 17,
+      "urgency": "planned"
+    },
+    {
+      "id": "Н-1001",
+      "org": "000V",
+      "region": "39",
+      "profile": "391",
+      "referralDate": "2025-03-10",
+      "predictedDate": "2025-03-26",
+      "predictedWait": 16,
+      "urgency": "high"
+    },
+    {
+      "id": "Н-1009",
+      "org": "000V",
+      "region": "39",
+      "profile": "391",
+      "referralDate": "2025-03-18",
+      "predictedDate": "2025-03-26",
+      "predictedWait": 8,
+      "urgency": "high"
+    },
+    {
+      "id": "Н-1010",
+      "org": "000V",
+      "region": "39",
+      "profile": "391",
+      "referralDate": "2025-03-14",
+      "predictedDate": "2025-03-26",
+      "predictedWait": 12,
+      "urgency": "high"
+    },
+    {
+      "id": "Н-1015",
+      "org": "ZIQ9",
+      "region": "71",
+      "profile": "241",
+      "referralDate": "2025-03-19",
+      "predictedDate": "2025-03-26",
+      "predictedWait": 7,
+      "urgency": "medium"
+    },
+    {
+      "id": "Н-1077",
+      "org": "BBB2",
+      "region": "71",
+      "profile": "200",
+      "referralDate": "2025-03-12",
+      "predictedDate": "2025-03-26",
+      "predictedWait": 14,
+      "urgency": "planned"
+    },
+    {
+      "id": "Н-1025",
+      "org": "ZIQ9",
+      "region": "71",
+      "profile": "241",
+      "referralDate": "2025-03-20",
+      "predictedDate": "2025-03-27",
+      "predictedWait": 7,
+      "urgency": "medium"
+    },
+    {
+      "id": "Н-1040",
+      "org": "BBB2",
+      "region": "71",
+      "profile": "200",
+      "referralDate": "2025-03-03",
+      "predictedDate": "2025-03-31",
+      "predictedWait": 28,
+      "urgency": "planned"
+    },
+    {
+      "id": "Н-1048",
+      "org": "BBB2",
+      "region": "71",
+      "profile": "200",
+      "referralDate": "2025-03-17",
+      "predictedDate": "2025-03-31",
+      "predictedWait": 14,
+      "urgency": "planned"
+    },
+    {
+      "id": "Н-1051",
+      "org": "BBB2",
+      "region": "71",
+      "profile": "200",
+      "referralDate": "2025-03-08",
+      "predictedDate": "2025-03-31",
+      "predictedWait": 23,
+      "urgency": "planned"
+    },
+    {
+      "id": "Н-1060",
+      "org": "BBB2",
+      "region": "71",
+      "profile": "200",
+      "referralDate": "2025-03-04",
+      "predictedDate": "2025-03-31",
+      "predictedWait": 27,
+      "urgency": "planned"
+    },
+    {
+      "id": "Н-1079",
+      "org": "BBB2",
+      "region": "71",
+      "profile": "200",
+      "referralDate": "2025-03-04",
+      "predictedDate": "2025-03-31",
+      "predictedWait": 27,
+      "urgency": "planned"
+    },
+    {
+      "id": "Н-1089",
+      "org": "BBB2",
+      "region": "71",
+      "profile": "200",
+      "referralDate": "2025-03-14",
+      "predictedDate": "2025-03-31",
+      "predictedWait": 17,
+      "urgency": "planned"
+    },
+    {
+      "id": "Н-1046",
+      "org": "BBB2",
+      "region": "71",
+      "profile": "200",
+      "referralDate": "2025-03-07",
+      "predictedDate": "2025-04-02",
+      "predictedWait": 26,
+      "urgency": "planned"
+    },
+    {
+      "id": "Н-1069",
+      "org": "BBB2",
+      "region": "71",
+      "profile": "200",
+      "referralDate": "2025-03-17",
+      "predictedDate": "2025-04-05",
+      "predictedWait": 19,
+      "urgency": "planned"
+    },
+    {
+      "id": "Н-1003",
+      "org": "000V",
+      "region": "39",
+      "profile": "391",
+      "referralDate": "2025-03-22",
+      "predictedDate": "2025-04-06",
+      "predictedWait": 15,
+      "urgency": "high"
+    },
+    {
+      "id": "Н-1033",
+      "org": "AAA1",
+      "region": "39",
+      "profile": "100",
+      "referralDate": "2025-03-29",
+      "predictedDate": "2025-04-06",
+      "predictedWait": 8,
+      "urgency": "planned"
+    },
+    {
+      "id": "Н-1064",
+      "org": "BBB2",
+      "region": "71",
+      "profile": "200",
+      "referralDate": "2025-03-22",
+      "predictedDate": "2025-04-14",
+      "predictedWait": 23,
+      "urgency": "planned"
+    },
+    {
+      "id": "Н-1073",
+      "org": "BBB2",
+      "region": "71",
+      "profile": "200",
+      "referralDate": "2025-03-30",
+      "predictedDate": "2025-04-14",
+      "predictedWait": 15,
+      "urgency": "planned"
+    },
+    {
+      "id": "Н-1022",
+      "org": "ZIQ9",
+      "region": "71",
+      "profile": "241",
+      "referralDate": "2025-04-07",
+      "predictedDate": "2025-04-16",
+      "predictedWait": 9,
+      "urgency": "medium"
+    }
+  ],
+  "replays": {
+    "baseline": [
+      {
+        "day": 1,
+        "date": "2025-03-18",
+        "stats": {
+          "arrivalsToday": 7383,
+          "arrivalsTotal": 7383,
+          "admitted": 0,
+          "delayed": 0,
+          "confirmed": 0,
+          "notConfirmed": 0,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 0
+        },
+        "events": [
+          ["08:44", "arrivals", "arrivals 7383", null, null, null],
+          [
+            "10:16",
+            "decision_needed",
+            "decision H1 Инфекционные болезни",
+            "000V",
+            "a1",
+            null
+          ]
+        ],
+        "alerts": [
+          "a1|decision||HIGH|1|false",
+          "a2|forecast||ELEVATED|3|false",
+          "a3|forecast||HIGH||false",
+          "a4|forecast||ELEVATED|8|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 2,
+        "date": "2025-03-19",
+        "stats": {
+          "arrivalsToday": 6965,
+          "arrivalsTotal": 14348,
+          "admitted": 0,
+          "delayed": 1,
+          "confirmed": 1,
+          "notConfirmed": 0,
+          "unverified": 0,
+          "decisions": 1,
+          "patientDecisions": 0,
+          "missed": 1
+        },
+        "events": [
+          ["08:00", "arrivals", "arrivals 6965", null, null, null],
+          [
+            "10:28",
+            "decision_needed",
+            "decision H2 Педиатрия",
+            "ZIQ9",
+            "a2",
+            null
+          ],
+          ["12:32", "missed", "missed H1", "000V", "a1", null],
+          ["13:34", "confirmed", "confirmed H1 6.1 5.1", "000V", "a1", null],
+          ["17:39", "delayed", "delayed 1", null, null, null],
+          ["18:00", "decided", "decided H2 accept", "ZIQ9", "a2", null]
+        ],
+        "alerts": [
+          "a1|confirmed|6.1|HIGH|1|true",
+          "a2|decision||ELEVATED|3|false",
+          "a3|forecast||HIGH||false",
+          "a4|forecast||ELEVATED|8|false"
+        ],
+        "patientsChanged": ["Н-1034|delayed|2025-03-22|"]
+      },
+      {
+        "day": 3,
+        "date": "2025-03-20",
+        "stats": {
+          "arrivalsToday": 7606,
+          "arrivalsTotal": 21954,
+          "admitted": 0,
+          "delayed": 1,
+          "confirmed": 1,
+          "notConfirmed": 1,
+          "unverified": 0,
+          "decisions": 1,
+          "patientDecisions": 0,
+          "missed": 1
+        },
+        "events": [
+          ["08:03", "arrivals", "arrivals 7606", null, null, null],
+          [
+            "10:40",
+            "decision_needed",
+            "decision H3 Кардиология",
+            "AAA1",
+            "a3",
+            null
+          ],
+          ["15:37", "not_confirmed", "not_confirmed H2", "ZIQ9", "a2", null]
+        ],
+        "alerts": [
+          "a1|confirmed|6.1|HIGH|1|true",
+          "a2|not_confirmed|3.8|ELEVATED|3|false",
+          "a3|decision||HIGH||false",
+          "a4|forecast||ELEVATED|8|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 4,
+        "date": "2025-03-21",
+        "stats": {
+          "arrivalsToday": 7421,
+          "arrivalsTotal": 29375,
+          "admitted": 0,
+          "delayed": 1,
+          "confirmed": 2,
+          "notConfirmed": 1,
+          "unverified": 0,
+          "decisions": 1,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:24", "arrivals", "arrivals 7421", null, null, null],
+          ["12:29", "missed", "missed H3", "AAA1", "a3", null],
+          ["14:25", "confirmed", "confirmed H3 0.7 0.6", "AAA1", "a3", null]
+        ],
+        "alerts": [
+          "a1|confirmed|6.1|HIGH|1|true",
+          "a2|not_confirmed|3.8|ELEVATED|3|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|forecast||ELEVATED|8|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 5,
+        "date": "2025-03-22",
+        "stats": {
+          "arrivalsToday": 7190,
+          "arrivalsTotal": 36565,
+          "admitted": 1,
+          "delayed": 1,
+          "confirmed": 2,
+          "notConfirmed": 1,
+          "unverified": 0,
+          "decisions": 1,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:45", "arrivals", "arrivals 7190", null, null, null],
+          ["17:10", "admitted", "admitted 1", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|6.1|HIGH|1|true",
+          "a2|not_confirmed|3.8|ELEVATED|3|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|forecast||ELEVATED|8|false"
+        ],
+        "patientsChanged": ["Н-1034|admitted|2025-03-22|"]
+      },
+      {
+        "day": 6,
+        "date": "2025-03-23",
+        "stats": {
+          "arrivalsToday": 7310,
+          "arrivalsTotal": 43875,
+          "admitted": 2,
+          "delayed": 1,
+          "confirmed": 2,
+          "notConfirmed": 1,
+          "unverified": 0,
+          "decisions": 1,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:09", "arrivals", "arrivals 7310", null, null, null],
+          ["17:42", "admitted", "admitted 1", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|6.1|HIGH|1|true",
+          "a2|not_confirmed|3.8|ELEVATED|3|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|forecast||ELEVATED|8|false"
+        ],
+        "patientsChanged": ["Н-1028|admitted|2025-03-23|"]
+      },
+      {
+        "day": 7,
+        "date": "2025-03-24",
+        "stats": {
+          "arrivalsToday": 7267,
+          "arrivalsTotal": 51142,
+          "admitted": 3,
+          "delayed": 2,
+          "confirmed": 2,
+          "notConfirmed": 1,
+          "unverified": 0,
+          "decisions": 1,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:36", "arrivals", "arrivals 7267", null, null, null],
+          [
+            "10:12",
+            "patient_request",
+            "request Н-1014 H1 Инфекционные болезни 2025-03-25",
+            "000V",
+            "a1",
+            "Н-1014"
+          ],
+          ["17:12", "delayed", "delayed 1", null, null, null],
+          ["17:28", "admitted", "admitted 1", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|6.1|HIGH|1|true",
+          "a2|not_confirmed|3.8|ELEVATED|3|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|forecast||ELEVATED|8|false"
+        ],
+        "patientsChanged": [
+          "Н-1037|admitted|2025-03-24|",
+          "Н-1058|delayed|2025-03-25|",
+          "Н-1014|request|2025-03-25|7"
+        ]
+      },
+      {
+        "day": 8,
+        "date": "2025-03-25",
+        "stats": {
+          "arrivalsToday": 7014,
+          "arrivalsTotal": 58156,
+          "admitted": 4,
+          "delayed": 4,
+          "confirmed": 2,
+          "notConfirmed": 2,
+          "unverified": 0,
+          "decisions": 1,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:01", "arrivals", "arrivals 7014", null, null, null],
+          [
+            "10:08",
+            "patient_request",
+            "request Н-1001 H1 Инфекционные болезни 2025-03-26",
+            "000V",
+            "a1",
+            "Н-1001"
+          ],
+          [
+            "10:36",
+            "patient_request",
+            "request Н-1009 H1 Инфекционные болезни 2025-03-26",
+            "000V",
+            "a1",
+            "Н-1009"
+          ],
+          ["15:58", "not_confirmed", "not_confirmed H4", "BBB2", "a4", null],
+          ["17:02", "admitted", "admitted 1", null, null, null],
+          ["17:49", "delayed", "delayed 2", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|6.1|HIGH|1|true",
+          "a2|not_confirmed|3.8|ELEVATED|3|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|not_confirmed|15.1|ELEVATED|8|false"
+        ],
+        "patientsChanged": [
+          "Н-1058|delayed|2025-03-28|",
+          "Н-1014|delayed|2025-03-26|7",
+          "Н-1082|admitted|2025-03-25|",
+          "Н-1001|request|2025-03-26|8",
+          "Н-1009|request|2025-03-26|8"
+        ]
+      },
+      {
+        "day": 9,
+        "date": "2025-03-26",
+        "stats": {
+          "arrivalsToday": 7139,
+          "arrivalsTotal": 65295,
+          "admitted": 9,
+          "delayed": 5,
+          "confirmed": 2,
+          "notConfirmed": 2,
+          "unverified": 0,
+          "decisions": 1,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:23", "arrivals", "arrivals 7139", null, null, null],
+          ["17:19", "delayed", "delayed 1", null, null, null],
+          ["17:54", "admitted", "admitted 5", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|6.1|HIGH|1|true",
+          "a2|not_confirmed|3.8|ELEVATED|3|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|not_confirmed|15.1|ELEVATED|8|false"
+        ],
+        "patientsChanged": [
+          "Н-1014|admitted|2025-03-26|7",
+          "Н-1001|admitted|2025-03-26|8",
+          "Н-1009|admitted|2025-03-26|8",
+          "Н-1010|delayed|2025-03-28|",
+          "Н-1015|admitted|2025-03-26|",
+          "Н-1077|admitted|2025-03-26|"
+        ]
+      },
+      {
+        "day": 10,
+        "date": "2025-03-27",
+        "stats": {
+          "arrivalsToday": 7152,
+          "arrivalsTotal": 72447,
+          "admitted": 10,
+          "delayed": 5,
+          "confirmed": 2,
+          "notConfirmed": 2,
+          "unverified": 0,
+          "decisions": 1,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:16", "arrivals", "arrivals 7152", null, null, null],
+          ["17:45", "admitted", "admitted 1", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|6.1|HIGH|1|true",
+          "a2|not_confirmed|3.8|ELEVATED|3|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|not_confirmed|15.1|ELEVATED|8|false"
+        ],
+        "patientsChanged": ["Н-1025|admitted|2025-03-27|"]
+      },
+      {
+        "day": 11,
+        "date": "2025-03-28",
+        "stats": {
+          "arrivalsToday": 7166,
+          "arrivalsTotal": 79613,
+          "admitted": 11,
+          "delayed": 6,
+          "confirmed": 2,
+          "notConfirmed": 2,
+          "unverified": 0,
+          "decisions": 1,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:21", "arrivals", "arrivals 7166", null, null, null],
+          ["17:14", "admitted", "admitted 1", null, null, null],
+          ["17:23", "delayed", "delayed 1", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|6.1|HIGH|1|true",
+          "a2|not_confirmed|3.8|ELEVATED|3|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|not_confirmed|15.1|ELEVATED|8|false"
+        ],
+        "patientsChanged": [
+          "Н-1058|delayed|2025-03-29|",
+          "Н-1010|admitted|2025-03-28|"
+        ]
+      },
+      {
+        "day": 12,
+        "date": "2025-03-29",
+        "stats": {
+          "arrivalsToday": 7537,
+          "arrivalsTotal": 87150,
+          "admitted": 12,
+          "delayed": 6,
+          "confirmed": 2,
+          "notConfirmed": 2,
+          "unverified": 0,
+          "decisions": 1,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:27", "arrivals", "arrivals 7537", null, null, null],
+          ["17:12", "admitted", "admitted 1", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|6.1|HIGH|1|true",
+          "a2|not_confirmed|3.8|ELEVATED|3|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|not_confirmed|15.1|ELEVATED|8|false"
+        ],
+        "patientsChanged": ["Н-1058|admitted|2025-03-29|"]
+      },
+      {
+        "day": 13,
+        "date": "2025-03-30",
+        "stats": {
+          "arrivalsToday": 7736,
+          "arrivalsTotal": 94886,
+          "admitted": 12,
+          "delayed": 6,
+          "confirmed": 2,
+          "notConfirmed": 2,
+          "unverified": 0,
+          "decisions": 1,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [["08:25", "arrivals", "arrivals 7736", null, null, null]],
+        "alerts": [
+          "a1|confirmed|6.1|HIGH|1|true",
+          "a2|not_confirmed|3.8|ELEVATED|3|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|not_confirmed|15.1|ELEVATED|8|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 14,
+        "date": "2025-03-31",
+        "stats": {
+          "arrivalsToday": 7433,
+          "arrivalsTotal": 102319,
+          "admitted": 16,
+          "delayed": 8,
+          "confirmed": 2,
+          "notConfirmed": 2,
+          "unverified": 0,
+          "decisions": 1,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:26", "arrivals", "arrivals 7433", null, null, null],
+          ["17:08", "delayed", "delayed 2", null, null, null],
+          ["17:49", "admitted", "admitted 4", null, null, null],
+          ["18:00", "finished", "finished 2 1 1.0", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|6.1|HIGH|1|true",
+          "a2|not_confirmed|3.8|ELEVATED|3|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|not_confirmed|15.1|ELEVATED|8|false"
+        ],
+        "patientsChanged": [
+          "Н-1040|delayed|2025-04-01|",
+          "Н-1048|delayed|2025-04-01|",
+          "Н-1051|admitted|2025-03-31|",
+          "Н-1060|admitted|2025-03-31|",
+          "Н-1079|admitted|2025-03-31|",
+          "Н-1089|admitted|2025-03-31|"
+        ]
+      }
+    ],
+    "surge": [
+      {
+        "day": 1,
+        "date": "2025-03-18",
+        "stats": {
+          "arrivalsToday": 9438,
+          "arrivalsTotal": 9438,
+          "admitted": 0,
+          "delayed": 0,
+          "confirmed": 0,
+          "notConfirmed": 0,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 0
+        },
+        "events": [
+          ["08:05", "arrivals", "arrivals 9438", null, null, null],
+          [
+            "10:47",
+            "decision_needed",
+            "decision H1 Инфекционные болезни",
+            "000V",
+            "a1",
+            null
+          ]
+        ],
+        "alerts": [
+          "a1|decision||HIGH|1|false",
+          "a2|forecast||ELEVATED|3|false",
+          "a3|forecast||HIGH||false",
+          "a4|forecast||ELEVATED|8|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 2,
+        "date": "2025-03-19",
+        "stats": {
+          "arrivalsToday": 9042,
+          "arrivalsTotal": 18480,
+          "admitted": 1,
+          "delayed": 0,
+          "confirmed": 1,
+          "notConfirmed": 0,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 1
+        },
+        "events": [
+          ["08:21", "arrivals", "arrivals 9042", null, null, null],
+          [
+            "10:55",
+            "decision_needed",
+            "decision H2 Педиатрия",
+            "ZIQ9",
+            "a2",
+            null
+          ],
+          ["12:56", "missed", "missed H1", "000V", "a1", null],
+          ["13:35", "confirmed", "confirmed H1 7.7 5.1", "000V", "a1", null],
+          ["16:32", "escalated", "escalated H4 Хирургия", "BBB2", "a4", null],
+          ["17:35", "admitted", "admitted 1", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|7.7|HIGH|1|true",
+          "a2|decision||ELEVATED|3|false",
+          "a3|forecast||HIGH||false",
+          "a4|escalated||HIGH|6|false"
+        ],
+        "patientsChanged": ["Н-1034|admitted|2025-03-19|"]
+      },
+      {
+        "day": 3,
+        "date": "2025-03-20",
+        "stats": {
+          "arrivalsToday": 8708,
+          "arrivalsTotal": 27188,
+          "admitted": 1,
+          "delayed": 0,
+          "confirmed": 1,
+          "notConfirmed": 1,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:27", "arrivals", "arrivals 8708", null, null, null],
+          [
+            "10:33",
+            "decision_needed",
+            "decision H3 Кардиология",
+            "AAA1",
+            "a3",
+            null
+          ],
+          ["12:47", "missed", "missed H2", "ZIQ9", "a2", null],
+          ["15:56", "not_confirmed", "not_confirmed H2", "ZIQ9", "a2", null]
+        ],
+        "alerts": [
+          "a1|confirmed|7.7|HIGH|1|true",
+          "a2|not_confirmed|3.7|ELEVATED|3|true",
+          "a3|decision||HIGH||false",
+          "a4|escalated||HIGH|6|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 4,
+        "date": "2025-03-21",
+        "stats": {
+          "arrivalsToday": 8722,
+          "arrivalsTotal": 35910,
+          "admitted": 1,
+          "delayed": 0,
+          "confirmed": 2,
+          "notConfirmed": 1,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 3
+        },
+        "events": [
+          ["08:01", "arrivals", "arrivals 8722", null, null, null],
+          ["12:29", "missed", "missed H3", "AAA1", "a3", null],
+          ["14:58", "confirmed", "confirmed H3 1.1 0.6", "AAA1", "a3", null]
+        ],
+        "alerts": [
+          "a1|confirmed|7.7|HIGH|1|true",
+          "a2|not_confirmed|3.7|ELEVATED|3|true",
+          "a3|confirmed|1.1|HIGH||true",
+          "a4|escalated||HIGH|6|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 5,
+        "date": "2025-03-22",
+        "stats": {
+          "arrivalsToday": 9394,
+          "arrivalsTotal": 45304,
+          "admitted": 1,
+          "delayed": 0,
+          "confirmed": 2,
+          "notConfirmed": 1,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 3
+        },
+        "events": [["08:57", "arrivals", "arrivals 9394", null, null, null]],
+        "alerts": [
+          "a1|confirmed|7.7|HIGH|1|true",
+          "a2|not_confirmed|3.7|ELEVATED|3|true",
+          "a3|confirmed|1.1|HIGH||true",
+          "a4|escalated||HIGH|6|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 6,
+        "date": "2025-03-23",
+        "stats": {
+          "arrivalsToday": 9209,
+          "arrivalsTotal": 54513,
+          "admitted": 2,
+          "delayed": 0,
+          "confirmed": 2,
+          "notConfirmed": 1,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 1,
+          "missed": 3
+        },
+        "events": [
+          ["08:07", "arrivals", "arrivals 9209", null, null, null],
+          [
+            "10:27",
+            "patient_request",
+            "request Н-1037 H4 Хирургия 2025-03-24",
+            "BBB2",
+            "a4",
+            "Н-1037"
+          ],
+          [
+            "10:54",
+            "patient_request",
+            "request Н-1058 H4 Хирургия 2025-03-24",
+            "BBB2",
+            "a4",
+            "Н-1058"
+          ],
+          ["17:26", "admitted", "admitted 1", null, null, null],
+          [
+            "18:00",
+            "patient_decided",
+            "patient_decided Н-1037 postpone",
+            "BBB2",
+            null,
+            "Н-1037"
+          ]
+        ],
+        "alerts": [
+          "a1|confirmed|7.7|HIGH|1|true",
+          "a2|not_confirmed|3.7|ELEVATED|3|true",
+          "a3|confirmed|1.1|HIGH||true",
+          "a4|escalated||HIGH|6|false"
+        ],
+        "patientsChanged": [
+          "Н-1028|admitted|2025-03-23|",
+          "Н-1037|delayed|2025-03-27|6",
+          "Н-1058|request|2025-03-24|6"
+        ]
+      },
+      {
+        "day": 7,
+        "date": "2025-03-24",
+        "stats": {
+          "arrivalsToday": 8842,
+          "arrivalsTotal": 63355,
+          "admitted": 3,
+          "delayed": 0,
+          "confirmed": 2,
+          "notConfirmed": 1,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 2,
+          "missed": 3
+        },
+        "events": [
+          ["08:34", "arrivals", "arrivals 8842", null, null, null],
+          [
+            "10:18",
+            "patient_request",
+            "request Н-1082 H4 Хирургия 2025-03-25",
+            "BBB2",
+            "a4",
+            "Н-1082"
+          ],
+          [
+            "11:11",
+            "patient_request",
+            "request Н-1014 H1 Инфекционные болезни 2025-03-25",
+            "000V",
+            "a1",
+            "Н-1014"
+          ],
+          ["17:59", "admitted", "admitted 1", null, null, null],
+          [
+            "18:00",
+            "patient_decided",
+            "patient_decided Н-1014 postpone",
+            "000V",
+            null,
+            "Н-1014"
+          ]
+        ],
+        "alerts": [
+          "a1|confirmed|7.7|HIGH|1|true",
+          "a2|not_confirmed|3.7|ELEVATED|3|true",
+          "a3|confirmed|1.1|HIGH||true",
+          "a4|escalated||HIGH|6|false"
+        ],
+        "patientsChanged": [
+          "Н-1058|admitted|2025-03-24|6",
+          "Н-1014|delayed|2025-03-28|7",
+          "Н-1082|request|2025-03-25|7"
+        ]
+      },
+      {
+        "day": 8,
+        "date": "2025-03-25",
+        "stats": {
+          "arrivalsToday": 9455,
+          "arrivalsTotal": 72810,
+          "admitted": 4,
+          "delayed": 0,
+          "confirmed": 3,
+          "notConfirmed": 1,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 3,
+          "missed": 3
+        },
+        "events": [
+          ["08:51", "arrivals", "arrivals 9455", null, null, null],
+          [
+            "10:07",
+            "patient_request",
+            "request Н-1001 H1 Инфекционные болезни 2025-03-26",
+            "000V",
+            "a1",
+            "Н-1001"
+          ],
+          [
+            "11:24",
+            "patient_request",
+            "request Н-1009 H1 Инфекционные болезни 2025-03-26",
+            "000V",
+            "a1",
+            "Н-1009"
+          ],
+          ["13:09", "confirmed", "confirmed H4 17.9 15.2", "BBB2", "a4", null],
+          ["17:39", "admitted", "admitted 1", null, null, null],
+          [
+            "18:00",
+            "patient_decided",
+            "patient_decided Н-1001 postpone",
+            "000V",
+            null,
+            "Н-1001"
+          ]
+        ],
+        "alerts": [
+          "a1|confirmed|7.7|HIGH|1|true",
+          "a2|not_confirmed|3.7|ELEVATED|3|true",
+          "a3|confirmed|1.1|HIGH||true",
+          "a4|confirmed|17.9|HIGH|6|false"
+        ],
+        "patientsChanged": [
+          "Н-1082|admitted|2025-03-25|7",
+          "Н-1001|delayed|2025-03-29|8",
+          "Н-1009|request|2025-03-26|8"
+        ]
+      },
+      {
+        "day": 9,
+        "date": "2025-03-26",
+        "stats": {
+          "arrivalsToday": 9328,
+          "arrivalsTotal": 82138,
+          "admitted": 6,
+          "delayed": 2,
+          "confirmed": 3,
+          "notConfirmed": 1,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 3,
+          "missed": 3
+        },
+        "events": [
+          ["08:50", "arrivals", "arrivals 9328", null, null, null],
+          ["17:02", "delayed", "delayed 2", null, null, null],
+          ["17:15", "admitted", "admitted 2", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|7.7|HIGH|1|true",
+          "a2|not_confirmed|3.7|ELEVATED|3|true",
+          "a3|confirmed|1.1|HIGH||true",
+          "a4|confirmed|17.9|HIGH|6|false"
+        ],
+        "patientsChanged": [
+          "Н-1009|delayed|2025-03-29|8",
+          "Н-1010|admitted|2025-03-26|",
+          "Н-1015|admitted|2025-03-26|",
+          "Н-1077|delayed|2025-03-29|"
+        ]
+      },
+      {
+        "day": 10,
+        "date": "2025-03-27",
+        "stats": {
+          "arrivalsToday": 9563,
+          "arrivalsTotal": 91701,
+          "admitted": 6,
+          "delayed": 4,
+          "confirmed": 3,
+          "notConfirmed": 1,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 3,
+          "missed": 3
+        },
+        "events": [
+          ["08:52", "arrivals", "arrivals 9563", null, null, null],
+          ["17:17", "delayed", "delayed 2", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|7.7|HIGH|1|true",
+          "a2|not_confirmed|3.7|ELEVATED|3|true",
+          "a3|confirmed|1.1|HIGH||true",
+          "a4|confirmed|17.9|HIGH|6|false"
+        ],
+        "patientsChanged": [
+          "Н-1037|delayed|2025-03-29|6",
+          "Н-1025|delayed|2025-03-29|"
+        ]
+      },
+      {
+        "day": 11,
+        "date": "2025-03-28",
+        "stats": {
+          "arrivalsToday": 9382,
+          "arrivalsTotal": 101083,
+          "admitted": 7,
+          "delayed": 4,
+          "confirmed": 3,
+          "notConfirmed": 1,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 3,
+          "missed": 3
+        },
+        "events": [
+          ["08:22", "arrivals", "arrivals 9382", null, null, null],
+          ["17:08", "admitted", "admitted 1", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|7.7|HIGH|1|true",
+          "a2|not_confirmed|3.7|ELEVATED|3|true",
+          "a3|confirmed|1.1|HIGH||true",
+          "a4|confirmed|17.9|HIGH|6|false"
+        ],
+        "patientsChanged": ["Н-1014|admitted|2025-03-28|7"]
+      },
+      {
+        "day": 12,
+        "date": "2025-03-29",
+        "stats": {
+          "arrivalsToday": 9678,
+          "arrivalsTotal": 110761,
+          "admitted": 10,
+          "delayed": 6,
+          "confirmed": 3,
+          "notConfirmed": 1,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 3,
+          "missed": 3
+        },
+        "events": [
+          ["08:37", "arrivals", "arrivals 9678", null, null, null],
+          ["17:03", "delayed", "delayed 2", null, null, null],
+          ["17:50", "admitted", "admitted 3", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|7.7|HIGH|1|true",
+          "a2|not_confirmed|3.7|ELEVATED|3|true",
+          "a3|confirmed|1.1|HIGH||true",
+          "a4|confirmed|17.9|HIGH|6|false"
+        ],
+        "patientsChanged": [
+          "Н-1037|admitted|2025-03-29|6",
+          "Н-1001|admitted|2025-03-29|8",
+          "Н-1009|delayed|2025-04-01|8",
+          "Н-1077|delayed|2025-03-30|",
+          "Н-1025|admitted|2025-03-29|"
+        ]
+      },
+      {
+        "day": 13,
+        "date": "2025-03-30",
+        "stats": {
+          "arrivalsToday": 9138,
+          "arrivalsTotal": 119899,
+          "admitted": 11,
+          "delayed": 6,
+          "confirmed": 3,
+          "notConfirmed": 1,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 4,
+          "missed": 3
+        },
+        "events": [
+          ["08:48", "arrivals", "arrivals 9138", null, null, null],
+          [
+            "11:46",
+            "patient_request",
+            "request Н-1040 H4 Хирургия 2025-03-31",
+            "BBB2",
+            "a4",
+            "Н-1040"
+          ],
+          [
+            "11:51",
+            "patient_request",
+            "request Н-1048 H4 Хирургия 2025-03-31",
+            "BBB2",
+            "a4",
+            "Н-1048"
+          ],
+          ["17:53", "admitted", "admitted 1", null, null, null],
+          [
+            "18:00",
+            "patient_decided",
+            "patient_decided Н-1040 postpone",
+            "BBB2",
+            null,
+            "Н-1040"
+          ]
+        ],
+        "alerts": [
+          "a1|confirmed|7.7|HIGH|1|true",
+          "a2|not_confirmed|3.7|ELEVATED|3|true",
+          "a3|confirmed|1.1|HIGH||true",
+          "a4|confirmed|17.9|HIGH|6|false"
+        ],
+        "patientsChanged": [
+          "Н-1077|admitted|2025-03-30|",
+          "Н-1040|delayed|2025-04-03|13",
+          "Н-1048|request|2025-03-31|13"
+        ]
+      },
+      {
+        "day": 14,
+        "date": "2025-03-31",
+        "stats": {
+          "arrivalsToday": 9021,
+          "arrivalsTotal": 128920,
+          "admitted": 14,
+          "delayed": 8,
+          "confirmed": 3,
+          "notConfirmed": 1,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 4,
+          "missed": 3
+        },
+        "events": [
+          ["08:39", "arrivals", "arrivals 9021", null, null, null],
+          ["17:03", "delayed", "delayed 2", null, null, null],
+          ["17:31", "admitted", "admitted 3", null, null, null],
+          ["18:00", "finished", "finished 3 4 3.5", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|7.7|HIGH|1|true",
+          "a2|not_confirmed|3.7|ELEVATED|3|true",
+          "a3|confirmed|1.1|HIGH||true",
+          "a4|confirmed|17.9|HIGH|6|false"
+        ],
+        "patientsChanged": [
+          "Н-1048|admitted|2025-03-31|13",
+          "Н-1051|delayed|2025-04-02|",
+          "Н-1060|admitted|2025-03-31|",
+          "Н-1079|delayed|2025-04-02|",
+          "Н-1089|admitted|2025-03-31|"
+        ]
+      }
+    ],
+    "season": [
+      {
+        "day": 1,
+        "date": "2025-03-18",
+        "stats": {
+          "arrivalsToday": 8444,
+          "arrivalsTotal": 8444,
+          "admitted": 0,
+          "delayed": 0,
+          "confirmed": 0,
+          "notConfirmed": 0,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 0
+        },
+        "events": [
+          ["08:51", "arrivals", "arrivals 8444", null, null, null],
+          [
+            "10:08",
+            "decision_needed",
+            "decision H1 Инфекционные болезни",
+            "000V",
+            "a1",
+            null
+          ],
+          ["16:31", "escalated", "escalated H2 Педиатрия", "ZIQ9", "a2", null]
+        ],
+        "alerts": [
+          "a1|decision||HIGH|1|false",
+          "a2|escalated||HIGH|2|false",
+          "a3|forecast||HIGH||false",
+          "a4|forecast||ELEVATED|8|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 2,
+        "date": "2025-03-19",
+        "stats": {
+          "arrivalsToday": 7966,
+          "arrivalsTotal": 16410,
+          "admitted": 1,
+          "delayed": 0,
+          "confirmed": 1,
+          "notConfirmed": 0,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 1
+        },
+        "events": [
+          ["08:38", "arrivals", "arrivals 7966", null, null, null],
+          ["12:38", "missed", "missed H1", "000V", "a1", null],
+          ["13:35", "confirmed", "confirmed H1 8.2 5.1", "000V", "a1", null],
+          ["17:23", "admitted", "admitted 1", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|8.2|HIGH|1|true",
+          "a2|escalated||HIGH|2|false",
+          "a3|forecast||HIGH||false",
+          "a4|forecast||ELEVATED|8|false"
+        ],
+        "patientsChanged": ["Н-1034|admitted|2025-03-19|"]
+      },
+      {
+        "day": 3,
+        "date": "2025-03-20",
+        "stats": {
+          "arrivalsToday": 8628,
+          "arrivalsTotal": 25038,
+          "admitted": 1,
+          "delayed": 0,
+          "confirmed": 2,
+          "notConfirmed": 0,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 1
+        },
+        "events": [
+          ["08:35", "arrivals", "arrivals 8628", null, null, null],
+          [
+            "10:16",
+            "decision_needed",
+            "decision H3 Кардиология",
+            "AAA1",
+            "a3",
+            null
+          ],
+          ["14:16", "confirmed", "confirmed H2 5.9 3.9", "ZIQ9", "a2", null]
+        ],
+        "alerts": [
+          "a1|confirmed|8.2|HIGH|1|true",
+          "a2|confirmed|5.9|HIGH|2|false",
+          "a3|decision||HIGH||false",
+          "a4|forecast||ELEVATED|8|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 4,
+        "date": "2025-03-21",
+        "stats": {
+          "arrivalsToday": 8647,
+          "arrivalsTotal": 33685,
+          "admitted": 1,
+          "delayed": 0,
+          "confirmed": 3,
+          "notConfirmed": 0,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:07", "arrivals", "arrivals 8647", null, null, null],
+          ["12:04", "missed", "missed H3", "AAA1", "a3", null],
+          ["13:14", "confirmed", "confirmed H3 0.7 0.6", "AAA1", "a3", null],
+          ["16:56", "escalated", "escalated H4 Хирургия", "BBB2", "a4", null]
+        ],
+        "alerts": [
+          "a1|confirmed|8.2|HIGH|1|true",
+          "a2|confirmed|5.9|HIGH|2|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|escalated||HIGH|4|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 5,
+        "date": "2025-03-22",
+        "stats": {
+          "arrivalsToday": 8268,
+          "arrivalsTotal": 41953,
+          "admitted": 1,
+          "delayed": 0,
+          "confirmed": 3,
+          "notConfirmed": 0,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:29", "arrivals", "arrivals 8268", null, null, null],
+          [
+            "11:09",
+            "patient_request",
+            "request Н-1028 H2 Педиатрия 2025-03-23",
+            "ZIQ9",
+            "a2",
+            "Н-1028"
+          ]
+        ],
+        "alerts": [
+          "a1|confirmed|8.2|HIGH|1|true",
+          "a2|confirmed|5.9|HIGH|2|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|escalated||HIGH|4|false"
+        ],
+        "patientsChanged": ["Н-1028|request|2025-03-23|5"]
+      },
+      {
+        "day": 6,
+        "date": "2025-03-23",
+        "stats": {
+          "arrivalsToday": 8481,
+          "arrivalsTotal": 50434,
+          "admitted": 2,
+          "delayed": 0,
+          "confirmed": 3,
+          "notConfirmed": 0,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:10", "arrivals", "arrivals 8481", null, null, null],
+          [
+            "10:58",
+            "patient_request",
+            "request Н-1058 H4 Хирургия 2025-03-24",
+            "BBB2",
+            "a4",
+            "Н-1058"
+          ],
+          [
+            "11:30",
+            "patient_request",
+            "request Н-1037 H4 Хирургия 2025-03-24",
+            "BBB2",
+            "a4",
+            "Н-1037"
+          ],
+          ["17:52", "admitted", "admitted 1", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|8.2|HIGH|1|true",
+          "a2|confirmed|5.9|HIGH|2|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|escalated||HIGH|4|false"
+        ],
+        "patientsChanged": [
+          "Н-1028|admitted|2025-03-23|5",
+          "Н-1037|request|2025-03-24|6",
+          "Н-1058|request|2025-03-24|6"
+        ]
+      },
+      {
+        "day": 7,
+        "date": "2025-03-24",
+        "stats": {
+          "arrivalsToday": 7895,
+          "arrivalsTotal": 58329,
+          "admitted": 4,
+          "delayed": 0,
+          "confirmed": 3,
+          "notConfirmed": 0,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:37", "arrivals", "arrivals 7895", null, null, null],
+          [
+            "10:43",
+            "patient_request",
+            "request Н-1014 H1 Инфекционные болезни 2025-03-25",
+            "000V",
+            "a1",
+            "Н-1014"
+          ],
+          [
+            "10:43",
+            "patient_request",
+            "request Н-1082 H4 Хирургия 2025-03-25",
+            "BBB2",
+            "a4",
+            "Н-1082"
+          ],
+          ["17:51", "admitted", "admitted 2", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|8.2|HIGH|1|true",
+          "a2|confirmed|5.9|HIGH|2|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|escalated||HIGH|4|false"
+        ],
+        "patientsChanged": [
+          "Н-1037|admitted|2025-03-24|6",
+          "Н-1058|admitted|2025-03-24|6",
+          "Н-1014|request|2025-03-25|7",
+          "Н-1082|request|2025-03-25|7"
+        ]
+      },
+      {
+        "day": 8,
+        "date": "2025-03-25",
+        "stats": {
+          "arrivalsToday": 8183,
+          "arrivalsTotal": 66512,
+          "admitted": 5,
+          "delayed": 1,
+          "confirmed": 4,
+          "notConfirmed": 0,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:14", "arrivals", "arrivals 8183", null, null, null],
+          [
+            "10:28",
+            "patient_request",
+            "request Н-1001 H1 Инфекционные болезни 2025-03-26",
+            "000V",
+            "a1",
+            "Н-1001"
+          ],
+          [
+            "10:32",
+            "patient_request",
+            "request Н-1009 H1 Инфекционные болезни 2025-03-26",
+            "000V",
+            "a1",
+            "Н-1009"
+          ],
+          ["13:52", "confirmed", "confirmed H4 16.3 15.2", "BBB2", "a4", null],
+          ["17:24", "admitted", "admitted 1", null, null, null],
+          ["17:28", "delayed", "delayed 1", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|8.2|HIGH|1|true",
+          "a2|confirmed|5.9|HIGH|2|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|confirmed|16.3|HIGH|4|false"
+        ],
+        "patientsChanged": [
+          "Н-1014|admitted|2025-03-25|7",
+          "Н-1082|delayed|2025-03-27|7",
+          "Н-1001|request|2025-03-26|8",
+          "Н-1009|request|2025-03-26|8"
+        ]
+      },
+      {
+        "day": 9,
+        "date": "2025-03-26",
+        "stats": {
+          "arrivalsToday": 8520,
+          "arrivalsTotal": 75032,
+          "admitted": 10,
+          "delayed": 1,
+          "confirmed": 4,
+          "notConfirmed": 0,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:35", "arrivals", "arrivals 8520", null, null, null],
+          [
+            "11:41",
+            "patient_request",
+            "request Н-1025 H2 Педиатрия 2025-03-27",
+            "ZIQ9",
+            "a2",
+            "Н-1025"
+          ],
+          ["17:37", "admitted", "admitted 5", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|8.2|HIGH|1|true",
+          "a2|confirmed|5.9|HIGH|2|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|confirmed|16.3|HIGH|4|false"
+        ],
+        "patientsChanged": [
+          "Н-1001|admitted|2025-03-26|8",
+          "Н-1009|admitted|2025-03-26|8",
+          "Н-1010|admitted|2025-03-26|",
+          "Н-1015|admitted|2025-03-26|",
+          "Н-1077|admitted|2025-03-26|",
+          "Н-1025|request|2025-03-27|9"
+        ]
+      },
+      {
+        "day": 10,
+        "date": "2025-03-27",
+        "stats": {
+          "arrivalsToday": 8614,
+          "arrivalsTotal": 83646,
+          "admitted": 11,
+          "delayed": 2,
+          "confirmed": 4,
+          "notConfirmed": 0,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:54", "arrivals", "arrivals 8614", null, null, null],
+          ["17:09", "delayed", "delayed 1", null, null, null],
+          ["17:34", "admitted", "admitted 1", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|8.2|HIGH|1|true",
+          "a2|confirmed|5.9|HIGH|2|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|confirmed|16.3|HIGH|4|false"
+        ],
+        "patientsChanged": [
+          "Н-1082|admitted|2025-03-27|7",
+          "Н-1025|delayed|2025-03-28|9"
+        ]
+      },
+      {
+        "day": 11,
+        "date": "2025-03-28",
+        "stats": {
+          "arrivalsToday": 8473,
+          "arrivalsTotal": 92119,
+          "admitted": 12,
+          "delayed": 2,
+          "confirmed": 4,
+          "notConfirmed": 0,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:29", "arrivals", "arrivals 8473", null, null, null],
+          ["17:04", "admitted", "admitted 1", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|8.2|HIGH|1|true",
+          "a2|confirmed|5.9|HIGH|2|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|confirmed|16.3|HIGH|4|false"
+        ],
+        "patientsChanged": ["Н-1025|admitted|2025-03-28|9"]
+      },
+      {
+        "day": 12,
+        "date": "2025-03-29",
+        "stats": {
+          "arrivalsToday": 7913,
+          "arrivalsTotal": 100032,
+          "admitted": 12,
+          "delayed": 2,
+          "confirmed": 4,
+          "notConfirmed": 0,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [["08:35", "arrivals", "arrivals 7913", null, null, null]],
+        "alerts": [
+          "a1|confirmed|8.2|HIGH|1|true",
+          "a2|confirmed|5.9|HIGH|2|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|confirmed|16.3|HIGH|4|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 13,
+        "date": "2025-03-30",
+        "stats": {
+          "arrivalsToday": 8119,
+          "arrivalsTotal": 108151,
+          "admitted": 12,
+          "delayed": 2,
+          "confirmed": 4,
+          "notConfirmed": 0,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:47", "arrivals", "arrivals 8119", null, null, null],
+          [
+            "11:50",
+            "patient_request",
+            "request Н-1048 H4 Хирургия 2025-03-31",
+            "BBB2",
+            "a4",
+            "Н-1048"
+          ],
+          [
+            "11:56",
+            "patient_request",
+            "request Н-1040 H4 Хирургия 2025-03-31",
+            "BBB2",
+            "a4",
+            "Н-1040"
+          ]
+        ],
+        "alerts": [
+          "a1|confirmed|8.2|HIGH|1|true",
+          "a2|confirmed|5.9|HIGH|2|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|confirmed|16.3|HIGH|4|false"
+        ],
+        "patientsChanged": [
+          "Н-1040|request|2025-03-31|13",
+          "Н-1048|request|2025-03-31|13"
+        ]
+      },
+      {
+        "day": 14,
+        "date": "2025-03-31",
+        "stats": {
+          "arrivalsToday": 8369,
+          "arrivalsTotal": 116520,
+          "admitted": 15,
+          "delayed": 5,
+          "confirmed": 4,
+          "notConfirmed": 0,
+          "unverified": 0,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 2
+        },
+        "events": [
+          ["08:15", "arrivals", "arrivals 8369", null, null, null],
+          ["17:01", "admitted", "admitted 3", null, null, null],
+          ["17:45", "delayed", "delayed 3", null, null, null],
+          ["18:00", "finished", "finished 4 0 2.3", null, null, null]
+        ],
+        "alerts": [
+          "a1|confirmed|8.2|HIGH|1|true",
+          "a2|confirmed|5.9|HIGH|2|false",
+          "a3|confirmed|0.7|HIGH||true",
+          "a4|confirmed|16.3|HIGH|4|false"
+        ],
+        "patientsChanged": [
+          "Н-1040|delayed|2025-04-03|13",
+          "Н-1048|admitted|2025-03-31|13",
+          "Н-1051|admitted|2025-03-31|",
+          "Н-1060|admitted|2025-03-31|",
+          "Н-1079|delayed|2025-04-03|",
+          "Н-1089|delayed|2025-04-03|"
+        ]
+      }
+    ],
+    "outage": [
+      {
+        "day": 1,
+        "date": "2025-03-18",
+        "stats": {
+          "arrivalsToday": 7539,
+          "arrivalsTotal": 7539,
+          "admitted": 0,
+          "delayed": 0,
+          "confirmed": 0,
+          "notConfirmed": 0,
+          "unverified": 1,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 0
+        },
+        "events": [
+          ["08:08", "unverified", "outage 39", null, null, null],
+          ["08:51", "arrivals", "arrivals 7539", null, null, null],
+          ["12:12", "unverified", "unverified H1", "000V", "a1", null]
+        ],
+        "alerts": [
+          "a1|unverified||HIGH|1|false",
+          "a2|forecast||ELEVATED|3|false",
+          "a3|forecast||HIGH||false",
+          "a4|forecast||ELEVATED|8|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 2,
+        "date": "2025-03-19",
+        "stats": {
+          "arrivalsToday": 7113,
+          "arrivalsTotal": 14652,
+          "admitted": 0,
+          "delayed": 0,
+          "confirmed": 0,
+          "notConfirmed": 0,
+          "unverified": 1,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 0
+        },
+        "events": [
+          ["08:38", "arrivals", "arrivals 7113", null, null, null],
+          ["08:38", "unverified", "outage 39", null, null, null],
+          [
+            "10:11",
+            "decision_needed",
+            "decision H2 Педиатрия",
+            "ZIQ9",
+            "a2",
+            null
+          ]
+        ],
+        "alerts": [
+          "a1|unverified||HIGH|1|false",
+          "a2|decision||ELEVATED|3|false",
+          "a3|forecast||HIGH||false",
+          "a4|forecast||ELEVATED|8|false"
+        ],
+        "patientsChanged": ["Н-1034|unverified|2025-03-19|"]
+      },
+      {
+        "day": 3,
+        "date": "2025-03-20",
+        "stats": {
+          "arrivalsToday": 7704,
+          "arrivalsTotal": 22356,
+          "admitted": 0,
+          "delayed": 0,
+          "confirmed": 0,
+          "notConfirmed": 1,
+          "unverified": 1,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 1
+        },
+        "events": [
+          ["08:35", "arrivals", "arrivals 7704", null, null, null],
+          ["08:54", "unverified", "outage 39", null, null, null],
+          ["12:47", "missed", "missed H2", "ZIQ9", "a2", null],
+          ["15:16", "not_confirmed", "not_confirmed H2", "ZIQ9", "a2", null]
+        ],
+        "alerts": [
+          "a1|unverified||HIGH|1|false",
+          "a2|not_confirmed|2.9|ELEVATED|3|true",
+          "a3|forecast||HIGH||false",
+          "a4|forecast||ELEVATED|8|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 4,
+        "date": "2025-03-21",
+        "stats": {
+          "arrivalsToday": 7720,
+          "arrivalsTotal": 30076,
+          "admitted": 0,
+          "delayed": 0,
+          "confirmed": 0,
+          "notConfirmed": 1,
+          "unverified": 2,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 1
+        },
+        "events": [
+          ["08:04", "unverified", "outage 39", null, null, null],
+          ["08:07", "arrivals", "arrivals 7720", null, null, null],
+          ["12:17", "unverified", "unverified H3", "AAA1", "a3", null]
+        ],
+        "alerts": [
+          "a1|unverified||HIGH|1|false",
+          "a2|not_confirmed|2.9|ELEVATED|3|true",
+          "a3|unverified||HIGH||false",
+          "a4|forecast||ELEVATED|8|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 5,
+        "date": "2025-03-22",
+        "stats": {
+          "arrivalsToday": 7382,
+          "arrivalsTotal": 37458,
+          "admitted": 0,
+          "delayed": 0,
+          "confirmed": 0,
+          "notConfirmed": 1,
+          "unverified": 2,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 1
+        },
+        "events": [
+          ["08:29", "arrivals", "arrivals 7382", null, null, null],
+          ["08:29", "unverified", "outage 39", null, null, null]
+        ],
+        "alerts": [
+          "a1|unverified||HIGH|1|false",
+          "a2|not_confirmed|2.9|ELEVATED|3|true",
+          "a3|unverified||HIGH||false",
+          "a4|forecast||ELEVATED|8|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 6,
+        "date": "2025-03-23",
+        "stats": {
+          "arrivalsToday": 7572,
+          "arrivalsTotal": 45030,
+          "admitted": 1,
+          "delayed": 0,
+          "confirmed": 0,
+          "notConfirmed": 1,
+          "unverified": 2,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 1
+        },
+        "events": [
+          ["08:10", "arrivals", "arrivals 7572", null, null, null],
+          ["08:24", "unverified", "outage 39", null, null, null],
+          ["17:42", "admitted", "admitted 1", null, null, null]
+        ],
+        "alerts": [
+          "a1|unverified||HIGH|1|false",
+          "a2|not_confirmed|2.9|ELEVATED|3|true",
+          "a3|unverified||HIGH||false",
+          "a4|forecast||ELEVATED|8|false"
+        ],
+        "patientsChanged": ["Н-1028|admitted|2025-03-23|"]
+      },
+      {
+        "day": 7,
+        "date": "2025-03-24",
+        "stats": {
+          "arrivalsToday": 7049,
+          "arrivalsTotal": 52079,
+          "admitted": 3,
+          "delayed": 0,
+          "confirmed": 0,
+          "notConfirmed": 1,
+          "unverified": 2,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 1
+        },
+        "events": [
+          ["08:37", "arrivals", "arrivals 7049", null, null, null],
+          ["08:57", "unverified", "outage 39", null, null, null],
+          ["17:00", "admitted", "admitted 2", null, null, null]
+        ],
+        "alerts": [
+          "a1|unverified||HIGH|1|false",
+          "a2|not_confirmed|2.9|ELEVATED|3|true",
+          "a3|unverified||HIGH||false",
+          "a4|forecast||ELEVATED|8|false"
+        ],
+        "patientsChanged": [
+          "Н-1037|admitted|2025-03-24|",
+          "Н-1058|admitted|2025-03-24|"
+        ]
+      },
+      {
+        "day": 8,
+        "date": "2025-03-25",
+        "stats": {
+          "arrivalsToday": 7306,
+          "arrivalsTotal": 59385,
+          "admitted": 4,
+          "delayed": 0,
+          "confirmed": 0,
+          "notConfirmed": 2,
+          "unverified": 2,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 1
+        },
+        "events": [
+          ["08:14", "arrivals", "arrivals 7306", null, null, null],
+          ["08:40", "unverified", "outage 39", null, null, null],
+          ["15:52", "not_confirmed", "not_confirmed H4", "BBB2", "a4", null],
+          ["17:22", "admitted", "admitted 1", null, null, null]
+        ],
+        "alerts": [
+          "a1|unverified||HIGH|1|false",
+          "a2|not_confirmed|2.9|ELEVATED|3|true",
+          "a3|unverified||HIGH||false",
+          "a4|not_confirmed|13.1|ELEVATED|8|false"
+        ],
+        "patientsChanged": [
+          "Н-1014|unverified|2025-03-25|",
+          "Н-1082|admitted|2025-03-25|"
+        ]
+      },
+      {
+        "day": 9,
+        "date": "2025-03-26",
+        "stats": {
+          "arrivalsToday": 7607,
+          "arrivalsTotal": 66992,
+          "admitted": 6,
+          "delayed": 0,
+          "confirmed": 0,
+          "notConfirmed": 2,
+          "unverified": 2,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 1
+        },
+        "events": [
+          ["08:35", "arrivals", "arrivals 7607", null, null, null],
+          ["08:48", "unverified", "outage 39", null, null, null],
+          ["17:37", "admitted", "admitted 2", null, null, null]
+        ],
+        "alerts": [
+          "a1|unverified||HIGH|1|false",
+          "a2|not_confirmed|2.9|ELEVATED|3|true",
+          "a3|unverified||HIGH||false",
+          "a4|not_confirmed|13.1|ELEVATED|8|false"
+        ],
+        "patientsChanged": [
+          "Н-1001|unverified|2025-03-26|",
+          "Н-1009|unverified|2025-03-26|",
+          "Н-1010|unverified|2025-03-26|",
+          "Н-1015|admitted|2025-03-26|",
+          "Н-1077|admitted|2025-03-26|"
+        ]
+      },
+      {
+        "day": 10,
+        "date": "2025-03-27",
+        "stats": {
+          "arrivalsToday": 7691,
+          "arrivalsTotal": 74683,
+          "admitted": 7,
+          "delayed": 0,
+          "confirmed": 0,
+          "notConfirmed": 2,
+          "unverified": 2,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 1
+        },
+        "events": [
+          ["08:28", "unverified", "outage 39", null, null, null],
+          ["08:54", "arrivals", "arrivals 7691", null, null, null],
+          ["17:08", "admitted", "admitted 1", null, null, null]
+        ],
+        "alerts": [
+          "a1|unverified||HIGH|1|false",
+          "a2|not_confirmed|2.9|ELEVATED|3|true",
+          "a3|unverified||HIGH||false",
+          "a4|not_confirmed|13.1|ELEVATED|8|false"
+        ],
+        "patientsChanged": ["Н-1025|admitted|2025-03-27|"]
+      },
+      {
+        "day": 11,
+        "date": "2025-03-28",
+        "stats": {
+          "arrivalsToday": 7565,
+          "arrivalsTotal": 82248,
+          "admitted": 7,
+          "delayed": 0,
+          "confirmed": 0,
+          "notConfirmed": 2,
+          "unverified": 2,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 1
+        },
+        "events": [
+          ["08:16", "unverified", "outage 39", null, null, null],
+          ["08:29", "arrivals", "arrivals 7565", null, null, null]
+        ],
+        "alerts": [
+          "a1|unverified||HIGH|1|false",
+          "a2|not_confirmed|2.9|ELEVATED|3|true",
+          "a3|unverified||HIGH||false",
+          "a4|not_confirmed|13.1|ELEVATED|8|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 12,
+        "date": "2025-03-29",
+        "stats": {
+          "arrivalsToday": 7065,
+          "arrivalsTotal": 89313,
+          "admitted": 7,
+          "delayed": 0,
+          "confirmed": 0,
+          "notConfirmed": 2,
+          "unverified": 2,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 1
+        },
+        "events": [
+          ["08:20", "unverified", "outage 39", null, null, null],
+          ["08:35", "arrivals", "arrivals 7065", null, null, null]
+        ],
+        "alerts": [
+          "a1|unverified||HIGH|1|false",
+          "a2|not_confirmed|2.9|ELEVATED|3|true",
+          "a3|unverified||HIGH||false",
+          "a4|not_confirmed|13.1|ELEVATED|8|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 13,
+        "date": "2025-03-30",
+        "stats": {
+          "arrivalsToday": 7249,
+          "arrivalsTotal": 96562,
+          "admitted": 7,
+          "delayed": 0,
+          "confirmed": 0,
+          "notConfirmed": 2,
+          "unverified": 2,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 1
+        },
+        "events": [
+          ["08:47", "arrivals", "arrivals 7249", null, null, null],
+          ["08:50", "unverified", "outage 39", null, null, null]
+        ],
+        "alerts": [
+          "a1|unverified||HIGH|1|false",
+          "a2|not_confirmed|2.9|ELEVATED|3|true",
+          "a3|unverified||HIGH||false",
+          "a4|not_confirmed|13.1|ELEVATED|8|false"
+        ],
+        "patientsChanged": []
+      },
+      {
+        "day": 14,
+        "date": "2025-03-31",
+        "stats": {
+          "arrivalsToday": 7472,
+          "arrivalsTotal": 104034,
+          "admitted": 12,
+          "delayed": 1,
+          "confirmed": 0,
+          "notConfirmed": 2,
+          "unverified": 2,
+          "decisions": 0,
+          "patientDecisions": 0,
+          "missed": 1
+        },
+        "events": [
+          ["08:15", "arrivals", "arrivals 7472", null, null, null],
+          ["08:49", "unverified", "outage 39", null, null, null],
+          ["17:01", "admitted", "admitted 5", null, null, null],
+          ["17:58", "delayed", "delayed 1", null, null, null],
+          ["18:00", "finished", "finished 0 0 0.0", null, null, null]
+        ],
+        "alerts": [
+          "a1|unverified||HIGH|1|false",
+          "a2|not_confirmed|2.9|ELEVATED|3|true",
+          "a3|unverified||HIGH||false",
+          "a4|not_confirmed|13.1|ELEVATED|8|false"
+        ],
+        "patientsChanged": [
+          "Н-1040|admitted|2025-03-31|",
+          "Н-1048|admitted|2025-03-31|",
+          "Н-1051|admitted|2025-03-31|",
+          "Н-1060|admitted|2025-03-31|",
+          "Н-1079|admitted|2025-03-31|",
+          "Н-1089|delayed|2025-04-03|"
+        ]
+      }
+    ]
+  }
+}

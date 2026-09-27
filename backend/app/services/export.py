@@ -1,8 +1,12 @@
 """Hospital × profile card as a file: XLSX (openpyxl) or PDF (reportlab).
 
 Same content as the UI card: status and load_index components, KPIs, daily series, 14-day forecast (no queue
-forecast), explanation factors, recommendations with the disclaimer, and the decision history. Built from the
-same service functions as the JSON endpoints, so the numbers match the screen.
+forecast), explanation factors, the legacy historical-median alternatives with the disclaimer, and the decision
+history. Built from the same service functions as the JSON endpoints, so the numbers match the screen.
+
+Untrusted text (comments, actors, names from the dictionaries) is neutralised for both formats: a cell that starts
+with a formula character is prefixed with an apostrophe so a spreadsheet never evaluates it, and every string that
+reaches a reportlab Paragraph is XML-escaped so a comment cannot inject markup or break the render.
 """
 
 import datetime as dt
@@ -10,6 +14,7 @@ import io
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from xml.sax.saxutils import escape
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
@@ -40,6 +45,9 @@ STATUS_SHORT = {
 }
 ACTIONS = {"confirm": "Подтверждено", "reject": "Отклонено", "defer": "Отложено"}
 DISCLAIMER_HUMAN = "Решение принимает специалист. Система только предлагает."
+ALTERNATIVES_TITLE = "Альтернативы по историческим медианам (справочно)"
+ALTERNATIVES_SHEET = "Альтернативы (справочно)"  # sheet names are limited to 31 characters
+FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 
 
 class ExportUnavailableError(Exception):
@@ -116,13 +124,25 @@ _HEADER_FONT = Font(bold=True)
 _HEADER_FILL = PatternFill("solid", fgColor="EEF1F5")
 
 
+def _cell(value):
+    """A string that a spreadsheet would read as a formula gets a leading apostrophe (shown as text, never run)."""
+    if isinstance(value, str) and value.startswith(FORMULA_PREFIXES):
+        return "'" + value
+    return value
+
+
+def _p(text: str, style: ParagraphStyle) -> Paragraph:
+    """Paragraph over untrusted text: reportlab parses its input as XML, so markup characters are escaped."""
+    return Paragraph(escape(str(text)), style)
+
+
 def _sheet(wb: Workbook, title: str, header: list[str], rows: list[list], widths: list[int]) -> None:
     ws = wb.create_sheet(title)
     ws.append(header)
     for cell in ws[1]:
         cell.font, cell.fill = _HEADER_FONT, _HEADER_FILL
     for row in rows:
-        ws.append(row)
+        ws.append([_cell(value) for value in row])
     for i, width in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(i)].width = width
     ws.freeze_panes = "A2"
@@ -151,13 +171,13 @@ def build_xlsx(data: CardData) -> bytes:
         ("Данные на", s.as_of_date),
         ("Сформировано", dt.datetime.now().replace(microsecond=0)),
     ):
-        ws.append([label, value])
+        ws.append([label, _cell(value)])
     ws.append([])
     ws.append(["Показатель", "Значение"])
     for cell in ws[ws.max_row]:
         cell.font, cell.fill = _HEADER_FONT, _HEADER_FILL
     for label, value in _kpis(card):
-        ws.append([label, value])
+        ws.append([label, _cell(value)])
     ws.append([])
     ws.append([DISCLAIMER_HUMAN])
     ws.column_dimensions["A"].width = 40
@@ -220,7 +240,7 @@ def build_xlsx(data: CardData) -> bytes:
     rec_rows += [[], ["Метод: оценка по историческим медианам"], [recs.disclaimer], [DISCLAIMER_HUMAN]]
     _sheet(
         wb,
-        "Рекомендации",
+        ALTERNATIVES_SHEET,
         [
             "Альтернатива",
             "Код",
@@ -317,7 +337,7 @@ def build_pdf(data: CardData) -> bytes:
     )
 
     def table(rows: list[list], widths: list[float], right_from: int | None = None) -> Table:
-        wrapped = [[Paragraph(str(c), base) if isinstance(c, str) and len(c) > 40 else c for c in r] for r in rows]
+        wrapped = [[_p(c, base) if isinstance(c, str) and len(c) > 40 else c for c in r] for r in rows]
         t = Table(wrapped, colWidths=[w * mm for w in widths], repeatRows=1)
         t.setStyle(grid)
         if right_from is not None:
@@ -325,10 +345,8 @@ def build_pdf(data: CardData) -> bytes:
         return t
 
     story: list = [
-        Paragraph(s.org_name, h1),
-        Paragraph(
-            f"{s.region_name} · профиль «{s.profile_name}» ({s.profile_code}) · данные на {_date(s.as_of_date)}", base
-        ),
+        _p(s.org_name, h1),
+        _p(f"{s.region_name} · профиль «{s.profile_name}» ({s.profile_code}) · данные на {_date(s.as_of_date)}", base),
         Paragraph(f"Сформировано {_date(dt.datetime.now())}. {DISCLAIMER_HUMAN}", small),
         Paragraph("Ключевые показатели", h2),
         table([["Показатель", "Значение"], *[[k, v] for k, v in _kpis(card)]], [95, 75], right_from=1),
@@ -346,7 +364,7 @@ def build_pdf(data: CardData) -> bytes:
         chart_series.append(("прогноз", fc, colors.HexColor("#1f5fae"), True))
     story += [
         _line_chart("Направления: факт и прогноз на 14 дней", chart_series, font),
-        Paragraph(card.forecast.note, small),
+        _p(card.forecast.note, small),
         Paragraph("Прогноз на 14 дней", h2),
         table(
             [
@@ -368,7 +386,7 @@ def build_pdf(data: CardData) -> bytes:
         ]
     story.append(table(factor_rows, [28, 42, 80, 20], right_from=3))
 
-    story.append(Paragraph("Рекомендации (оценка по историческим медианам)", h2))
+    story.append(Paragraph(ALTERNATIVES_TITLE, h2))
     if recs.alternatives:
         story.append(
             table(
@@ -388,10 +406,10 @@ def build_pdf(data: CardData) -> bytes:
             )
         )
         for a in recs.alternatives:
-            story.append(Paragraph(a.explanation, small))
+            story.append(_p(a.explanation, small))
     else:
-        story.append(Paragraph(recs.reason or "Рекомендации не формируются.", base))
-    story += [Paragraph(recs.disclaimer, small), Paragraph("История решений", h2)]
+        story.append(_p(recs.reason or "Альтернативы не формируются.", base))
+    story += [_p(recs.disclaimer, small), Paragraph("История решений", h2)]
     if data.decisions:
         story.append(
             table(

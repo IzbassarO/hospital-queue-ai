@@ -1,5 +1,7 @@
 /**
- * The map: sixteen quiet region outlines, one dot per hospital of the registry, published severity as colour.
+ * The map: twenty quiet region outlines, one dot per hospital of the registry, published severity as colour. Only
+ * the attention queue (signals above the materiality floor) colours a dot; hospitals whose HIGH/ELEVATED signals
+ * are all small flows sit in a muted layer that is off by default and switched on by the "малые потоки" toggle.
  * Hover shows what matters for that point; click focuses the hospital. All geometry is precomputed.
  */
 import {
@@ -27,12 +29,13 @@ interface Tip {
   y: number;
   title: string;
   lines: string[];
-  tone: "high" | "elevated" | "quiet" | "region";
+  tone: "high" | "elevated" | "quiet" | "region" | "low";
 }
 
 export function KazMap({
   hospitals,
   regions,
+  lowVolumeTotal,
   profileName,
   focus,
   pulse,
@@ -41,6 +44,8 @@ export function KazMap({
 }: {
   hospitals: TowerHospital[];
   regions: Map<string, RegionSummary>;
+  /** HIGH + ELEVATED signals below the materiality floor, for the toggle's hint */
+  lowVolumeTotal: number;
   profileName: (code: string) => string;
   focus: string | null;
   pulse: Set<string>;
@@ -49,11 +54,13 @@ export function KazMap({
 }) {
   const [tip, setTip] = useState<Tip | null>(null);
   const [hoverRegion, setHoverRegion] = useState<string | null>(null);
+  const [showLowVolume, setShowLowVolume] = useState(false);
   const layers = useMemo(() => {
     const quiet = hospitals.filter((h) => !h.severity);
+    const low = hospitals.filter((h) => !h.severity && h.lowVolume);
     const elevated = hospitals.filter((h) => h.severity === "ELEVATED");
     const high = hospitals.filter((h) => h.severity === "HIGH");
-    return { quiet, elevated, high };
+    return { quiet, low, elevated, high };
   }, [hospitals]);
   const focused = focus ? hospitals.find((h) => h.org === focus) : undefined;
 
@@ -72,6 +79,8 @@ export function KazMap({
             : "",
         ].filter(Boolean)
       : [h.regionName, t.control.map.noSignal];
+    if (h.lowVolumeSignals.length)
+      lines.push(t.control.map.lowVolumeOf(h.lowVolumeSignals.length));
     if (neighbours > 0) lines.push(t.control.map.neighbours(neighbours));
     setTip({
       ...place(e),
@@ -82,9 +91,17 @@ export function KazMap({
           ? "high"
           : h.severity === "ELEVATED"
             ? "elevated"
-            : "quiet",
+            : h.lowVolume
+              ? "low"
+              : "quiet",
     });
   };
+  const regionLine = (r: RegionSummary) =>
+    t.control.map.regionSignals(
+      fmtNumber(r.attention, 0),
+      fmtNumber(r.highMaterial, 0),
+      fmtNumber(r.total, 0),
+    );
   const showRegion = (code: string, e: MouseEvent) => {
     const own = regions.get(code);
     const kids = (
@@ -93,16 +110,11 @@ export function KazMap({
       .map((k) => regions.get(k))
       .filter((r): r is RegionSummary => Boolean(r));
     const lines = [
-      own
-        ? t.control.map.regionSignals(
-            fmtNumber(own.total, 0),
-            fmtNumber(own.high, 0),
-          )
+      own ? regionLine(own) : "",
+      own && own.lowVolume
+        ? t.control.map.regionLowVolume(fmtNumber(own.lowVolume, 0))
         : "",
-      ...kids.map(
-        (k) =>
-          `${t.control.map.includes(k.name)}: ${t.control.map.regionSignals(fmtNumber(k.total, 0), fmtNumber(k.high, 0))}`,
-      ),
+      ...kids.map((k) => `${t.control.map.includes(k.name)}: ${regionLine(k)}`),
       outageRegion === code || kids.some((k) => k.code === outageRegion)
         ? t.control.map.outage
         : "",
@@ -114,6 +126,18 @@ export function KazMap({
     setTip(null);
     setHoverRegion(null);
   };
+  const dot = (h: TowerHospital, r: number, className: string) => (
+    <circle
+      key={h.org}
+      cx={h.x}
+      cy={h.y}
+      r={r}
+      className={className}
+      onMouseEnter={(e) => showHospital(h, e)}
+      onMouseMove={(e) => showHospital(h, e)}
+      onClick={() => onFocus(h.org)}
+    />
+  );
 
   return (
     <div className="map-frame" onMouseLeave={hide}>
@@ -154,42 +178,22 @@ export function KazMap({
           })}
         </g>
         <g className="map-dots">
-          {layers.quiet.map((h) => (
-            <circle
-              key={h.org}
-              cx={h.x}
-              cy={h.y}
-              r={2.2}
-              className="dot dot-quiet"
-              onMouseEnter={(e) => showHospital(h, e)}
-              onMouseMove={(e) => showHospital(h, e)}
-              onClick={() => onFocus(h.org)}
-            />
-          ))}
-          {layers.elevated.map((h) => (
-            <circle
-              key={h.org}
-              cx={h.x}
-              cy={h.y}
-              r={3.4}
-              className={`dot dot-elevated ${pulse.has(h.org) ? "is-pulse" : ""}`}
-              onMouseEnter={(e) => showHospital(h, e)}
-              onMouseMove={(e) => showHospital(h, e)}
-              onClick={() => onFocus(h.org)}
-            />
-          ))}
-          {layers.high.map((h) => (
-            <circle
-              key={h.org}
-              cx={h.x}
-              cy={h.y}
-              r={4.2}
-              className={`dot dot-high ${pulse.has(h.org) ? "is-pulse" : ""}`}
-              onMouseEnter={(e) => showHospital(h, e)}
-              onMouseMove={(e) => showHospital(h, e)}
-              onClick={() => onFocus(h.org)}
-            />
-          ))}
+          {layers.quiet.map((h) => dot(h, 2.2, "dot dot-quiet"))}
+          {showLowVolume ? (
+            <g className="map-low-volume" data-testid="map-low-volume">
+              {layers.low.map((h) => dot(h, 2.8, "dot dot-low"))}
+            </g>
+          ) : null}
+          {layers.elevated.map((h) =>
+            dot(
+              h,
+              3.4,
+              `dot dot-elevated ${pulse.has(h.org) ? "is-pulse" : ""}`,
+            ),
+          )}
+          {layers.high.map((h) =>
+            dot(h, 4.2, `dot dot-high ${pulse.has(h.org) ? "is-pulse" : ""}`),
+          )}
           {focused ? (
             <g className="dot-focus" aria-hidden="true">
               <circle cx={focused.x} cy={focused.y} r={11} />
@@ -212,6 +216,20 @@ export function KazMap({
         </li>
         <li>
           <span className="dot-swatch dot-ring" /> {t.control.map.legend.focus}
+        </li>
+        <li>
+          <label className="map-toggle">
+            <input
+              type="checkbox"
+              checked={showLowVolume}
+              onChange={(e) => setShowLowVolume(e.target.checked)}
+              title={t.control.map.lowVolumeToggleHint(
+                fmtNumber(lowVolumeTotal, 0),
+              )}
+            />
+            <span className="dot-swatch dot-low" />{" "}
+            {t.control.map.lowVolumeToggle} ({fmtNumber(lowVolumeTotal, 0)})
+          </label>
         </li>
       </ul>
     </div>

@@ -1,10 +1,10 @@
 /** The hospital in focus: what is happening there in one paragraph, its forecast, its queue and its neighbours. */
 import { useForecasts } from "../../api/operational";
 import { t } from "../../i18n";
-import { fmtDate, fmtNumber } from "../../lib/format";
+import { flowDecimals, fmtDate, fmtNumber } from "../../lib/format";
 import { SeverityPill } from "../../demo/primitives";
 import type { SimState } from "../sim/simulation";
-import { daysBetween, flowDecimals } from "../synthetic";
+import { daysBetween } from "../../lib/dates";
 import { openSubject } from "../ui";
 import type { TowerHospital } from "../useTowerData";
 import { Sparkline } from "./Sparkline";
@@ -57,7 +57,12 @@ export function FocusPanel({
       ),
     );
   else story.push(t.control.focus.storyQuiet);
-  if (simAlert) story.push(t.control.focus.storyPhase[simAlert.phase]);
+  if (simAlert)
+    story.push(
+      simAlert.phase === "confirmed" && simAlert.observedSource === "synthetic"
+        ? t.control.focus.storyPhase.confirmedSynthetic
+        : t.control.focus.storyPhase[simAlert.phase],
+    );
   story.push(t.control.focus.queueLine(waiting, requests));
   return (
     <section className="focus" aria-label={t.control.focus.title}>
@@ -114,6 +119,11 @@ export function FocusPanel({
               ))}
             </ul>
           )}
+          {hospital.lowVolumeSignals.length ? (
+            <p className="empty focus-low-volume">
+              {t.control.focus.lowVolume(hospital.lowVolumeSignals.length)}
+            </p>
+          ) : null}
           <h3 className="focus-sub">{t.control.focus.patients}</h3>
           {own.length === 0 ? (
             <p className="empty">{t.control.queue.empty}</p>

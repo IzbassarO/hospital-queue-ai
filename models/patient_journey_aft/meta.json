@@ -1,0 +1,6 @@
+{
+  "candidate": "xgboost_aft",
+  "evaluation_status": "completed",
+  "fold": "q1_final",
+  "model_name": "patient_journey"
+}

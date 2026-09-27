@@ -1,0 +1,37 @@
+{
+  "categorical": [
+    "region_code",
+    "org_code",
+    "hospital_region_code",
+    "profile_code",
+    "icd_chapter",
+    "icd3",
+    "referral_purpose",
+    "finance_source",
+    "territorial_type"
+  ],
+  "features": [
+    "region_code",
+    "org_code",
+    "hospital_region_code",
+    "profile_code",
+    "icd_chapter",
+    "icd3",
+    "referral_purpose",
+    "finance_source",
+    "territorial_type",
+    "registration_weekday",
+    "queue_hp_prev_day",
+    "hosp_reg_7d",
+    "hosp_reg_28d",
+    "hosp_hosp_7d",
+    "hosp_hosp_28d",
+    "hp_median_wait_prev",
+    "hp_n_hosp_prev",
+    "ersb_throughput_per_day",
+    "ersb_avg_los",
+    "adm_refusals_28d",
+    "hp_refusal_rate_prev",
+    "hp_n_resolved_prev"
+  ]
+}

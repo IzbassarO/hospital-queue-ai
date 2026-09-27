@@ -21,6 +21,7 @@ from app.schemas.model_assurance import ModelAssuranceCapabilityResponse, ModelA
 from app.schemas.operational_intelligence import (
     ForecastLevel,
     ForecastTarget,
+    MaterialityStatus,
     OperationalForecastResponse,
     OperationalHospitalProfileResponse,
     OperationalOverviewResponse,
@@ -200,9 +201,13 @@ def get_hospital_referrals(
     responses={**AUTH, **NOT_FOUND, **NOT_BUILT},
     operation_id="hospital_recommendations_get",
     tags=["hospital"],
+    deprecated=True,
+    summary="Legacy: alternative hospitals by historical medians (not part of the control centre)",
 )
 def get_recommendations(org_code: str, profile_code: str, session: SessionDep, _: ViewerDep) -> RecommendationResponse:
-    """Rule-based v1: up to 3 alternative hospitals in the same region and profile."""
+    """Legacy rule-based comparison (v1, kept for the legacy card and its export): up to 3 other hospitals of the same
+    region and profile whose patients waited less over the last 28 days, by historical medians. An association, not
+    an estimate of what redirecting a patient would change; the control centre does not use it. A person decides."""
     return recommend.recommend(session, org_code, profile_code)
 
 
@@ -228,7 +233,8 @@ def get_hospital_export(
     _: ViewerDep,
     format: Annotated[Literal["xlsx", "pdf"], Query(description="file format")] = "xlsx",  # noqa: A002
 ) -> Response:
-    """The hospital × profile card (status, KPIs, series, forecast, factors, recommendations, decisions) as a file."""
+    """The hospital × profile card (status, KPIs, series, forecast, factors, historical-median alternatives,
+    decisions) as a file."""
     file = export.export_card(session, org_code, profile_code, format)
     return Response(
         content=file.content,
@@ -431,6 +437,13 @@ def get_operational_signals(
     severity: Severity | None = None,
     signal_type: SignalType | None = None,
     support: SupportStatus | None = None,
+    materiality: Annotated[
+        MaterialityStatus | None,
+        Query(
+            description="materiality_status of the stored signal: materiality_rule_not_triggered = the primary inbox; "
+            "zero_baseline_low_volume = below the 1.0 expected count/day floor; all signals if omitted"
+        ),
+    ] = None,
 ) -> Page[OperationalSignalResponse]:
     """Deterministically ranked attention signals with support, evidence, and provenance."""
     return operational_intelligence.list_signals(
@@ -442,6 +455,7 @@ def get_operational_signals(
         severity=severity,
         signal_type=signal_type,
         support_status=support,
+        materiality_status=materiality,
         limit=page.limit,
         offset=page.offset,
     )

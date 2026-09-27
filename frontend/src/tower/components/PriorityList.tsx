@@ -5,7 +5,9 @@ import { fmtDate } from "../../lib/format";
 import { SeverityPill } from "../../demo/primitives";
 import { pendingTasks } from "../sim/tasks";
 import type { SimState } from "../sim/simulation";
+import { SYNTHETIC_ENABLED } from "../synthetic";
 import { openSubject } from "../ui";
+import { SyntheticTag } from "./SyntheticState";
 
 export function PriorityList({
   state,
@@ -25,7 +27,10 @@ export function PriorityList({
       <header className="block-head block-head-row">
         <div>
           <h2>{t.control.priority.title}</h2>
-          <p>{t.control.priority.lead}</p>
+          <p>
+            {t.control.priority.lead}{" "}
+            {SYNTHETIC_ENABLED ? <SyntheticTag /> : null}
+          </p>
         </div>
         <Link to="/notifications" className="btn-ghost btn-sm">
           {t.control.priority.all}

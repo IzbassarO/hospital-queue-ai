@@ -1,6 +1,7 @@
 # hospital-queue-ai API. Build context: backend/ (docker compose service `backend`).
 # The image only reads Postgres tables: no ML code, models, data or training dependencies.
-FROM python:3.12-slim
+FROM python:3.12-slim@sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f
+# tag python:3.12-slim, digest resolved 2026-09-27 with `docker buildx imagetools inspect python:3.12-slim`
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

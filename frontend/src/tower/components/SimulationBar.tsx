@@ -2,11 +2,15 @@
 import { t } from "../../i18n";
 import { fmtDate, fmtNumber } from "../../lib/format";
 import { GlyphPause, GlyphPlay, GlyphReplay } from "../../demo/glyphs";
-import type { ScenarioId } from "../synthetic";
-import { clockLabel, SIM_DAYS, type SimState } from "../sim/simulation";
+import { SCENARIO_IDS, type ScenarioId } from "../synthetic";
+import {
+  clockLabel,
+  confirmedBySource,
+  SIM_DAYS,
+  type SimState,
+} from "../sim/simulation";
 import { pendingTasks } from "../sim/tasks";
-
-const SCENARIOS: ScenarioId[] = ["baseline", "surge", "season", "outage"];
+import { SyntheticTag } from "./SyntheticState";
 
 export function SimulationBar({
   state,
@@ -28,6 +32,8 @@ export function SimulationBar({
   onScenario: (s: ScenarioId) => void;
 }) {
   const pending = pendingTasks(state).length;
+  const byFact = confirmedBySource(state, "fact").length;
+  const bySynthetic = confirmedBySource(state, "synthetic").length;
   const scenario = t.control.sim.scenarios[state.scenario];
   return (
     <section className="simbar" aria-label={t.control.sim.title}>
@@ -50,6 +56,7 @@ export function SimulationBar({
             />
           ))}
         </ol>
+        <SyntheticTag />
       </div>
       <div className="sim-controls" data-tour="play">
         {state.finished ? (
@@ -107,7 +114,7 @@ export function SimulationBar({
           role="group"
           aria-label={t.control.sim.scenarioLabel}
         >
-          {SCENARIOS.map((id) => (
+          {SCENARIO_IDS.map((id) => (
             <button
               key={id}
               type="button"
@@ -150,6 +157,16 @@ export function SimulationBar({
         <div>
           <dd>{fmtNumber(state.stats.confirmed, 0)}</dd>
           <dt>{t.control.sim.counters.confirmed}</dt>
+        </div>
+        <div>
+          <dd>{fmtNumber(byFact, 0)}</dd>
+          <dt>{t.control.sim.counters.confirmedFact}</dt>
+        </div>
+        <div className="is-synthetic">
+          <dd>{fmtNumber(bySynthetic, 0)}</dd>
+          <dt>
+            {t.control.sim.counters.confirmedSynthetic} <SyntheticTag />
+          </dt>
         </div>
         {state.scenario === "outage" ? (
           <div>

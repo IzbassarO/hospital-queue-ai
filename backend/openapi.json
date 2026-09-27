@@ -3009,6 +3009,48 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HealthPublications": {
+        "description": "null = nothing of that kind is published yet; the UI then shows that the published model is unavailable.",
+        "properties": {
+          "model_assurance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicationRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "operational_intelligence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicationRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "review_evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicationRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "operational_intelligence",
+          "review_evidence",
+          "model_assurance"
+        ],
+        "title": "HealthPublications",
+        "type": "object"
+      },
       "HealthResponse": {
         "properties": {
           "database": {
@@ -3040,6 +3082,10 @@
             ],
             "title": "Marts Built At"
           },
+          "publications": {
+            "$ref": "#/components/schemas/HealthPublications",
+            "description": "active publications the control centre serves; all three null on a database without them"
+          },
           "status": {
             "description": "ok | degraded",
             "title": "Status",
@@ -3050,7 +3096,8 @@
           "status",
           "database",
           "marts_as_of_date",
-          "marts_built_at"
+          "marts_built_at",
+          "publications"
         ],
         "title": "HealthResponse",
         "type": "object"
@@ -5157,6 +5204,33 @@
         "title": "ProfileItem",
         "type": "object"
       },
+      "PublicationRef": {
+        "description": "The active publication of one read model: enough for a stranger to tell which evidence the product serves.",
+        "properties": {
+          "identity_sha256": {
+            "description": "canonical identity of the published bundle, 64 hex characters",
+            "title": "Identity Sha256",
+            "type": "string"
+          },
+          "publication_id": {
+            "description": "publication_id of the read model (assurance_id for model assurance)",
+            "title": "Publication Id",
+            "type": "string"
+          },
+          "published_at": {
+            "format": "date-time",
+            "title": "Published At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "publication_id",
+          "identity_sha256",
+          "published_at"
+        ],
+        "title": "PublicationRef",
+        "type": "object"
+      },
       "RawQuantiles": {
         "additionalProperties": false,
         "properties": {
@@ -6815,6 +6889,18 @@
             ],
             "title": "Profile Code"
           },
+          "publication_identity_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "identity of the operational-intelligence publication that was active when the decision was written (server-side, GET /operational-intelligence/overview -> snapshot.publication_identity_sha256); null when nothing was published",
+            "title": "Publication Identity Sha256"
+          },
           "region_code": {
             "anyOf": [
               {
@@ -6872,7 +6958,8 @@
           "action",
           "id",
           "created_at",
-          "api_key_label"
+          "api_key_label",
+          "publication_identity_sha256"
         ],
         "title": "SpecialistDecision",
         "type": "object"
@@ -8308,7 +8395,7 @@
     },
     "/api/v1/hospitals/{org_code}/profiles/{profile_code}/export": {
       "get": {
-        "description": "The hospital × profile card (status, KPIs, series, forecast, factors, recommendations, decisions) as a file.",
+        "description": "The hospital × profile card (status, KPIs, series, forecast, factors, historical-median alternatives,\ndecisions) as a file.",
         "operationId": "hospital_export_get",
         "parameters": [
           {
@@ -8418,7 +8505,8 @@
     },
     "/api/v1/hospitals/{org_code}/profiles/{profile_code}/recommendations": {
       "get": {
-        "description": "Rule-based v1: up to 3 alternative hospitals in the same region and profile.",
+        "deprecated": true,
+        "description": "Legacy rule-based comparison (v1, kept for the legacy card and its export): up to 3 other hospitals of the same\nregion and profile whose patients waited less over the last 28 days, by historical medians. An association, not\nan estimate of what redirecting a patient would change; the control centre does not use it. A person decides.",
         "operationId": "hospital_recommendations_get",
         "parameters": [
           {
@@ -8507,7 +8595,7 @@
             "ApiKeyAuth": []
           }
         ],
-        "summary": "Get Recommendations",
+        "summary": "Legacy: alternative hospitals by historical medians (not part of the control centre)",
         "tags": [
           "hospital"
         ]
@@ -9552,6 +9640,28 @@
                 }
               ],
               "title": "Support"
+            }
+          },
+          {
+            "description": "materiality_status of the stored signal: materiality_rule_not_triggered = the primary inbox; zero_baseline_low_volume = below the 1.0 expected count/day floor; all signals if omitted",
+            "in": "query",
+            "name": "materiality",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "materiality_rule_not_triggered",
+                    "zero_baseline_low_volume"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "materiality_status of the stored signal: materiality_rule_not_triggered = the primary inbox; zero_baseline_low_volume = below the 1.0 expected count/day floor; all signals if omitted",
+              "title": "Materiality"
             }
           },
           {

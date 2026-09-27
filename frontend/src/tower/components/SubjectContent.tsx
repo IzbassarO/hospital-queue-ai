@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { getLang, t } from "../../i18n";
-import { fmtDate, fmtNumber } from "../../lib/format";
+import { flowDecimals, fmtDate, fmtNumber } from "../../lib/format";
 import { Facts, SeverityPill } from "../../demo/primitives";
 import { useAssistantStatus } from "../../api/specialist";
 import { askAssistant } from "../ai/assistant";
@@ -21,8 +21,12 @@ import {
   patientVerdict,
   type VerdictReading,
 } from "../sim/verdict";
-import { daysBetween, flowDecimals } from "../synthetic";
+import { daysBetween } from "../../lib/dates";
 import type { SubjectView } from "../subject";
+import { SIMULATION } from "../synthetic";
+
+/** The server round trip of one decision: shown as pending, recorded, or failed with a retry. */
+type SaveState = "idle" | "pending" | "saved" | "error";
 
 export function SubjectContent({
   view,
@@ -34,8 +38,16 @@ export function SubjectContent({
 }: {
   view: SubjectView;
   state: SimState;
-  onDecideAlert: (id: string, action: DecisionAction, comment: string) => void;
-  onDecidePatient: (id: string, action: PatientAction, comment: string) => void;
+  onDecideAlert: (
+    id: string,
+    action: DecisionAction,
+    comment: string,
+  ) => Promise<void>;
+  onDecidePatient: (
+    id: string,
+    action: PatientAction,
+    comment: string,
+  ) => Promise<void>;
   onClose?: () => void;
   compact?: boolean;
 }) {
@@ -59,7 +71,10 @@ export function SubjectContent({
       ? !alert.decision && alert.phase !== "not_confirmed"
       : false;
   const [comment, setComment] = useState("");
-  const [saved, setSaved] = useState(false);
+  const [save, setSave] = useState<SaveState>("idle");
+  const [lastAction, setLastAction] = useState<
+    DecisionAction | PatientAction | null
+  >(null);
 
   const facts = alert
     ? [
@@ -85,7 +100,12 @@ export function SubjectContent({
             alert.lower !== null && alert.upper !== null
               ? `${fmtNumber(alert.lower, flowDecimals(alert.lower))} – ${fmtNumber(alert.upper, flowDecimals(alert.upper))}`
               : t.tower.noInterval.split(".")[0],
-          hint: alert.coverage ?? undefined,
+          hint: alert.coverage
+            ? t.control.alerts.facts.coverageHint(
+                alert.coverage,
+                alert.coverageFinal ?? null,
+              )
+            : undefined,
         },
         {
           label: t.control.alerts.facts.support,
@@ -100,12 +120,21 @@ export function SubjectContent({
               )
             : "—",
         },
-        ...(alert.observed !== null
+        ...(alert.observedFlow !== null
           ? [
               {
-                label: t.control.alerts.facts.observed,
-                value: fmtNumber(alert.observed, flowDecimals(alert.observed)),
-                hint: t.control.alerts.facts.perDay,
+                label:
+                  alert.observedSource === "fact"
+                    ? t.control.alerts.facts.observedFact
+                    : t.control.alerts.facts.observedSynthetic,
+                value: fmtNumber(
+                  alert.observedFlow,
+                  flowDecimals(alert.observedFlow),
+                ),
+                hint:
+                  alert.observedSource === "fact"
+                    ? t.control.alerts.facts.observedFactHint
+                    : t.control.alerts.facts.observedSyntheticHint,
               },
             ]
           : []),
@@ -128,6 +157,15 @@ export function SubjectContent({
                 label: t.control.alerts.facts.queueNow,
                 value: fmtNumber(alert.queueNow, 0),
                 hint: t.control.alerts.facts.queueNowHint,
+              },
+            ]
+          : []),
+        ...(alert.backlogDays != null
+          ? [
+              {
+                label: t.control.alerts.facts.backlog,
+                value: t.control.queue.days(Math.round(alert.backlogDays)),
+                hint: t.control.alerts.facts.backlogHint,
               },
             ]
           : []),
@@ -176,13 +214,34 @@ export function SubjectContent({
       ]
     : [];
 
-  const decide = (action: DecisionAction | PatientAction) => {
-    if (patient)
-      onDecidePatient(patient.id, action as PatientAction, comment.trim());
-    else if (alert)
-      onDecideAlert(alert.id, action as DecisionAction, comment.trim());
-    setSaved(true);
+  // The simulation takes the decision at once; "recorded" waits for the server. A retry re-sends the same row
+  // (the simulation ignores a second decision, the server key is idempotent).
+  const decide = async (action: DecisionAction | PatientAction) => {
+    setLastAction(action);
+    setSave("pending");
+    try {
+      if (patient)
+        await onDecidePatient(
+          patient.id,
+          action as PatientAction,
+          comment.trim(),
+        );
+      else if (alert)
+        await onDecideAlert(alert.id, action as DecisionAction, comment.trim());
+      setSave("saved");
+    } catch {
+      setSave("error");
+    }
   };
+  const decidedLabel = decided
+    ? patient
+      ? t.control.patientDecision.actions[
+          (decided as { action: PatientAction }).action
+        ].label
+      : t.control.decision.actions[
+          (decided as { action: DecisionAction }).action
+        ].label
+    : null;
 
   return (
     <div className={`subject ${compact ? "is-compact" : ""}`}>
@@ -295,12 +354,25 @@ export function SubjectContent({
       ) : null}
 
       <footer className="subject-actions">
-        {saved || decided ? (
+        {save === "pending" ? (
+          <p className="subject-recorded is-pending" role="status">
+            {t.control.decision.saving}
+          </p>
+        ) : save === "error" ? (
+          <div className="subject-save-error" role="alert">
+            <p>{t.control.decision.saveFailed}</p>
+            <button
+              type="button"
+              className="btn-ghost btn-sm"
+              onClick={() => lastAction && void decide(lastAction)}
+            >
+              {t.control.decision.retry}
+            </button>
+          </div>
+        ) : save === "saved" || decided ? (
           <p className="subject-recorded" role="status">
             {t.control.decision.recorded}
-            {decided
-              ? `: ${patient ? t.control.patientDecision.actions[(decided as { action: PatientAction }).action].label : t.control.decision.actions[(decided as { action: DecisionAction }).action].label}`
-              : ""}
+            {decidedLabel ? `: ${decidedLabel}` : ""}
           </p>
         ) : canDecide ? (
           <>
@@ -317,7 +389,12 @@ export function SubjectContent({
               <button
                 type="button"
                 className="btn-accent"
-                onClick={() => decide(patient ? "confirm" : "accept")}
+                title={
+                  patient
+                    ? t.control.patientDecision.actions.confirm.body
+                    : t.control.decision.actions.accept.body
+                }
+                onClick={() => void decide(patient ? "confirm" : "accept")}
               >
                 {patient
                   ? t.control.patientDecision.actions.confirm.label
@@ -326,7 +403,12 @@ export function SubjectContent({
               <button
                 type="button"
                 className="btn-danger"
-                onClick={() => decide("decline")}
+                title={
+                  patient
+                    ? t.control.patientDecision.actions.decline.body
+                    : t.control.decision.actions.decline.body
+                }
+                onClick={() => void decide("decline")}
               >
                 {patient
                   ? t.control.patientDecision.actions.decline.label
@@ -335,7 +417,14 @@ export function SubjectContent({
               <button
                 type="button"
                 className="btn-ghost"
-                onClick={() => decide(patient ? "postpone" : "clarify")}
+                title={
+                  patient
+                    ? t.control.patientDecision.actions.postpone.body(
+                        SIMULATION.postponeDays,
+                      )
+                    : t.control.decision.actions.clarify.body
+                }
+                onClick={() => void decide(patient ? "postpone" : "clarify")}
               >
                 {patient
                   ? t.control.patientDecision.actions.postpone.label
@@ -349,9 +438,7 @@ export function SubjectContent({
             </div>
             <p className="decision-hint">
               {patient
-                ? t.control.patientDecision.actions[
-                    comment ? "confirm" : "confirm"
-                  ].body
+                ? `${t.control.patientDecision.actions.confirm.body} ${t.control.patientDecision.actions.postpone.body(SIMULATION.postponeDays)}`
                 : t.control.decision.lead}
             </p>
           </>

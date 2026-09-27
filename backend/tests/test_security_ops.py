@@ -2,12 +2,17 @@
 exports, and the API-gap fields (/config, /me, alert filters)."""
 
 import io
+import re
 import uuid
 
+import anyio
 import httpx
 import pytest
 from openpyxl import load_workbook
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.platypus import Paragraph
 
+from app.services import export
 from conftest import API, KEY_LABEL_PREFIX, TEST_ACTOR_PREFIX, auth
 
 pytestmark = pytest.mark.anyio
@@ -103,26 +108,45 @@ async def test_admin_creates_lists_and_revokes_keys(anon_client, api_keys):
 
 
 # ------------------------------------------------------------------------------------------ audit trail
+async def access_log_page(client, api_keys, ready, **params) -> dict:
+    """The access log settles a moment after the response: rows are committed in batches (app/core/access_log.py)."""
+    attempts = 20
+    for attempt in range(attempts):
+        page = await client.get(f"{API}/admin/access-log", headers=auth(api_keys["admin"]), params=params)
+        assert page.status_code == 200, page.text
+        body = page.json()
+        if ready(body["items"]) or attempt == attempts - 1:
+            return body
+        await anyio.sleep(0.25)
+    raise AssertionError("unreachable")
+
+
 async def test_access_log_records_requests(anon_client, api_keys, high_load):
-    marker = f"/regions/{high_load['region_code']}"
+    marker = f"{API}/regions/{high_load['region_code']}"
     viewer_label = f"{KEY_LABEL_PREFIX}viewer"
-    assert (await anon_client.get(f"{API}{marker}", headers=auth(api_keys["viewer"]))).status_code == 200
+    assert (await anon_client.get(marker, headers=auth(api_keys["viewer"]))).status_code == 200
     assert (await anon_client.get(f"{API}/overview")).status_code == 401
 
-    log = await anon_client.get(
-        f"{API}/admin/access-log", headers=auth(api_keys["admin"]), params={"key_label": viewer_label, "limit": 50}
+    page = await access_log_page(
+        anon_client,
+        api_keys,
+        ready=lambda items: any(r["path"] == marker for r in items),
+        key_label=viewer_label,
+        limit=50,
     )
-    assert log.status_code == 200
-    page = log.json()
     assert set(page) == {"items", "total", "limit", "offset"}
-    row = next(r for r in page["items"] if r["path"] == f"{API}{marker}")
+    row = next(r for r in page["items"] if r["path"] == marker)
     assert row["role"] == "viewer" and row["method"] == "GET" and row["status"] == 200
     assert row["latency_ms"] > 0 and row["ts"] and row["client_ip"]
 
-    unauthenticated = await anon_client.get(
-        f"{API}/admin/access-log", headers=auth(api_keys["admin"]), params={"status": 401, "limit": 20}
+    unauthenticated = await access_log_page(
+        anon_client,
+        api_keys,
+        ready=lambda items: any(r["key_label"] is None and r["role"] is None for r in items),
+        status=401,
+        limit=20,
     )
-    assert any(r["key_label"] is None and r["role"] is None for r in unauthenticated.json()["items"])
+    assert any(r["key_label"] is None and r["role"] is None for r in unauthenticated["items"])
 
 
 # ------------------------------------------------------------------------------------------ decisions
@@ -184,7 +208,14 @@ async def test_export_xlsx(client, high_load):
     assert response.headers["content-disposition"].startswith("attachment;")
     assert f"{org}_{profile}" in response.headers["content-disposition"]
     workbook = load_workbook(io.BytesIO(response.content), read_only=True)
-    assert workbook.sheetnames == ["Карточка", "Ряд по дням", "Прогноз 14 дней", "Почему", "Рекомендации", "Решения"]
+    assert workbook.sheetnames == [
+        "Карточка",
+        "Ряд по дням",
+        "Прогноз 14 дней",
+        "Почему",
+        export.ALTERNATIVES_SHEET,
+        "Решения",
+    ]
     card = (await client.get(f"{API}/hospitals/{org}/profiles/{profile}")).json()
     series_rows = list(workbook["Ряд по дням"].iter_rows(min_row=2, values_only=True))
     assert len(series_rows) == len(card["series"])
@@ -203,6 +234,62 @@ async def test_export_pdf(client, high_load):
         await client.get(f"{API}/hospitals/{org}/profiles/{profile}/export", params={"format": "docx"})
     ).status_code == 422
     assert (await client.get(f"{API}/hospitals/NOPE/profiles/{profile}/export")).status_code == 404
+
+
+HOSTILE_COMMENT = '=HYPERLINK("http://evil.example/x";"открыть") <para><b>незакрытый тег & амперсанд'
+
+
+async def test_export_neutralises_hostile_text(client, high_load, created_decision_ids):
+    """A comment that a spreadsheet would run as a formula or reportlab would parse as markup is exported as text."""
+    org, profile = high_load["org_code"], high_load["profile_code"]
+    actor = f"{TEST_ACTOR_PREFIX}hostile <b>{uuid.uuid4().hex[:6]}"
+    payload = {
+        "region_code": high_load["region_code"],
+        "org_code": org,
+        "profile_code": profile,
+        "action": "defer",
+        "actor": actor,
+        "comment": HOSTILE_COMMENT,
+    }
+    created = await client.post(f"{API}/decisions", json=payload)
+    assert created.status_code == 201, created.text
+    created_decision_ids.append(created.json()["id"])
+
+    xlsx = await client.get(f"{API}/hospitals/{org}/profiles/{profile}/export", params={"format": "xlsx"})
+    assert xlsx.status_code == 200, xlsx.text
+    rows = list(load_workbook(io.BytesIO(xlsx.content), read_only=True)["Решения"].iter_rows(values_only=True))
+    row = next(r for r in rows if r[3] == actor)
+    assert row[4] == "'" + HOSTILE_COMMENT
+    assert not any(isinstance(c, str) and c.startswith(("=", "+", "-", "@")) for r in rows for c in r)
+
+    pdf = await client.get(f"{API}/hospitals/{org}/profiles/{profile}/export", params={"format": "pdf"})
+    assert pdf.status_code == 200, pdf.text
+    assert pdf.content.startswith(b"%PDF-")
+
+
+def test_export_guards_formula_and_markup():
+    assert [export._cell(v) for v in ("=1+1", "+1", "-1", "@x", "\tx", "\rx")] == [
+        "'=1+1",
+        "'+1",
+        "'-1",
+        "'@x",
+        "'\tx",
+        "'\rx",
+    ]
+    assert export._cell("текст") == "текст" and export._cell(-1.5) == -1.5 and export._cell(None) is None
+    style = ParagraphStyle("test")
+    with pytest.raises(ValueError):
+        Paragraph("<b>unclosed", style)
+    assert export._p("<b>unclosed", style).getPlainText() == "<b>unclosed"
+
+
+async def test_request_id_is_echoed_or_generated(anon_client):
+    generated = await anon_client.get(f"{API}/health")
+    assert re.fullmatch(r"[0-9a-f]{32}", generated.headers["x-request-id"])
+    echoed = await anon_client.get(f"{API}/health", headers={"X-Request-ID": "erp-2026-09-27:42"})
+    assert echoed.headers["x-request-id"] == "erp-2026-09-27:42"
+    rejected = await anon_client.get(f"{API}/health", headers={"X-Request-ID": "bad id <script>"})
+    assert re.fullmatch(r"[0-9a-f]{32}", rejected.headers["x-request-id"])
 
 
 async def test_viewer_may_export(anon_client, api_keys, high_load):

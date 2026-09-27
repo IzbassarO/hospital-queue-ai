@@ -8,7 +8,6 @@ ml/
     ingest/       raw data → Parquet → Postgres
     features/     referral features (A, B), series panels and horizon rows (C)
     models/       wait_time (A), refusal_risk (B), load_forecast (C)
-    causal/       placeholder
     evaluation/   temporal split, metrics, backtest, report
     explain/      SHAP explanations with Russian templates
     registry/     run manifests, checkpoints and checksummed versioned artifacts

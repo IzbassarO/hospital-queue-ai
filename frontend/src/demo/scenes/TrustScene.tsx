@@ -1,5 +1,6 @@
 /** Scene 5 — TRUST: six properties of the accepted system; identities behind technical provenance. */
 import { Link } from "react-router-dom";
+import { calibrationCoverage } from "../../api/operational-adapters";
 import { useAssurance, useOperationalOverview } from "../../api/operational";
 import { t } from "../../i18n";
 import { fmtDate } from "../../lib/format";
@@ -58,10 +59,10 @@ export function TrustScene() {
               key: "calibration",
               title: t.demo.trust.indicators.calibration.title,
               body: calibration
-                ? t.demo.trust.indicators.calibration.body(
-                    calibration.validation,
-                    calibration.final,
-                  )
+                ? `${t.demo.trust.indicators.calibration.body(
+                    percent0(calibration.validation),
+                    percent0(calibration.final),
+                  )} ${t.demo.trust.indicators.calibration.byDateClass}`
                 : t.demo.trust.indicators.calibration.bodyUnknown,
               icon: <GlyphSignal size={18} />,
             },
@@ -181,17 +182,4 @@ export function TrustScene() {
       </EvidenceState>
     </Scene>
   );
-}
-
-function calibrationCoverage(
-  evidence: Record<string, unknown> | undefined,
-): { validation: string; final: string } | null {
-  const nested = evidence?.calibration_evidence;
-  if (typeof nested !== "object" || nested === null) return null;
-  const v = (nested as Record<string, unknown>)
-    .hospital_registrations_validation_coverage;
-  const f = (nested as Record<string, unknown>)
-    .hospital_registrations_final_coverage;
-  if (typeof v !== "number" || typeof f !== "number") return null;
-  return { validation: percent0(v), final: percent0(f) };
 }

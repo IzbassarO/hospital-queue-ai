@@ -6,32 +6,72 @@ from sqlalchemy.orm import Session
 
 from app.core.security import ROLE_LABELS, Principal
 from app.db.models import DimOrganization, DimProfile, DimRegion, MartBuildInfo, ModelRegistry
+from app.repositories import model_assurance as assurance_repository
+from app.repositories import operational_intelligence as operational_repository
+from app.repositories import review_evidence as review_repository
 from app.schemas.catalog import (
     ConfigResponse,
     DictionariesResponse,
     DictionaryItem,
+    HealthPublications,
     HealthResponse,
     MeResponse,
     ModelInfo,
     OrganizationItem,
     ProfileItem,
+    PublicationRef,
 )
 from app.services.common import build_info, rnd
 
 MODEL_ORDER = ("wait_time", "refusal_risk", "load_forecast")
 
 
+def _publications(session: Session) -> HealthPublications:
+    operational = operational_repository.current_snapshot(session)
+    review = review_repository.current_snapshot(session)
+    assurance = assurance_repository.current_snapshot(session)
+    return HealthPublications(
+        operational_intelligence=PublicationRef(
+            publication_id=operational.publication_id,
+            identity_sha256=operational.publication_identity_sha256,
+            published_at=operational.published_at,
+        )
+        if operational
+        else None,
+        review_evidence=PublicationRef(
+            publication_id=review.publication_id,
+            identity_sha256=review.publication_identity_sha256,
+            published_at=review.published_at,
+        )
+        if review
+        else None,
+        model_assurance=PublicationRef(
+            publication_id=assurance.assurance_id,
+            identity_sha256=assurance.assurance_identity_sha256,
+            published_at=assurance.published_at,
+        )
+        if assurance
+        else None,
+    )
+
+
 def health(session: Session) -> HealthResponse:
+    """Database reachability, mart freshness and the active publications: "ok" alone does not mean the product is
+    usable, so a stranger can see here which evidence (if any) the control centre serves."""
+    empty = HealthPublications(operational_intelligence=None, review_evidence=None, model_assurance=None)
     try:
         session.execute(text("SELECT 1"))
     except SQLAlchemyError:
-        return HealthResponse(status="degraded", database="unavailable", marts_as_of_date=None, marts_built_at=None)
+        return HealthResponse(
+            status="degraded", database="unavailable", marts_as_of_date=None, marts_built_at=None, publications=empty
+        )
     info = session.get(MartBuildInfo, 1)
     return HealthResponse(
         status="ok" if info else "degraded",
         database="ok",
         marts_as_of_date=info.as_of_date if info else None,
         marts_built_at=info.built_at if info else None,
+        publications=_publications(session),
     )
 
 

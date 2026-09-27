@@ -20,8 +20,16 @@ export function SubjectDialog({
 }: {
   view: SubjectView;
   state: SimState;
-  onDecideAlert: (id: string, action: DecisionAction, comment: string) => void;
-  onDecidePatient: (id: string, action: PatientAction, comment: string) => void;
+  onDecideAlert: (
+    id: string,
+    action: DecisionAction,
+    comment: string,
+  ) => Promise<void>;
+  onDecidePatient: (
+    id: string,
+    action: PatientAction,
+    comment: string,
+  ) => Promise<void>;
   onClose: () => void;
 }) {
   const panel = useRef<HTMLDivElement>(null);

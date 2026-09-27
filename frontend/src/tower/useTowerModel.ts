@@ -13,7 +13,10 @@ const decisionKey = (
   action: string,
 ) => `ui-${origin}-${kind}-${id}-${action}`.replace(/[^A-Za-z0-9._:-]/g, "_");
 
-/** Store a decision on the server (fire and forget: the simulation already holds it). */
+/**
+ * Store a decision on the server. The simulation already holds it; the returned promise tells the view whether
+ * the row was written, so "recorded" is only shown after the server confirmed.
+ */
 export function persistDecision(
   model: TowerModel,
   runId: string,
@@ -22,14 +25,14 @@ export function persistDecision(
   action: DecisionAction | PatientAction,
   comment: string,
   simDay: number,
-) {
+): Promise<void> {
   const alert = model.alerts.find((a) =>
     kind === "alert" ? a.id === id : false,
   );
   const patient =
     kind === "patient" ? model.patients.find((p) => p.id === id) : undefined;
   const org = alert?.org ?? patient?.org ?? null;
-  void specialistApi
+  return specialistApi
     .createDecision({
       origin: model.origin,
       run_id: runId,
@@ -44,7 +47,7 @@ export function persistDecision(
       actor: null,
       idempotency_key: decisionKey(runId, kind, id, action),
     })
-    .catch(() => undefined);
+    .then(() => undefined);
 }
 
 /** Replay the decisions of the current run stored on the server into the simulation (once per load / run). */
@@ -104,7 +107,15 @@ export function useTowerSimulation(model: TowerModel, speed = 1) {
   const decide = useCallback(
     (alertId: string, action: DecisionAction, comment: string) => {
       sim.decide(alertId, action, comment);
-      persistDecision(model, runId, "alert", alertId, action, comment, day);
+      return persistDecision(
+        model,
+        runId,
+        "alert",
+        alertId,
+        action,
+        comment,
+        day,
+      );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [model, runId, day, sim.decide],
@@ -112,7 +123,15 @@ export function useTowerSimulation(model: TowerModel, speed = 1) {
   const decidePatient = useCallback(
     (patientId: string, action: PatientAction, comment: string) => {
       sim.decidePatient(patientId, action, comment);
-      persistDecision(model, runId, "patient", patientId, action, comment, day);
+      return persistDecision(
+        model,
+        runId,
+        "patient",
+        patientId,
+        action,
+        comment,
+        day,
+      );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [model, runId, day, sim.decidePatient],

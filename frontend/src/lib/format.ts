@@ -71,6 +71,10 @@ export function fmtIndex(value: Num): string {
   return fmtNumber(value, 1);
 }
 
+/** Small daily flows need two decimals; anything ≥ 1 reads fine with one. */
+export const flowDecimals = (v: number | null): number =>
+  v !== null && Math.abs(v) < 1 ? 2 : 1;
+
 /** "2025-03-31" → "31.03.2025" (string slicing: no time-zone shifts) */
 export function fmtDate(iso: string | null | undefined): string {
   if (!iso) return t.common.noData;

@@ -1,0 +1,95 @@
+# Production overlay for docker-compose.yml. Same images and the same schema, different exposure and limits:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --wait
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile demo run --rm seed
+#
+# What changes versus the demo topology (docs/operations.md):
+#   - postgres and backend lose their host ports (`expose` only): they are reachable on the compose network, and the
+#     UI container is the single entry point, to be published behind the operator's TLS terminator;
+#   - uvicorn runs two workers and trusts X-Forwarded-* only from FORWARDED_ALLOW_IPS (the proxy's network);
+#   - every service gets CPU/memory limits and a bounded json-file log, so one container cannot fill the disk;
+#   - OpenAPI UI off (DOCS_ENABLED=false): the contract ships as backend/openapi.json.
+# `!reset` removes the demo host-port mapping instead of adding to it (Compose merges list fields).
+services:
+  postgres:
+    ports: !reset []
+    expose:
+      - "5432"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4g
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  backend:
+    ports: !reset []
+    expose:
+      - "8000"
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      # /docs, /redoc and /openapi.json are closed in production (docs/security.md §3)
+      DOCS_ENABLED: "false"
+    # Two workers behind the proxy. FORWARDED_ALLOW_IPS is the network of whatever terminates TLS in front of the
+    # UI container (default: the Docker bridge range, i.e. the frontend container); with it, the client address in
+    # the access log is the real caller and not the proxy. Migrations still run once before the workers start.
+    command:
+      - sh
+      - -c
+      - alembic upgrade head && python -m app.cli seed-demo-key && exec uvicorn app.main:app --host 0.0.0.0
+        --port 8000 --workers 2 --proxy-headers --forwarded-allow-ips=${FORWARDED_ALLOW_IPS:-172.16.0.0/12}
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2g
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  frontend:
+    # The only published port. In production it faces the reverse proxy that terminates TLS, not the world, so the
+    # default binding here is the loopback interface; set UI_BIND to the proxy-facing address when the proxy runs
+    # on another host (docs/security.md §4).
+    ports:
+      - "${UI_BIND:-127.0.0.1}:${FRONTEND_PORT:-3000}:80"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256m
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # One-shot, and deliberately without a memory limit: loading the publish bundles holds one of them in memory
+  # (docs/integration.md), so a low ceiling would have the loader killed half-way through a fresh install.
+  seed:
+    restart: "no"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  pipelines:
+    restart: "no"
+    deploy:
+      resources:
+        limits:
+          cpus: "6.0"
+          memory: 16g
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"

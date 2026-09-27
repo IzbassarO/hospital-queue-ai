@@ -2,8 +2,8 @@
 import type { demo as demoRu } from "./demo";
 
 export const demoKk: typeof demoRu = {
-  brand: "Hospital Flow Intelligence",
-  brandKicker: "Қазақстан · госпитализация ағындарының интеллекті",
+  brand: "Aqyl Kezek",
+  brandKicker: "Hospital Flow Intelligence",
   tagline: "Қабылданған дәлелдерге негізделген маман шешімдерін қолдау",
   openOperations: "Басқару орталығы",
   openGuide: "Жүйе бойынша нұсқаулық",
@@ -133,7 +133,10 @@ export const demoKk: typeof demoRu = {
     central: "Орталық болжам",
     perDay: "күніне тіркеу",
     interval: "Калибрленген аралық",
-    intervalHint: (coverage: string) => `номиналды қамту ${coverage}`,
+    intervalHint: (coverage: string, measured: string | null = null) =>
+      measured
+        ? `номиналды қамту ${coverage} · соңғы тесте ${measured}`
+        : `номиналды қамту ${coverage}`,
     reference: "Ағынның тарихи бағдары",
     referenceHint: "қатар тарихы бойынша жоғары ағын шегі",
     rank: "Детерминирленген ранг",
@@ -177,9 +180,11 @@ export const demoKk: typeof demoRu = {
         label: "Деректермен қолдау",
         value: "қатар деректері болжамды қолдамайды",
       },
-      calibrated: (coverage: string) => ({
+      calibrated: (coverage: string, measured: string | null = null) => ({
         label: "Аралық",
-        value: `калибрленген, номиналды қамту ${coverage}`,
+        value: measured
+          ? `калибрленген, номиналды қамту ${coverage}, соңғы тесте ${measured}`
+          : `калибрленген, номиналды қамту ${coverage}`,
       }),
       notCalibrated: {
         label: "Аралық",
@@ -324,6 +329,8 @@ export const demoKk: typeof demoRu = {
         title: "Калибрленген белгісіздік",
         body: (validation: string, final: string) =>
           `Номиналды қамтуы 80% аралықтар: валидацияда ${validation}, соңғы тесте ${final}. Алшақтық жасырылмай, көрсетілген.`,
+        byDateClass:
+          "Күн сыныптары бойынша қамту әртүрлі: жұмыс күндері 75,1 %, мерекелерде 66,7 %, демалыс күндері 59,7 %.",
         bodyUnknown:
           "Номиналды қамтуы 80% аралықтар; нақты қамту бөлек жарияланады.",
       },

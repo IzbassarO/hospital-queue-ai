@@ -1,0 +1,1901 @@
+{
+  "assurance_id": "model-assurance-6b5-v1",
+  "assurance_identity_sha256": "f504defefdd87bcbb01c670b68469ba4c0e016be7f40ca89452baf69b73f39f5",
+  "capabilities": [
+    {
+      "acceptance_verdict": "ACCEPT_WITH_P2",
+      "allowed_claims": [
+        "Retrospective mathematical alternatives were exactly derived and fully scenario-verified for human review."
+      ],
+      "capability_id": "decision_alternatives",
+      "display_name": "Constrained Decision Alternatives Engine v1",
+      "evidence": {
+        "evaluation_population": "115 donor units and 460 policy-budget alternative sets.",
+        "key_metrics": {
+          "full_verification_failures": 0,
+          "full_verification_success_rate": 1.0,
+          "primary_direct_complete_rate_budget_0_25": 0.3625,
+          "primary_direct_complete_rate_budget_1_00": 0.575,
+          "receiver_worsening_count": 0
+        },
+        "known_findings": {
+          "P0": [],
+          "P1": [],
+          "P2": [
+            "runtime approximately 6.7 hours",
+            "peak RSS slightly above nominal 2 GiB",
+            "bounded shortlist drops"
+          ]
+        },
+        "target": "registrations",
+        "temporal_protocol": "Retrospective EVALUATION at the three validation origins and final-test origin, horizons 1-14."
+      },
+      "evidence_status": "ACCEPTED",
+      "forbidden_claims": [
+        "AI recommender",
+        "patient router",
+        "capacity optimizer",
+        "physical feasibility",
+        "causal benefit"
+      ],
+      "freshness": {
+        "reason": "Static accepted evidence has no approved production refresh SLA or runtime publication state.",
+        "state": "UNKNOWN"
+      },
+      "governance": {
+        "autonomous_action": false,
+        "capacity_checked": false,
+        "causal_effect_claimed": false,
+        "human_review_required": true,
+        "physical_feasibility_status": "NOT_VALIDATED",
+        "promotion_status": "NO_PROMOTION",
+        "serving_claim": false
+      },
+      "identities": {
+        "artifact_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "4c7924e1a849f9d9396f8ea0443d918ab595aa64f1e72d5ffae0a76a5cbe1a4a"
+        },
+        "calibration_identity": {
+          "reason": "calibration_identity does not apply to capability decision_alternatives.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "code_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "6650c937eca290db606c1e0adf667e3022d82d09e0b2fa8794f0dbb89c7894b8"
+        },
+        "config_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "ad63b08972a6e3b2f5320bc74d68ebc216e20f0b05beb61588f69ada04c19523"
+        },
+        "dataset_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "49d7e69546b0dee53c89fa23964edfa40b823aa9829a972414f28dad74bd7dc0"
+        },
+        "decision_alternative_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "constrained-decision-alternatives-v1"
+        },
+        "estimand_id": {
+          "reason": "estimand_id does not apply to capability decision_alternatives.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "hierarchy_identity": {
+          "reason": "hierarchy_identity does not apply to capability decision_alternatives.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "model_identity": {
+          "reason": "model_identity does not apply to capability decision_alternatives.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "pressure_provider_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "historical_flow_proxy_v1"
+        },
+        "prioritization_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "signals-inbox-v1"
+        },
+        "run_id": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "decision-alternatives-6b4-real-v3"
+        },
+        "scenario_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "forecast-stress-test-v1"
+        },
+        "scientific_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "fb7410fa230d4c252c58cbbe98e4ccfbe45102800d5422ba45f8ce79d788a7a8"
+        }
+      },
+      "limitations": [
+        "Policy budgets are not capacity",
+        "physical feasibility is unknown",
+        "outputs are retrospective."
+      ],
+      "product_consumption_status": "EVALUATION_ONLY",
+      "run_manifest": "artifacts/runs/decision-alternatives-6b4-real-v3/run.json",
+      "source_lineage": [
+        "docs/project-evidence-index.md#14-constrained-decision-alternatives-engine-v1",
+        "docs/decision-alternatives-6b4.md",
+        "artifacts/runs/decision-alternatives-6b4-real-v3/run.json"
+      ],
+      "support": {
+        "range_semantics": [
+          "COMPLETE",
+          "RANGE_LIMITED"
+        ],
+        "support_semantics": [
+          "DIRECT_SUPPORTED",
+          "FALLBACK_LIMITED",
+          "UNSUPPORTED"
+        ]
+      }
+    },
+    {
+      "acceptance_verdict": "ACCEPT",
+      "allowed_claims": [
+        "Central forecasts are exactly coherent under bottom-up hospital aggregation."
+      ],
+      "capability_id": "flow_hierarchical_coherence",
+      "display_name": "Hierarchical central forecast coherence",
+      "evidence": {
+        "key_metrics": {
+          "child_rows_changed": 0,
+          "exact_central_coherence": true
+        },
+        "primary_fallback_semantics": "Hospital child rows unchanged; region and national central forecasts summed bottom-up; sparse hospital series use reviewed regional-share fallback.",
+        "target": [
+          "registrations",
+          "cohort_hospitalizations"
+        ],
+        "temporal_protocol": "Rolling-origin validation selected hierarchy; final test did not select it."
+      },
+      "evidence_status": "ACCEPTED",
+      "forbidden_claims": [
+        "probabilistic reconciliation",
+        "occupancy",
+        "capacity"
+      ],
+      "freshness": {
+        "reason": "Static accepted evidence has no approved production refresh SLA or runtime publication state.",
+        "state": "UNKNOWN"
+      },
+      "governance": {
+        "autonomous_action": false,
+        "capacity_checked": false,
+        "causal_effect_claimed": false,
+        "human_review_required": true,
+        "physical_feasibility_status": "NOT_APPLICABLE",
+        "promotion_status": "HUMAN_REVIEW_ONLY",
+        "serving_claim": false
+      },
+      "identities": {
+        "artifact_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "d3ef9c4072f18eea9e8cd6c49dd4e696ed6adde61eb5029b5f094b34c31b5d11"
+        },
+        "calibration_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "temporal-count-interval-calibration-v1-802a155f4e8c"
+        },
+        "code_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "3d95329d075e65759883d67600c2e7d716ebf3b90260eed64b85b1ccea9a6dff"
+        },
+        "config_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "55641e07bdfb1255717e1a211d66f745021e8ddfbd12cc8655bf91f8e14d0886"
+        },
+        "dataset_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "49d7e69546b0dee53c89fa23964edfa40b823aa9829a972414f28dad74bd7dc0"
+        },
+        "decision_alternative_identity": {
+          "reason": "decision_alternative_identity does not apply to capability flow_hierarchical_coherence.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "estimand_id": {
+          "reason": "estimand_id does not apply to capability flow_hierarchical_coherence.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "hierarchy_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "bottom_up_hospital"
+        },
+        "model_identity": {
+          "reason": "model_identity does not apply to capability flow_hierarchical_coherence.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "pressure_provider_identity": {
+          "reason": "pressure_provider_identity does not apply to capability flow_hierarchical_coherence.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "prioritization_identity": {
+          "reason": "prioritization_identity does not apply to capability flow_hierarchical_coherence.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "run_id": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "flow-hierarchy-6b2b3-real-v1"
+        },
+        "scenario_identity": {
+          "reason": "scenario_identity does not apply to capability flow_hierarchical_coherence.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "scientific_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "73b5514a97b7166e2423c5aaef797b65be358cb4e672e1e660410dba7d498406"
+        }
+      },
+      "limitations": [
+        "Central forecasts only; no probabilistic reconciliation claim",
+        "only 90 days of registration history."
+      ],
+      "product_consumption_status": "ELIGIBLE_AFTER_INGESTION",
+      "run_manifest": "artifacts/runs/flow-hierarchy-6b2b3-real-v1/run.json",
+      "source_lineage": [
+        "docs/flow-hierarchy-forecast.md",
+        "artifacts/runs/flow-hierarchy-6b2b3-real-v1/run.json"
+      ],
+      "support": {
+        "range_semantics": [
+          "COMPLETE",
+          "RANGE_LIMITED"
+        ],
+        "support_semantics": [
+          "DIRECT_SUPPORTED",
+          "FALLBACK_LIMITED",
+          "UNSUPPORTED"
+        ]
+      }
+    },
+    {
+      "acceptance_verdict": "ACCEPT",
+      "allowed_claims": [
+        "Daily historical-flow count forecasts for the accepted targets and horizons."
+      ],
+      "capability_id": "flow_point_forecast",
+      "display_name": "Daily hospital/profile flow point forecast",
+      "evidence": {
+        "key_metrics": {
+          "recent_seasonal_average_strongest_main_validation_cells": "5/6"
+        },
+        "selection": "Poisson LightGBM not promoted as a universal replacement.",
+        "target": [
+          "registrations",
+          "cohort_hospitalizations"
+        ],
+        "temporal_protocol": {
+          "final_test_origin": "2025-03-17",
+          "horizons": "1-14",
+          "random_split": false,
+          "validation_origins": [
+            "2025-02-16",
+            "2025-02-23",
+            "2025-03-02"
+          ]
+        }
+      },
+      "evidence_status": "ACCEPTED",
+      "forbidden_claims": [
+        "capacity forecast",
+        "admissions forecast for cohort_hospitalizations",
+        "universal ML superiority"
+      ],
+      "freshness": {
+        "reason": "Static accepted evidence has no approved production refresh SLA or runtime publication state.",
+        "state": "UNKNOWN"
+      },
+      "governance": {
+        "autonomous_action": false,
+        "capacity_checked": false,
+        "causal_effect_claimed": false,
+        "human_review_required": true,
+        "physical_feasibility_status": "NOT_APPLICABLE",
+        "promotion_status": "HUMAN_REVIEW_ONLY",
+        "serving_claim": false
+      },
+      "identities": {
+        "artifact_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "5acc3bed21302f6b5b9fe39b931a3ec188f40adff03d4ceda4cf63754a2660b5"
+        },
+        "calibration_identity": {
+          "reason": "calibration_identity does not apply to capability flow_point_forecast.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "code_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "afe7431dea5fb6fb903cc17df21296acd785ba8f76ae85ba7e46cc1eb238a450"
+        },
+        "config_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "829fb0891393e541c763b567522dae117e7ca10b9bf74ade89984e875a5dcbb4"
+        },
+        "dataset_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "49d7e69546b0dee53c89fa23964edfa40b823aa9829a972414f28dad74bd7dc0"
+        },
+        "decision_alternative_identity": {
+          "reason": "decision_alternative_identity does not apply to capability flow_point_forecast.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "estimand_id": {
+          "reason": "estimand_id does not apply to capability flow_point_forecast.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "hierarchy_identity": {
+          "reason": "hierarchy_identity does not apply to capability flow_point_forecast.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "model_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": [
+            "recent_seasonal_average",
+            "poisson_lightgbm"
+          ]
+        },
+        "pressure_provider_identity": {
+          "reason": "pressure_provider_identity does not apply to capability flow_point_forecast.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "prioritization_identity": {
+          "reason": "prioritization_identity does not apply to capability flow_point_forecast.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "run_id": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "flow-evidence-6b2b1-corrected-v3"
+        },
+        "scenario_identity": {
+          "reason": "scenario_identity does not apply to capability flow_point_forecast.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "scientific_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "e1c041f65998d0fd5ed5ead4c906b4caf821e29a1ca1ef06143f9e0eff005150"
+        }
+      },
+      "limitations": [
+        "Registration history is 90 days; cohort hospitalizations are not total admissions."
+      ],
+      "product_consumption_status": "ELIGIBLE_AFTER_INGESTION",
+      "run_manifest": "artifacts/runs/flow-evidence-6b2b1-corrected-v3/run.json",
+      "source_lineage": [
+        "docs/flow-forecast-evidence.md",
+        "artifacts/runs/flow-evidence-6b2b1-corrected-v3/run.json"
+      ],
+      "support": {
+        "range_semantics": [
+          "COMPLETE",
+          "RANGE_LIMITED"
+        ],
+        "support_semantics": [
+          "DIRECT_SUPPORTED",
+          "FALLBACK_LIMITED",
+          "UNSUPPORTED"
+        ]
+      }
+    },
+    {
+      "acceptance_verdict": "ACCEPT",
+      "allowed_claims": [
+        "Versioned p10/p50/p90 forecast evidence."
+      ],
+      "capability_id": "flow_quantile_forecast",
+      "display_name": "Flow p10/p50/p90 forecast",
+      "evidence": {
+        "key_metrics": {
+          "baseline_wis80": 0.6911631,
+          "challenger_wis80": 0.5665531,
+          "validation_registration_baseline_pinball": 0.3455815,
+          "validation_registration_challenger_pinball": 0.2832766
+        },
+        "selection": "Both retained; raw p10/p50/p90 are scientific evidence and remain unchanged.",
+        "target": [
+          "registrations",
+          "cohort_hospitalizations"
+        ],
+        "temporal_protocol": "Same rolling origins and 1-14 horizons as point forecast; final test excluded from selection/calibration."
+      },
+      "evidence_status": "ACCEPTED",
+      "forbidden_claims": [
+        "perfect 80 percent coverage",
+        "joint probabilistic hierarchy"
+      ],
+      "freshness": {
+        "reason": "Static accepted evidence has no approved production refresh SLA or runtime publication state.",
+        "state": "UNKNOWN"
+      },
+      "governance": {
+        "autonomous_action": false,
+        "capacity_checked": false,
+        "causal_effect_claimed": false,
+        "human_review_required": true,
+        "physical_feasibility_status": "NOT_APPLICABLE",
+        "promotion_status": "HUMAN_REVIEW_ONLY",
+        "serving_claim": false
+      },
+      "identities": {
+        "artifact_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "8685fec7d0e89534ec2ef91c662b38a81279daf8fe85c458787f8ad1fae51f40"
+        },
+        "calibration_identity": {
+          "reason": "calibration_identity does not apply to capability flow_quantile_forecast.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "code_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "e3c3bb7a4a491a0a8350f75dd3d3877fbdf0f28fec1e5d5c4609ef6fcefd4225"
+        },
+        "config_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "3d0e7a4652f811404ac33585c53d3f37fff4fababd063ef67554d98d4c6e0a74"
+        },
+        "dataset_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "49d7e69546b0dee53c89fa23964edfa40b823aa9829a972414f28dad74bd7dc0"
+        },
+        "decision_alternative_identity": {
+          "reason": "decision_alternative_identity does not apply to capability flow_quantile_forecast.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "estimand_id": {
+          "reason": "estimand_id does not apply to capability flow_quantile_forecast.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "hierarchy_identity": {
+          "reason": "hierarchy_identity does not apply to capability flow_quantile_forecast.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "model_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": [
+            "probabilistic_recent_seasonal_average",
+            "quantile_lightgbm"
+          ]
+        },
+        "pressure_provider_identity": {
+          "reason": "pressure_provider_identity does not apply to capability flow_quantile_forecast.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "prioritization_identity": {
+          "reason": "prioritization_identity does not apply to capability flow_quantile_forecast.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "run_id": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "flow-quantile-6b2b2-real-v1"
+        },
+        "scenario_identity": {
+          "reason": "scenario_identity does not apply to capability flow_quantile_forecast.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "scientific_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "f55dff24f115e23d2d0510dc230d0a0e89d4fa43d36daa55c078d00ffa44ddde"
+        }
+      },
+      "limitations": [
+        "Raw final-period interval coverage is below nominal 80 percent."
+      ],
+      "product_consumption_status": "ELIGIBLE_AFTER_INGESTION",
+      "run_manifest": "artifacts/runs/flow-quantile-6b2b2-real-v1/run.json",
+      "source_lineage": [
+        "docs/flow-quantile-forecast.md",
+        "artifacts/runs/flow-quantile-6b2b2-real-v1/run.json"
+      ],
+      "support": {
+        "range_semantics": [
+          "COMPLETE",
+          "RANGE_LIMITED"
+        ],
+        "support_semantics": [
+          "DIRECT_SUPPORTED",
+          "FALLBACK_LIMITED",
+          "UNSUPPORTED"
+        ]
+      }
+    },
+    {
+      "acceptance_verdict": "ACCEPT",
+      "allowed_claims": [
+        "Calibrated uncertainty range with explicit support and calibration version."
+      ],
+      "capability_id": "flow_temporal_calibration",
+      "display_name": "Temporal count interval calibration",
+      "evidence": {
+        "calibration_evidence": {
+          "hospital_registrations_final_coverage": 0.6992,
+          "hospital_registrations_validation_coverage": 0.8297,
+          "method": "conformal-style symmetric expansion"
+        },
+        "preservation": "Raw quantiles are unchanged and calibrated bounds are separately named.",
+        "target": [
+          "registrations",
+          "cohort_hospitalizations"
+        ],
+        "temporal_protocol": "Origin-legal residual evidence; final test excluded from parameter selection."
+      },
+      "evidence_status": "ACCEPTED",
+      "forbidden_claims": [
+        "perfect coverage",
+        "relabeled quantiles"
+      ],
+      "freshness": {
+        "reason": "Static accepted evidence has no approved production refresh SLA or runtime publication state.",
+        "state": "UNKNOWN"
+      },
+      "governance": {
+        "autonomous_action": false,
+        "capacity_checked": false,
+        "causal_effect_claimed": false,
+        "human_review_required": true,
+        "physical_feasibility_status": "NOT_APPLICABLE",
+        "promotion_status": "HUMAN_REVIEW_ONLY",
+        "serving_claim": false
+      },
+      "identities": {
+        "artifact_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "03a8157565a9fc6e9cf0c2f0d6b0337cbef363c9cfbcd54979dccd6905189b08"
+        },
+        "calibration_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "802a155f4e8c6dfc409b1a1cbdbbbcf64f243181b88070e8829fcc708bce162b"
+        },
+        "code_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "62d8723df49fbb6853119294bb06d15ee3f4ed4d3b70a30b3e780b13450021f4"
+        },
+        "config_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "71f0aba29181d0d72bef923102f18abb4d68a0640f7aab7fb0730ea35b470dd0"
+        },
+        "dataset_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "49d7e69546b0dee53c89fa23964edfa40b823aa9829a972414f28dad74bd7dc0"
+        },
+        "decision_alternative_identity": {
+          "reason": "decision_alternative_identity does not apply to capability flow_temporal_calibration.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "estimand_id": {
+          "reason": "estimand_id does not apply to capability flow_temporal_calibration.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "hierarchy_identity": {
+          "reason": "hierarchy_identity does not apply to capability flow_temporal_calibration.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "model_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "temporal-count-interval-calibration-v1-802a155f4e8c"
+        },
+        "pressure_provider_identity": {
+          "reason": "pressure_provider_identity does not apply to capability flow_temporal_calibration.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "prioritization_identity": {
+          "reason": "prioritization_identity does not apply to capability flow_temporal_calibration.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "run_id": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "flow-calibration-6b2b2b-real-v1"
+        },
+        "scenario_identity": {
+          "reason": "scenario_identity does not apply to capability flow_temporal_calibration.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "scientific_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "e436f3b6f18f98e29992f481e37ffe30bee9c5ef87583f05d9206f8793a993bc"
+        }
+      },
+      "limitations": [
+        "Does not promise perfect 80 percent coverage; national proxy excluded from calibration claims."
+      ],
+      "product_consumption_status": "ELIGIBLE_AFTER_INGESTION",
+      "run_manifest": "artifacts/runs/flow-calibration-6b2b2b-real-v1/run.json",
+      "source_lineage": [
+        "docs/flow-temporal-calibration.md",
+        "artifacts/runs/flow-calibration-6b2b2b-real-v1/run.json"
+      ],
+      "support": {
+        "range_semantics": [
+          "COMPLETE",
+          "RANGE_LIMITED"
+        ],
+        "support_semantics": [
+          "DIRECT_SUPPORTED",
+          "FALLBACK_LIMITED",
+          "UNSUPPORTED"
+        ]
+      }
+    },
+    {
+      "acceptance_verdict": "ACCEPT_WITH_P2",
+      "allowed_claims": [
+        "Deterministic non-causal registration forecast stress tests."
+      ],
+      "capability_id": "forecast_stress_test",
+      "display_name": "Forecast Stress-Test Engine v1",
+      "evidence": {
+        "scenario_evidence": "Deterministic synthetic multipliers, scoped surges, same-profile transfers, and bounded time shifts with one lever per scenario.",
+        "target": "registrations",
+        "temporal_protocol": "Retrospective EVALUATION over accepted flow origins and horizons 1-14.",
+        "verification": "Boundary, scope invariance, hierarchy coherence, determinism, and applicable conservation/monotonicity checks passed for accepted standard suite."
+      },
+      "evidence_status": "ACCEPTED",
+      "forbidden_claims": [
+        "Digital Twin",
+        "causal simulator",
+        "intervention engine",
+        "causal benefit"
+      ],
+      "freshness": {
+        "reason": "Static accepted evidence has no approved production refresh SLA or runtime publication state.",
+        "state": "UNKNOWN"
+      },
+      "governance": {
+        "autonomous_action": false,
+        "capacity_checked": false,
+        "causal_effect_claimed": false,
+        "human_review_required": true,
+        "physical_feasibility_status": "NOT_VALIDATED",
+        "promotion_status": "NO_PROMOTION",
+        "serving_claim": false
+      },
+      "identities": {
+        "artifact_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "013445cbe4ca868e4552323bdea743bc0d56fa2ff304a4bc51304e5208119382"
+        },
+        "calibration_identity": {
+          "reason": "calibration_identity does not apply to capability forecast_stress_test.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "code_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "b6c0c446f1221904808cf76c9e24ccf74b5113f3f6f48b161df1ddb6a3933193"
+        },
+        "config_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "3940d35ed724cfa48f4acb2203ff68842489b65c268432185a517f79e4d7519e"
+        },
+        "dataset_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "49d7e69546b0dee53c89fa23964edfa40b823aa9829a972414f28dad74bd7dc0"
+        },
+        "decision_alternative_identity": {
+          "reason": "decision_alternative_identity does not apply to capability forecast_stress_test.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "estimand_id": {
+          "reason": "estimand_id does not apply to capability forecast_stress_test.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "hierarchy_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "bottom_up_hospital"
+        },
+        "model_identity": {
+          "reason": "model_identity does not apply to capability forecast_stress_test.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "pressure_provider_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "historical_flow_proxy_v1"
+        },
+        "prioritization_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "signals-inbox-v1"
+        },
+        "run_id": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "flow-scenario-6b3-real-v1"
+        },
+        "scenario_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "forecast-stress-test-v1"
+        },
+        "scientific_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "483dd631ce27d02e351db5b8b8f1e7ac0325bf789c9f35daf897560dbcf51098"
+        }
+      },
+      "limitations": [
+        "No causal identification",
+        "no capacity",
+        "no joint distribution",
+        "synthetic sensitivity bounds have no coverage guarantee."
+      ],
+      "product_consumption_status": "EVALUATION_ONLY",
+      "run_manifest": "artifacts/runs/flow-scenario-6b3-real-v1/run.json",
+      "source_lineage": [
+        "docs/flow-scenario-engine.md",
+        "artifacts/runs/flow-scenario-6b3-real-v1/run.json"
+      ],
+      "support": {
+        "range_semantics": [
+          "COMPLETE",
+          "RANGE_LIMITED"
+        ],
+        "support_semantics": [
+          "DIRECT_SUPPORTED",
+          "FALLBACK_LIMITED",
+          "UNSUPPORTED"
+        ]
+      }
+    },
+    {
+      "acceptance_verdict": "ACCEPT",
+      "allowed_claims": [
+        "Robust unusual observed-flow companion signal."
+      ],
+      "capability_id": "observed_unusual_flow",
+      "display_name": "Observed unusual-flow anomaly",
+      "evidence": {
+        "anomaly_evidence": "Weekly residual with robust median/MAD and fixed robust-z threshold 3.5.",
+        "interaction": "Does not alter preventive pressure severity.",
+        "target": "registrations",
+        "temporal_protocol": "Origin-legal 56-day lookback."
+      },
+      "evidence_status": "ACCEPTED",
+      "forbidden_claims": [
+        "causal anomaly",
+        "capacity incident",
+        "diagnosis"
+      ],
+      "freshness": {
+        "reason": "Static accepted evidence has no approved production refresh SLA or runtime publication state.",
+        "state": "UNKNOWN"
+      },
+      "governance": {
+        "autonomous_action": false,
+        "capacity_checked": false,
+        "causal_effect_claimed": false,
+        "human_review_required": true,
+        "physical_feasibility_status": "NOT_APPLICABLE",
+        "promotion_status": "HUMAN_REVIEW_ONLY",
+        "serving_claim": false
+      },
+      "identities": {
+        "artifact_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "e7a6e5d3475c5a836a8d008f2bd70fd59533a7361d690eee02fcc09c113abf80"
+        },
+        "calibration_identity": {
+          "reason": "calibration_identity does not apply to capability observed_unusual_flow.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "code_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "498c69ae8faf8ee6a44c5083702b95bf10e92740ea134b1fdd86fa522af91bbe"
+        },
+        "config_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "2cefd48e7e3111d59101bc715647890b0e57bcd772d09b3e32a33bb52476be13"
+        },
+        "dataset_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "49d7e69546b0dee53c89fa23964edfa40b823aa9829a972414f28dad74bd7dc0"
+        },
+        "decision_alternative_identity": {
+          "reason": "decision_alternative_identity does not apply to capability observed_unusual_flow.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "estimand_id": {
+          "reason": "estimand_id does not apply to capability observed_unusual_flow.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "hierarchy_identity": {
+          "reason": "hierarchy_identity does not apply to capability observed_unusual_flow.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "model_identity": {
+          "reason": "model_identity does not apply to capability observed_unusual_flow.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "pressure_provider_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "historical_flow_proxy_v1"
+        },
+        "prioritization_identity": {
+          "reason": "prioritization_identity does not apply to capability observed_unusual_flow.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "run_id": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "flow-pressure-6b2c1-real-v2"
+        },
+        "scenario_identity": {
+          "reason": "scenario_identity does not apply to capability observed_unusual_flow.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "scientific_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "f0439d2d256b576329a6255e1dd53c81f8ab9d5338d70bfeb655e2e3b092549a"
+        }
+      },
+      "limitations": [
+        "Observed unusual flow is not diagnosis",
+        "causation",
+        "capacity",
+        "or an operational incident."
+      ],
+      "product_consumption_status": "ELIGIBLE_AFTER_INGESTION",
+      "run_manifest": "artifacts/runs/flow-pressure-6b2c1-real-v2/run.json",
+      "source_lineage": [
+        "docs/flow-pressure-warning.md",
+        "artifacts/runs/flow-pressure-6b2c1-real-v2/run.json"
+      ],
+      "support": {
+        "range_semantics": [
+          "COMPLETE",
+          "RANGE_LIMITED"
+        ],
+        "support_semantics": [
+          "DIRECT_SUPPORTED",
+          "FALLBACK_LIMITED",
+          "UNSUPPORTED"
+        ]
+      }
+    },
+    {
+      "acceptance_verdict": "ACCEPT",
+      "allowed_claims": [
+        "Empirical coherent three-state probabilities at 7/14/30 days."
+      ],
+      "capability_id": "patient_journey_competing_risk_baseline",
+      "display_name": "Patient Journey empirical competing-risk baseline",
+      "evidence": {
+        "estimand": "Joint mutually exclusive three-state competing-risk cumulative incidence.",
+        "evaluation_population": "Full eligible Q1 2025 referral cohort of 767084.",
+        "retention": "Empirical baseline retained.",
+        "target": [
+          "hospitalized_by_horizon",
+          "refused_by_horizon",
+          "unresolved_at_horizon"
+        ],
+        "temporal_protocol": "Chronological train, validation, calibration, test; final test excluded from HPO; horizons 7/14/30 days."
+      },
+      "evidence_status": "ACCEPTED",
+      "forbidden_claims": [
+        "ML competing-risk promotion",
+        "causal effect",
+        "live serving"
+      ],
+      "freshness": {
+        "reason": "Static accepted evidence has no approved production refresh SLA or runtime publication state.",
+        "state": "UNKNOWN"
+      },
+      "governance": {
+        "autonomous_action": false,
+        "capacity_checked": false,
+        "causal_effect_claimed": false,
+        "human_review_required": true,
+        "physical_feasibility_status": "NOT_APPLICABLE",
+        "promotion_status": "HUMAN_REVIEW_ONLY",
+        "serving_claim": false
+      },
+      "identities": {
+        "artifact_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": [
+            "8ee95e5e99ea4877a2751219be09f8423520998c4c950a9f995d2ee208b9a79c",
+            "64ee83cee2b67c451f03eb0e5b6e88690d0d1d5596b04cd84660aeec8f3ad64d"
+          ]
+        },
+        "calibration_identity": {
+          "reason": "calibration_identity does not apply to capability patient_journey_competing_risk_baseline.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "code_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "acf9c29d172496abb357069a74185783aa7beb10dd72a10015e5c14c92a0e0f0"
+        },
+        "config_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "ed0357f8d2f9aa2bc0817acc7b70818dae2248c7b4c9f8df463a3f80487d0c09"
+        },
+        "dataset_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "49d7e69546b0dee53c89fa23964edfa40b823aa9829a972414f28dad74bd7dc0"
+        },
+        "decision_alternative_identity": {
+          "reason": "decision_alternative_identity does not apply to capability patient_journey_competing_risk_baseline.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "estimand_id": {
+          "reason": "A reviewed versioned estimand registry is required before serving; no ID is guessed.",
+          "status": "UNKNOWN",
+          "value": null
+        },
+        "hierarchy_identity": {
+          "reason": "hierarchy_identity does not apply to capability patient_journey_competing_risk_baseline.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "model_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "empirical_competing_risk"
+        },
+        "pressure_provider_identity": {
+          "reason": "pressure_provider_identity does not apply to capability patient_journey_competing_risk_baseline.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "prioritization_identity": {
+          "reason": "prioritization_identity does not apply to capability patient_journey_competing_risk_baseline.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "run_id": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "journey-full-confirmation-6b2a-20260917"
+        },
+        "scenario_identity": {
+          "reason": "scenario_identity does not apply to capability patient_journey_competing_risk_baseline.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "scientific_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "2d25eeeca8c6ae4a66464842ab6d24732e505bbdd83e4bd8ec77c390319dddec"
+        }
+      },
+      "limitations": [
+        "Accepted implementation is empirical; versioned estimand registry and product adapter remain required."
+      ],
+      "product_consumption_status": "ELIGIBLE_AFTER_INGESTION",
+      "run_manifest": "artifacts/runs/journey-full-confirmation-6b2a-20260917/run.json",
+      "source_lineage": [
+        "docs/patient-journey-serving-contract.md",
+        "docs/model_card.md",
+        "artifacts/runs/journey-full-confirmation-6b2a-20260917/run.json",
+        "artifacts/runs/journey-full-confirmation-6b2a-20260917/checkpoints"
+      ],
+      "support": {
+        "range_semantics": [
+          "COMPLETE"
+        ],
+        "support_semantics": [
+          "DIRECT_SUPPORTED",
+          "FALLBACK_LIMITED",
+          "UNSUPPORTED"
+        ]
+      }
+    },
+    {
+      "acceptance_verdict": "DO_NOT_PROMOTE",
+      "allowed_claims": [
+        "The ML joint challenger was not promoted."
+      ],
+      "capability_id": "patient_journey_competing_risk_ml_challenger",
+      "display_name": "Patient Journey ML competing-risk challenger",
+      "evidence": {
+        "estimand": "Joint mutually exclusive three-state competing-risk cumulative incidence.",
+        "evaluation_population": "Full eligible Q1 2025 referral cohort of 767084.",
+        "retention": "ML challenger rejected; empirical baseline retained.",
+        "target": [
+          "hospitalized_by_horizon",
+          "refused_by_horizon",
+          "unresolved_at_horizon"
+        ],
+        "temporal_protocol": "Chronological train, validation, calibration, test; final test excluded from HPO; horizons 7/14/30 days."
+      },
+      "evidence_status": "REJECTED",
+      "forbidden_claims": [
+        "accepted ML joint model",
+        "product eligibility"
+      ],
+      "freshness": {
+        "reason": "Static accepted evidence has no approved production refresh SLA or runtime publication state.",
+        "state": "UNKNOWN"
+      },
+      "governance": {
+        "autonomous_action": false,
+        "capacity_checked": false,
+        "causal_effect_claimed": false,
+        "human_review_required": true,
+        "physical_feasibility_status": "NOT_APPLICABLE",
+        "promotion_status": "NO_PROMOTION",
+        "serving_claim": false
+      },
+      "identities": {
+        "artifact_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": [
+            "19b82bcb04568b1843ef8f61d23dea1090499048bb1ec034314c85fc948b0649",
+            "0716e017dee35bfd079c9306497fe4f86598a37f68013d6b413b82c8092484fd"
+          ]
+        },
+        "calibration_identity": {
+          "reason": "calibration_identity does not apply to capability patient_journey_competing_risk_ml_challenger.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "code_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "acf9c29d172496abb357069a74185783aa7beb10dd72a10015e5c14c92a0e0f0"
+        },
+        "config_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "ed0357f8d2f9aa2bc0817acc7b70818dae2248c7b4c9f8df463a3f80487d0c09"
+        },
+        "dataset_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "49d7e69546b0dee53c89fa23964edfa40b823aa9829a972414f28dad74bd7dc0"
+        },
+        "decision_alternative_identity": {
+          "reason": "decision_alternative_identity does not apply to capability patient_journey_competing_risk_ml_challenger.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "estimand_id": {
+          "reason": "A reviewed versioned estimand registry is required before serving; no ID is guessed.",
+          "status": "UNKNOWN",
+          "value": null
+        },
+        "hierarchy_identity": {
+          "reason": "hierarchy_identity does not apply to capability patient_journey_competing_risk_ml_challenger.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "model_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "discrete_competing_risk"
+        },
+        "pressure_provider_identity": {
+          "reason": "pressure_provider_identity does not apply to capability patient_journey_competing_risk_ml_challenger.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "prioritization_identity": {
+          "reason": "prioritization_identity does not apply to capability patient_journey_competing_risk_ml_challenger.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "run_id": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "journey-full-confirmation-6b2a-20260917"
+        },
+        "scenario_identity": {
+          "reason": "scenario_identity does not apply to capability patient_journey_competing_risk_ml_challenger.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "scientific_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "2d25eeeca8c6ae4a66464842ab6d24732e505bbdd83e4bd8ec77c390319dddec"
+        }
+      },
+      "limitations": [
+        "Not accepted for product use; do not infer rejection of the accepted empirical estimand."
+      ],
+      "product_consumption_status": "NOT_FOR_PRODUCT",
+      "run_manifest": "artifacts/runs/journey-full-confirmation-6b2a-20260917/run.json",
+      "source_lineage": [
+        "docs/patient-journey-serving-contract.md",
+        "docs/model_card.md",
+        "artifacts/runs/journey-full-confirmation-6b2a-20260917/run.json",
+        "artifacts/runs/journey-overnight-6b2a-corrected-20260917/checkpoints"
+      ],
+      "support": {
+        "range_semantics": [
+          "COMPLETE"
+        ],
+        "support_semantics": [
+          "DIRECT_SUPPORTED",
+          "FALLBACK_LIMITED",
+          "UNSUPPORTED"
+        ]
+      }
+    },
+    {
+      "acceptance_verdict": "ACCEPT",
+      "allowed_claims": [
+        "Retained hospitalization probability evidence at 7/14/30 days."
+      ],
+      "capability_id": "patient_journey_hospitalization",
+      "display_name": "Patient Journey hospitalization cumulative incidence",
+      "evidence": {
+        "estimand": "Cumulative probability of hospitalization by 7/14/30 days from referral registration.",
+        "evaluation_population": "Full eligible Q1 2025 referral cohort of 767084.",
+        "key_metrics": {
+          "discrete_hazard": {
+            "c_index": 0.802645,
+            "mean_brier": 0.108575,
+            "mean_calibration_error": 0.010725
+          },
+          "xgboost_aft": {
+            "c_index": 0.847552,
+            "mean_brier": 0.109753,
+            "mean_calibration_error": 0.00975
+          }
+        },
+        "retention": "Both retained; no automatic champion.",
+        "target": "hospitalized_by_horizon",
+        "temporal_protocol": "Chronological train, validation, calibration, test; final test excluded from HPO; label cutoff 2026-05-13."
+      },
+      "evidence_status": "ACCEPTED",
+      "forbidden_claims": [
+        "coherent joint outcome distribution",
+        "automatic champion",
+        "clinical benefit"
+      ],
+      "freshness": {
+        "reason": "Static accepted evidence has no approved production refresh SLA or runtime publication state.",
+        "state": "UNKNOWN"
+      },
+      "governance": {
+        "autonomous_action": false,
+        "capacity_checked": false,
+        "causal_effect_claimed": false,
+        "human_review_required": true,
+        "physical_feasibility_status": "NOT_APPLICABLE",
+        "promotion_status": "HUMAN_REVIEW_ONLY",
+        "serving_claim": false
+      },
+      "identities": {
+        "artifact_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": [
+            "ea56d602f52e10f7651b38b63f9206e228cc120b3bc58c0451130c37db5bccc5",
+            "504d9425beb7bd21f50831e2dc79c7b1db73aa80e0e95185c5eef22179020079",
+            "9cfa976458d22446cc5ca3ae22912bf94e3d16965e3fc3a53814a51b9f66040c",
+            "8cc720327224056a0096a9bd6634eea1a4f69cf7c8ad79f5d0f185faf65beb6c"
+          ]
+        },
+        "calibration_identity": {
+          "reason": "calibration_identity does not apply to capability patient_journey_hospitalization.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "code_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "acf9c29d172496abb357069a74185783aa7beb10dd72a10015e5c14c92a0e0f0"
+        },
+        "config_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "ed0357f8d2f9aa2bc0817acc7b70818dae2248c7b4c9f8df463a3f80487d0c09"
+        },
+        "dataset_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "49d7e69546b0dee53c89fa23964edfa40b823aa9829a972414f28dad74bd7dc0"
+        },
+        "decision_alternative_identity": {
+          "reason": "decision_alternative_identity does not apply to capability patient_journey_hospitalization.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "estimand_id": {
+          "reason": "A reviewed versioned estimand registry is required before serving; no ID is guessed.",
+          "status": "UNKNOWN",
+          "value": null
+        },
+        "hierarchy_identity": {
+          "reason": "hierarchy_identity does not apply to capability patient_journey_hospitalization.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "model_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": [
+            "xgboost_aft",
+            "discrete_hospitalization_hazard"
+          ]
+        },
+        "pressure_provider_identity": {
+          "reason": "pressure_provider_identity does not apply to capability patient_journey_hospitalization.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "prioritization_identity": {
+          "reason": "prioritization_identity does not apply to capability patient_journey_hospitalization.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "run_id": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "journey-full-confirmation-6b2a-20260917"
+        },
+        "scenario_identity": {
+          "reason": "scenario_identity does not apply to capability patient_journey_hospitalization.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "scientific_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "2d25eeeca8c6ae4a66464842ab6d24732e505bbdd83e4bd8ec77c390319dddec"
+        }
+      },
+      "limitations": [
+        "Hospitalization-only probabilities cannot be complemented into refusal or unresolved probability."
+      ],
+      "product_consumption_status": "ELIGIBLE_AFTER_INGESTION",
+      "run_manifest": "artifacts/runs/journey-full-confirmation-6b2a-20260917/run.json",
+      "source_lineage": [
+        "docs/patient-journey-serving-contract.md",
+        "docs/model_card.md",
+        "artifacts/runs/journey-full-confirmation-6b2a-20260917/run.json",
+        "artifacts/runs/journey-full-confirmation-6b2a-20260917/checkpoints"
+      ],
+      "support": {
+        "range_semantics": [
+          "COMPLETE"
+        ],
+        "support_semantics": [
+          "DIRECT_SUPPORTED",
+          "FALLBACK_LIMITED",
+          "UNSUPPORTED"
+        ]
+      }
+    },
+    {
+      "acceptance_verdict": "ACCEPT",
+      "allowed_claims": [
+        "Conditional refusal risk for the documented terminal-outcome estimand."
+      ],
+      "capability_id": "patient_journey_refusal",
+      "display_name": "Patient Journey refusal risk",
+      "evidence": {
+        "estimand": "Probability of refusal conditional on an observed terminal outcome; not a horizon-indexed marginal probability.",
+        "evaluation_population": "Full eligible Q1 2025 referral cohort.",
+        "key_metrics": {
+          "brier": 0.083447,
+          "calibration_error": 0.003399,
+          "pr_auc": 0.364998,
+          "roc_auc": 0.782074
+        },
+        "target": "refusal_given_terminal_outcome",
+        "temporal_protocol": "Fold-trained and evaluated under the accepted chronological Patient Journey protocol."
+      },
+      "evidence_status": "ACCEPTED",
+      "forbidden_claims": [
+        "horizon refusal probability",
+        "joint probability distribution",
+        "clinical decision"
+      ],
+      "freshness": {
+        "reason": "Static accepted evidence has no approved production refresh SLA or runtime publication state.",
+        "state": "UNKNOWN"
+      },
+      "governance": {
+        "autonomous_action": false,
+        "capacity_checked": false,
+        "causal_effect_claimed": false,
+        "human_review_required": true,
+        "physical_feasibility_status": "NOT_APPLICABLE",
+        "promotion_status": "HUMAN_REVIEW_ONLY",
+        "serving_claim": false
+      },
+      "identities": {
+        "artifact_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "6a5d9f8d57ccfa19264eaee527de9f9f379e33e252052153983fe572ed09089e"
+        },
+        "calibration_identity": {
+          "reason": "calibration_identity does not apply to capability patient_journey_refusal.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "code_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "acf9c29d172496abb357069a74185783aa7beb10dd72a10015e5c14c92a0e0f0"
+        },
+        "config_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "ed0357f8d2f9aa2bc0817acc7b70818dae2248c7b4c9f8df463a3f80487d0c09"
+        },
+        "dataset_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "49d7e69546b0dee53c89fa23964edfa40b823aa9829a972414f28dad74bd7dc0"
+        },
+        "decision_alternative_identity": {
+          "reason": "decision_alternative_identity does not apply to capability patient_journey_refusal.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "estimand_id": {
+          "reason": "A reviewed versioned estimand registry is required before serving; no ID is guessed.",
+          "status": "UNKNOWN",
+          "value": null
+        },
+        "hierarchy_identity": {
+          "reason": "hierarchy_identity does not apply to capability patient_journey_refusal.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "model_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "fold_lightgbm"
+        },
+        "pressure_provider_identity": {
+          "reason": "pressure_provider_identity does not apply to capability patient_journey_refusal.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "prioritization_identity": {
+          "reason": "prioritization_identity does not apply to capability patient_journey_refusal.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "run_id": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "journey-full-confirmation-6b2a-20260917"
+        },
+        "scenario_identity": {
+          "reason": "scenario_identity does not apply to capability patient_journey_refusal.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "scientific_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "2d25eeeca8c6ae4a66464842ab6d24732e505bbdd83e4bd8ec77c390319dddec"
+        }
+      },
+      "limitations": [
+        "Cannot populate horizon refusal fields or be combined with hospitalization marginals as a joint distribution."
+      ],
+      "product_consumption_status": "ELIGIBLE_AFTER_INGESTION",
+      "run_manifest": "artifacts/runs/journey-full-confirmation-6b2a-20260917/run.json",
+      "source_lineage": [
+        "docs/patient-journey-serving-contract.md",
+        "docs/model_card.md",
+        "artifacts/runs/journey-full-confirmation-6b2a-20260917/run.json",
+        "artifacts/runs/journey-full-confirmation-6b2a-20260917/checkpoints"
+      ],
+      "support": {
+        "range_semantics": [
+          "COMPLETE"
+        ],
+        "support_semantics": [
+          "DIRECT_SUPPORTED",
+          "FALLBACK_LIMITED",
+          "UNSUPPORTED"
+        ]
+      }
+    },
+    {
+      "acceptance_verdict": "ACCEPT",
+      "allowed_claims": [
+        "Human-reviewed early-warning triage based on historical flow."
+      ],
+      "capability_id": "preventive_flow_pressure",
+      "display_name": "Preventive historical-flow pressure warning",
+      "evidence": {
+        "key_metrics": {
+          "final_registration_entity_origin_precision_14d": 0.3919,
+          "recall_14d": 0.6776,
+          "recall_7d": 0.6631
+        },
+        "pressure_evidence": "q90 higher empirical threshold with hospital/date-class through region-pooled fallback.",
+        "severity": [
+          "NORMAL",
+          "WATCH",
+          "ELEVATED",
+          "HIGH",
+          "UNSUPPORTED"
+        ],
+        "target": [
+          "registrations",
+          "cohort_hospitalizations"
+        ],
+        "temporal_protocol": "Origin-legal 56-day historical threshold evidence over rolling origins and horizons 1-14."
+      },
+      "evidence_status": "ACCEPTED",
+      "forbidden_claims": [
+        "physical capacity overload",
+        "free beds",
+        "occupancy",
+        "capacity planner"
+      ],
+      "freshness": {
+        "reason": "Static accepted evidence has no approved production refresh SLA or runtime publication state.",
+        "state": "UNKNOWN"
+      },
+      "governance": {
+        "autonomous_action": false,
+        "capacity_checked": false,
+        "causal_effect_claimed": false,
+        "human_review_required": true,
+        "physical_feasibility_status": "NOT_VALIDATED",
+        "promotion_status": "HUMAN_REVIEW_ONLY",
+        "serving_claim": false
+      },
+      "identities": {
+        "artifact_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "e7a6e5d3475c5a836a8d008f2bd70fd59533a7361d690eee02fcc09c113abf80"
+        },
+        "calibration_identity": {
+          "reason": "calibration_identity does not apply to capability preventive_flow_pressure.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "code_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "498c69ae8faf8ee6a44c5083702b95bf10e92740ea134b1fdd86fa522af91bbe"
+        },
+        "config_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "2cefd48e7e3111d59101bc715647890b0e57bcd772d09b3e32a33bb52476be13"
+        },
+        "dataset_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "49d7e69546b0dee53c89fa23964edfa40b823aa9829a972414f28dad74bd7dc0"
+        },
+        "decision_alternative_identity": {
+          "reason": "decision_alternative_identity does not apply to capability preventive_flow_pressure.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "estimand_id": {
+          "reason": "estimand_id does not apply to capability preventive_flow_pressure.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "hierarchy_identity": {
+          "reason": "hierarchy_identity does not apply to capability preventive_flow_pressure.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "model_identity": {
+          "reason": "model_identity does not apply to capability preventive_flow_pressure.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "pressure_provider_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "historical_flow_proxy_v1"
+        },
+        "prioritization_identity": {
+          "reason": "prioritization_identity does not apply to capability preventive_flow_pressure.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "run_id": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "flow-pressure-6b2c1-real-v2"
+        },
+        "scenario_identity": {
+          "reason": "scenario_identity does not apply to capability preventive_flow_pressure.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "scientific_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "f0439d2d256b576329a6255e1dd53c81f8ab9d5338d70bfeb655e2e3b092549a"
+        }
+      },
+      "limitations": [
+        "Historical flow proxy only; no beds",
+        "occupancy",
+        "staffed capacity",
+        "or operational incident labels."
+      ],
+      "product_consumption_status": "ELIGIBLE_AFTER_INGESTION",
+      "run_manifest": "artifacts/runs/flow-pressure-6b2c1-real-v2/run.json",
+      "source_lineage": [
+        "docs/flow-pressure-warning.md",
+        "artifacts/runs/flow-pressure-6b2c1-real-v2/run.json"
+      ],
+      "support": {
+        "range_semantics": [
+          "COMPLETE",
+          "RANGE_LIMITED"
+        ],
+        "support_semantics": [
+          "DIRECT_SUPPORTED",
+          "FALLBACK_LIMITED",
+          "UNSUPPORTED"
+        ]
+      }
+    },
+    {
+      "acceptance_verdict": "ACCEPT",
+      "allowed_claims": [
+        "Fixed human-review Inbox prioritization over accepted signals."
+      ],
+      "capability_id": "signal_prioritization",
+      "display_name": "Signals Inbox prioritization and explanation",
+      "evidence": {
+        "canonical_unit": "hospital/profile/target/origin",
+        "key_metrics": {
+          "direct_supported": 4569,
+          "fallback_limited": 2684,
+          "operationally_material_high": 4,
+          "primary_inbox": 7253,
+          "unsupported_data_quality": 502
+        },
+        "materiality": "Fixed 1.0 expected count/day product floor; source severity preserved in separate low-volume view.",
+        "prioritization_evidence": "Fixed lexicographic ordering by severity, lead, support, calibrated uncertainty, central/threshold ratio, stable IDs; no learned or weighted score.",
+        "target": "registrations"
+      },
+      "evidence_status": "ACCEPTED",
+      "forbidden_claims": [
+        "learned ranking",
+        "AI recommender",
+        "causal explanation",
+        "autonomous action"
+      ],
+      "freshness": {
+        "reason": "Static accepted evidence has no approved production refresh SLA or runtime publication state.",
+        "state": "UNKNOWN"
+      },
+      "governance": {
+        "autonomous_action": false,
+        "capacity_checked": false,
+        "causal_effect_claimed": false,
+        "human_review_required": true,
+        "physical_feasibility_status": "NOT_APPLICABLE",
+        "promotion_status": "HUMAN_REVIEW_ONLY",
+        "serving_claim": false
+      },
+      "identities": {
+        "artifact_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "090ed11ac64d366651ca4425c1650a9cea5566dc69fd6fb40fb2660dbc0343b1"
+        },
+        "calibration_identity": {
+          "reason": "calibration_identity does not apply to capability signal_prioritization.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "code_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "907d825cf8134945d39628a346aca02580849540cd7ada2c66afc424b03250b6"
+        },
+        "config_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "35b6d0357d4bcda4e4ba697d719021494ee3a33b6d0ed9f39cc02b5a45d343d9"
+        },
+        "dataset_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "49d7e69546b0dee53c89fa23964edfa40b823aa9829a972414f28dad74bd7dc0"
+        },
+        "decision_alternative_identity": {
+          "reason": "decision_alternative_identity does not apply to capability signal_prioritization.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "estimand_id": {
+          "reason": "estimand_id does not apply to capability signal_prioritization.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "hierarchy_identity": {
+          "reason": "hierarchy_identity does not apply to capability signal_prioritization.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "model_identity": {
+          "reason": "model_identity does not apply to capability signal_prioritization.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "pressure_provider_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "historical_flow_proxy_v1"
+        },
+        "prioritization_identity": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "signals-inbox-v1"
+        },
+        "run_id": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "signal-prioritization-6b2c2-real-v2"
+        },
+        "scenario_identity": {
+          "reason": "scenario_identity does not apply to capability signal_prioritization.",
+          "status": "NOT_APPLICABLE",
+          "value": null
+        },
+        "scientific_identity_sha256": {
+          "reason": "Recorded in the referenced accepted repository evidence.",
+          "status": "AVAILABLE",
+          "value": "103338a51e0907a8694abcdcabca37c84b55d5f9c440df9ad3bcd209a1d7c507"
+        }
+      },
+      "limitations": [
+        "Product triage",
+        "not recalibration; explanations are deterministic evidence statements",
+        "not causes."
+      ],
+      "product_consumption_status": "ELIGIBLE_AFTER_INGESTION",
+      "run_manifest": "artifacts/runs/signal-prioritization-6b2c2-real-v2/run.json",
+      "source_lineage": [
+        "docs/signal-prioritization.md",
+        "artifacts/runs/signal-prioritization-6b2c2-real-v2/run.json"
+      ],
+      "support": {
+        "range_semantics": [
+          "COMPLETE",
+          "RANGE_LIMITED"
+        ],
+        "support_semantics": [
+          "DIRECT_SUPPORTED",
+          "FALLBACK_LIMITED",
+          "UNSUPPORTED"
+        ]
+      }
+    }
+  ],
+  "claim_boundaries": {
+    "decision_alternative_semantics": "retrospective mathematical alternatives for human review",
+    "enforcement": "Future product copy and DTO adapters must preserve these boundaries unless new accepted evidence explicitly changes them.",
+    "forbidden_project_descriptions_and_claims": [
+      "AI recommender",
+      "patient router",
+      "autonomous routing system",
+      "capacity optimizer",
+      "capacity planner",
+      "Digital Twin",
+      "causal simulator",
+      "intervention engine",
+      "free beds",
+      "occupancy",
+      "staffed capacity",
+      "physical feasibility",
+      "causal benefit",
+      "clinical benefit",
+      "reduced waiting time",
+      "improved outcomes"
+    ],
+    "pressure_basis": "historical_flow_proxy_v1",
+    "pressure_basis_semantics": "Origin-legal historical count threshold; not physical capacity."
+  },
+  "contract_version": "1.0.0",
+  "failed_evidence_history": [
+    {
+      "classification": "FAILED_EVIDENCE",
+      "reason": "Real parquet reason_codes materialized array-like, making boolean truthiness ambiguous.",
+      "run_id": "decision-alternatives-6b4-real-v1",
+      "scientific_rejection": false,
+      "source": "docs/project-evidence-index.md#14-constrained-decision-alternatives-engine-v1"
+    },
+    {
+      "classification": "FAILED_EVIDENCE",
+      "reason": "Raw float.hex() containing '+' was embedded in ScenarioSpec.scenario_id and violated the identifier contract.",
+      "run_id": "decision-alternatives-6b4-real-v2",
+      "scientific_rejection": false,
+      "source": "docs/project-evidence-index.md#14-constrained-decision-alternatives-engine-v1"
+    }
+  ],
+  "freshness_policy": {
+    "allowed_states": [
+      "FRESH",
+      "STALE",
+      "DEGRADED",
+      "UNKNOWN"
+    ],
+    "semantics": {
+      "DEGRADED": "Evidence is present but lineage, support, publication, or upstream availability is impaired.",
+      "FRESH": "Published evidence is within an explicitly approved future refresh threshold.",
+      "STALE": "Published evidence is older than an explicitly approved future refresh threshold.",
+      "UNKNOWN": "Freshness cannot be determined because runtime timestamps or approved thresholds are unavailable."
+    },
+    "sla_thresholds": null,
+    "sla_unresolved_reason": "Customer refresh SLA and production source-of-truth cadence are unresolved."
+  },
+  "generated_at": "2026-09-22T18:00:00+00:00",
+  "ml_freeze_status": "ML_CORE_CLOSED_FROZEN",
+  "monitoring_expectations": [
+    {
+      "expectation": "Track source and publication timestamps once an approved refresh SLA exists; report UNKNOWN until then.",
+      "id": "data_freshness",
+      "implementation_status": "FUTURE_EXPECTATION"
+    },
+    {
+      "expectation": "Reject or degrade incompatible source and bundle schemas.",
+      "id": "schema_drift",
+      "implementation_status": "FUTURE_EXPECTATION"
+    },
+    {
+      "expectation": "Detect changed or missing hospital, region, profile, referral, estimand, and capability identifiers.",
+      "id": "stable_id_drift",
+      "implementation_status": "FUTURE_EXPECTATION"
+    },
+    {
+      "expectation": "Verify source run, data, config, code, artifact, and assurance identities during publication.",
+      "id": "lineage_hash_mismatch",
+      "implementation_status": "FUTURE_EXPECTATION"
+    },
+    {
+      "expectation": "Fail closed and retain the prior active snapshot when publication is incomplete.",
+      "id": "artifact_publication_failure",
+      "implementation_status": "FUTURE_EXPECTATION"
+    },
+    {
+      "expectation": "Track DIRECT_SUPPORTED, FALLBACK_LIMITED, UNSUPPORTED, COMPLETE, and RANGE_LIMITED separately.",
+      "id": "support_mix",
+      "implementation_status": "FUTURE_EXPECTATION"
+    },
+    {
+      "expectation": "Surface growth in fallback and unsupported shares without converting it to a confidence score.",
+      "id": "fallback_and_unsupported_growth",
+      "implementation_status": "FUTURE_EXPECTATION"
+    },
+    {
+      "expectation": "Track accepted predictive metrics, calibration error, and interval coverage only where applicable.",
+      "id": "predictive_and_calibration_evidence",
+      "implementation_status": "FUTURE_EXPECTATION"
+    },
+    {
+      "expectation": "Track historical_flow_proxy_v1 availability and never silently substitute physical capacity semantics.",
+      "id": "pressure_provider_availability",
+      "implementation_status": "FUTURE_EXPECTATION"
+    },
+    {
+      "expectation": "Track boundary, invariance, conservation, monotonicity, hierarchy, and determinism failures.",
+      "id": "scenario_verification",
+      "implementation_status": "FUTURE_EXPECTATION"
+    },
+    {
+      "expectation": "Track receiver worsening, full-verification failure, abstention, support tier, and range completeness.",
+      "id": "decision_alternative_verification",
+      "implementation_status": "FUTURE_EXPECTATION"
+    },
+    {
+      "expectation": "Track publication/runtime/resource regressions against reviewed operating expectations, not invented customer SLAs.",
+      "id": "runtime_and_resources",
+      "implementation_status": "FUTURE_EXPECTATION"
+    },
+    {
+      "expectation": "Retain publication, reviewer, activation, supersession, and human-decision audit trails.",
+      "id": "human_review_audit",
+      "implementation_status": "FUTURE_EXPECTATION"
+    }
+  ],
+  "product_contract_version": "model-assurance-product-v1",
+  "schema_version": "model_assurance_v1",
+  "source_code_commit": "1dcda96b8d8bf760e481c61357b98d98c914b9ed"
+}

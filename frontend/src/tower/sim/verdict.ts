@@ -4,8 +4,9 @@
  * an instruction: the dialog says so next to it.
  */
 import { t } from "../../i18n";
-import { fmtDate, fmtNumber } from "../../lib/format";
-import { daysBetween, flowDecimals, URGENCY_FLOOR_PER_DAY } from "../synthetic";
+import { daysBetween } from "../../lib/dates";
+import { flowDecimals, fmtDate, fmtNumber } from "../../lib/format";
+import { URGENCY_FLOOR_PER_DAY } from "../urgency";
 import type { SimAlert, SimPatient } from "./simulation";
 
 export type Verdict = "yes" | "no" | "unclear";
@@ -26,10 +27,17 @@ export function alertVerdict(
     return { verdict: "unclear", reasons: [r.unverified] };
   if (alert.phase === "not_confirmed")
     return { verdict: "no", reasons: [r.notConfirmed] };
-  if (alert.phase === "confirmed" && alert.observed !== null)
-    reasons.push(
-      r.confirmed(fmtNumber(alert.observed, flowDecimals(alert.observed))),
+  if (alert.phase === "confirmed" && alert.observedFlow !== null) {
+    const value = fmtNumber(
+      alert.observedFlow,
+      flowDecimals(alert.observedFlow),
     );
+    reasons.push(
+      alert.observedSource === "fact"
+        ? r.confirmedFact(value)
+        : r.confirmedSynthetic(value),
+    );
+  }
   if (alert.phase === "escalated") reasons.push(r.escalated);
   if (
     alert.lower !== null &&

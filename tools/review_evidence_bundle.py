@@ -13,6 +13,8 @@ import importlib.util
 import json
 import sys
 from collections import Counter
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,11 +50,36 @@ require = operational.require
 read_json = operational.read_json
 
 ASSURANCE_IDENTITY = operational.ASSURANCE_IDENTITY
+# Accepted defaults of the CLI parameters; see operational_bundle.Publication for the explicit-input rule.
 ORIGIN = operational.ORIGIN
 OPERATIONAL_PUBLICATION = operational.PUBLICATION
 PUBLICATION = "review-evidence-slice6-final-test-2025-03-17-v1"
 SCENARIO_RUN = operational.SOURCES["flow_scenario"][1]
 DECISION_RUN = operational.SOURCES["decision_alternatives"][1]
+OUTPUT_DIR = "artifacts/review_evidence"
+
+
+@dataclass(frozen=True)
+class ReviewPublication:
+    """Explicit inputs: origin, this publication id, the operational publication it references, run id per key."""
+
+    origin: str = ORIGIN
+    publication_id: str = PUBLICATION
+    operational_publication_id: str = OPERATIONAL_PUBLICATION
+    runs: Mapping[str, str] = field(default_factory=lambda: dict(operational.Publication().runs))
+
+    @property
+    def operational(self) -> operational.Publication:
+        return operational.Publication(self.origin, self.operational_publication_id, self.runs)
+
+    def limitations(self) -> list[str]:
+        first = (
+            f"Retrospective final-test origin {self.origin}; evaluation evidence, not a live forecast or current "
+            "hospital condition."
+        )
+        return [first, *LIMITATIONS]
+
+
 STANDARD_SCENARIOS = (
     "baseline-identity",
     "national-registrations-x0.90",
@@ -61,8 +88,6 @@ STANDARD_SCENARIOS = (
 )
 TARGET = "registrations"
 LIMITATIONS = [
-    "Retrospective final-test origin 2025-03-17; evaluation evidence, not a live forecast or current hospital "
-    "condition.",
     "Forecast stress tests are deterministic non-causal sensitivity checks of the accepted registrations forecast; "
     "they are not a Digital Twin, causal simulator, intervention engine or capacity simulation.",
     "Scenario sensitivity ranges are derived from the accepted calibrated bounds by an additive central shift; "
@@ -395,29 +420,40 @@ def alternative_set(source: dict, region_lookup: dict[tuple[str, str, str], tupl
     ).model_dump(mode="json")
 
 
-def build(root: Path) -> tuple[dict, dict]:
+def operational_report_path(root: Path, review: ReviewPublication) -> Path:
+    return root / operational.OUTPUT_DIR / review.operational_publication_id / "build-report.json"
+
+
+def build(root: Path, review: ReviewPublication | None = None) -> tuple[dict, dict]:
     import pandas as pd
 
+    review = review or ReviewPublication()
+    scenario_run_id, decision_run_id = review.runs["flow_scenario"], review.runs["decision_alternatives"]
+    limitations = review.limitations()
     evidence = Evidence(root)
-    assurance, provenance, summaries, _ = evidence.verify()
+    assurance, provenance, summaries, _ = evidence.verify(review.operational)
     capabilities = {c["capability_id"]: c for c in assurance["capabilities"]}
     for capability_id in ("forecast_stress_test", "decision_alternatives"):
         cap = capabilities[capability_id]
         require(cap["product_consumption_status"] == "EVALUATION_ONLY", "review sources must be evaluation-only")
         require(cap["governance"]["promotion_status"] == "NO_PROMOTION", "review sources must not be promoted")
-    operational_report = read_json(
-        root / "artifacts/operational_intelligence" / OPERATIONAL_PUBLICATION / "build-report.json"
+    report_path = operational_report_path(root, review)
+    require(
+        report_path.exists(),
+        f"no build report of operational publication {review.operational_publication_id} at {report_path}; build it "
+        "first or pass --operational-publication-id",
     )
+    operational_report = read_json(report_path)
     require(operational_report["assurance_identity_sha256"] == ASSURANCE_IDENTITY, "operational assurance identity")
     operational_identity = operational_report["publication_identity_sha256"]
     print("Verified accepted runs, summary identities and Model Assurance", flush=True)
 
-    scenario_run = evidence.json(f"artifacts/runs/{SCENARIO_RUN}/run.json")
-    scenario_eval = evaluation_artifact(evidence, SCENARIO_RUN, scenario_run)
+    scenario_run = evidence.json(f"artifacts/runs/{scenario_run_id}/run.json")
+    scenario_eval = evaluation_artifact(evidence, scenario_run_id, scenario_run)
     scenario_summary = read_json(scenario_eval / "scenario-summary.json")
     validation = read_json(scenario_eval / "validation.json")
     require(validation["baseline_reproduction"]["status"] == "PASS", "baseline reproduction did not pass")
-    require(scenario_summary["run_id"] == SCENARIO_RUN, "scenario evaluation run mismatch")
+    require(scenario_summary["run_id"] == scenario_run_id, "scenario evaluation run mismatch")
     require(
         summaries["flow_scenario"]["source_lineage"]["hierarchy"]["source_run_id"]
         == provenance["flow_hierarchy"]["run_id"]
@@ -442,7 +478,10 @@ def build(root: Path) -> tuple[dict, dict]:
         filters=[("phase", "==", "final_test"), ("target", "==", TARGET)],
     )
     population = identity_diff[identity_diff.baseline_inbox_rank.notna()]
-    require(set(population.origin.map(date)) == {ORIGIN}, "unexpected scenario origin")
+    require(
+        set(population.origin.map(date)) == {review.origin},
+        f"final-test scenario entities are at origins {sorted(set(population.origin.map(date)))}, not {review.origin}",
+    )
     keys = {(r["hospital_id"], r["profile_id"]) for r in population.to_dict("records")}
     ranks = sorted(int(r) for r in population.baseline_inbox_rank)
     require(ranks == list(range(1, len(ranks) + 1)), "primary Inbox ranks are not a complete canonical sequence")
@@ -532,13 +571,13 @@ def build(root: Path) -> tuple[dict, dict]:
             cells.append(cell_row(scenario_id, row, cell_lookup[(row["series_id"], date(row["target_date"]))]))
         print(f"Projected scenario {scenario_id}: {len(diff)} entities, {len(daily)} daily cells", flush=True)
 
-    decision_run = evidence.json(f"artifacts/runs/{DECISION_RUN}/run.json")
-    decision_eval = evaluation_artifact(evidence, DECISION_RUN, decision_run)
+    decision_run = evidence.json(f"artifacts/runs/{decision_run_id}/run.json")
+    decision_eval = evaluation_artifact(evidence, decision_run_id, decision_run)
     decision_summary = read_json(decision_eval / "decision-alternatives-summary.json")
-    require(decision_summary["run_id"] == DECISION_RUN, "decision evaluation run mismatch")
+    require(decision_summary["run_id"] == decision_run_id, "decision evaluation run mismatch")
     lineage = summaries["decision_alternatives"]["source_lineage"]["scenario"]
     require(
-        lineage["source_run_id"] == SCENARIO_RUN
+        lineage["source_run_id"] == scenario_run_id
         and lineage["source_scientific_identity"] == provenance["flow_scenario"]["scientific_identity_sha256"],
         "decision alternatives are not based on the accepted scenario run",
     )
@@ -577,12 +616,12 @@ def build(root: Path) -> tuple[dict, dict]:
     payload = {
         "schema_version": "review_evidence_v1",
         "contract_version": "1.0.0",
-        "publication_id": PUBLICATION,
+        "publication_id": review.publication_id,
         "publication_identity_sha256": "0" * 64,
         "assurance_identity_sha256": ASSURANCE_IDENTITY,
         "operational_publication_identity_sha256": operational_identity,
         "source_code_commit": assurance["source_code_commit"],
-        "current_origin": ORIGIN,
+        "current_origin": review.origin,
         "freshness_state": "UNKNOWN",
         "publication_status": "AVAILABLE",
         "generated_at": None,
@@ -596,7 +635,7 @@ def build(root: Path) -> tuple[dict, dict]:
                 "signal_prioritization",
             )
         },
-        "limitations": LIMITATIONS,
+        "limitations": limitations,
         "scenarios": scenarios,
         "scenario_entities": entities,
         "scenario_cells": cells,
@@ -624,26 +663,63 @@ def build(root: Path) -> tuple[dict, dict]:
     return validated, report
 
 
+def plan(root: Path, review: ReviewPublication, output: Path) -> dict:
+    """What a build would read and which identities it expects; reads small JSON manifests only, writes nothing."""
+    base = operational.plan(root, review.operational, root / operational.OUTPUT_DIR / review.operational_publication_id)
+    report_path = operational_report_path(root, review)
+    previous = output / "build-report.json"
+    return {
+        "action": "plan (nothing written)",
+        "origin": review.origin,
+        "publication_id": review.publication_id,
+        "operational_publication_id": review.operational_publication_id,
+        "operational_build_report": {
+            "path": str(report_path),
+            "recorded_publication_identity_sha256": read_json(report_path)["publication_identity_sha256"]
+            if report_path.exists()
+            else None,
+        },
+        "assurance": base["assurance"],
+        "sources": {k: base["sources"][k] for k in ("flow_scenario", "decision_alternatives")},
+        "lineage_sources": {k: v["run_id"] for k, v in base["sources"].items()},
+        "reads": [
+            "scenarios/<id>/{entity-signals,entity-differences,inbox,daily-differences,scenario-cells}.parquet and "
+            "spec.json of flow_scenario for " + ", ".join(STANDARD_SCENARIOS),
+            "alternative-sets/*.json of decision_alternatives",
+        ],
+        "output": str(output),
+        "recorded_publication_identity_sha256": read_json(previous)["publication_identity_sha256"]
+        if previous.exists()
+        else None,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", type=Path, default=ROOT)
+    operational.add_arguments(parser, OUTPUT_DIR)
+    parser.add_argument(
+        "--operational-publication-id",
+        default=OPERATIONAL_PUBLICATION,
+        help="operational publication whose build report this bundle references (default: the accepted id)",
+    )
     args = parser.parse_args()
-    bundle, report = build(args.root)
-    output = args.root / "artifacts/review_evidence" / PUBLICATION
-    output.mkdir(parents=True, exist_ok=True)
-    for name, value in [("review_evidence.json", bundle), ("build-report.json", report)]:
-        path = output / name
-        data = canonical(value) + b"\n"
-        if path.exists():
-            require(path.read_bytes() == data, f"immutable output already exists with different content: {name}")
-        else:
-            temporary = path.with_suffix(".json.partial")
-            temporary.write_bytes(data)
-            temporary.replace(path)
+    review = ReviewPublication(
+        origin=args.origin,
+        publication_id=args.publication_id or PUBLICATION,
+        operational_publication_id=args.operational_publication_id,
+        runs=operational.parse_runs(args.run, args.sources_json),
+    )
+    output = args.out or args.root / OUTPUT_DIR / review.publication_id
+    if args.plan:
+        print(json.dumps(plan(args.root, review, output), ensure_ascii=False, indent=2))
+        return
+    bundle, report = build(args.root, review)
+    operational.write_outputs(output, [("review_evidence.json", bundle), ("build-report.json", report)])
     print(
         json.dumps(
             {
                 "output": str(output),
+                "origin": review.origin,
                 "scenario_cells": report["scenario_cell_count"],
                 "alternative_sets": report["alternatives_summary"]["set_count"],
                 "identity": bundle["publication_identity_sha256"],

@@ -1,0 +1,28 @@
+{
+  "features": [
+    "level",
+    "org_code",
+    "region_code",
+    "profile_code",
+    "horizon",
+    "lag_1",
+    "lag_2",
+    "lag_3",
+    "lag_7",
+    "lag_14",
+    "roll_mean_7",
+    "roll_mean_14",
+    "roll_mean_28",
+    "same_weekday_last",
+    "queue_at_origin",
+    "target_weekday",
+    "target_is_holiday",
+    "target_day_index"
+  ],
+  "categorical": [
+    "level",
+    "org_code",
+    "region_code",
+    "profile_code"
+  ]
+}

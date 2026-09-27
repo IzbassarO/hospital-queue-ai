@@ -1,12 +1,17 @@
-"""Specialist decisions of the control centre: stored as typed rows, replayed on reload of the demo."""
+"""Specialist decisions of the control centre: stored as typed rows, replayed on reload of the demo.
+
+Every stored decision carries the identity of the operational-intelligence publication that was active when it was
+written, so a decision can later be read against the evidence the person actually saw (the client cannot set it).
+"""
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.models import SpecialistDecision as Row
+from app.repositories import operational_intelligence as operational_repository
 from app.schemas.common import Page
 from app.schemas.specialist import SpecialistDecision, SpecialistDecisionCreate
-from app.services.common import ConflictError
+from app.services.common import ConflictError, ValidationError
 
 ALERT_ACTIONS = {"accept", "decline", "clarify"}
 PATIENT_ACTIONS = {"confirm", "decline", "postpone"}
@@ -29,6 +34,7 @@ def _decision(row: Row) -> SpecialistDecision:
         actor=row.actor,
         idempotency_key=row.idempotency_key,
         api_key_label=row.api_key_label,
+        publication_identity_sha256=row.publication_identity_sha256,
     )
 
 
@@ -36,11 +42,10 @@ def create_decision(
     session: Session, payload: SpecialistDecisionCreate, api_key_label: str
 ) -> tuple[SpecialistDecision, bool]:
     """Store a decision; (decision, created). A stored idempotency_key replays the row (created = False) when the
-    content matches and conflicts (409) when it does not. The action must fit the subject kind (422)."""
+    content matches and conflicts (409) when it does not; the publication identity is not part of that comparison,
+    a replay returns the row as first stored. The action must fit the subject kind (422)."""
     allowed = ALERT_ACTIONS if payload.subject_kind == "alert" else PATIENT_ACTIONS
     if payload.action not in allowed:
-        from app.services.common import ValidationError
-
         raise ValidationError(
             f"action {payload.action!r} is not valid for subject_kind {payload.subject_kind!r} "
             f"(allowed: {', '.join(sorted(allowed))})"
@@ -60,7 +65,9 @@ def create_decision(
                     f"(fields differ: {', '.join(differing)})"
                 )
             return stored, False
+    snapshot = operational_repository.current_snapshot(session)
     row = Row(
+        publication_identity_sha256=snapshot.publication_identity_sha256 if snapshot else None,
         origin=payload.origin,
         run_id=payload.run_id,
         sim_day=payload.sim_day,

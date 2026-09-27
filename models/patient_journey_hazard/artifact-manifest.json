@@ -1,0 +1,27 @@
+{
+  "adopted_legacy": false,
+  "content_sha256": "db678bfa061510655c984746b22425f15cc45c34144469d376fa5bc0865c2012",
+  "files": [
+    {
+      "bytes": 30321,
+      "path": "categories.json",
+      "sha256": "fef63c6518389aca463db421363361a8359652521f3d65bbf47e4dfcf7d178f2"
+    },
+    {
+      "bytes": 146,
+      "path": "meta.json",
+      "sha256": "6c7f00be86e480bf4b7874c677615004293635579c7838b894700fc7a8d60b6a"
+    },
+    {
+      "bytes": 130169,
+      "path": "metrics.json",
+      "sha256": "aca5554039e19dd355ca99d3e60a18f29c53321f43ccaf86a566bcd6a72aec33"
+    },
+    {
+      "bytes": 2934756,
+      "path": "model.txt",
+      "sha256": "2a355548b82990d1e11f4ea98d4d622409bf7f3ce22b72230aac9d3c09e486b8"
+    }
+  ],
+  "schema_version": 1
+}
