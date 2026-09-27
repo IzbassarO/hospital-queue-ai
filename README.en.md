@@ -22,6 +22,8 @@ cd hospital-queue-ai
 make demo
 ```
 
+The same `main` branch also sits in the submission repository: https://github.com/BAITC-Hacks/hack-043b4fcc-bizai
+
 Measured twice on a clean copy: 7 minutes 41 seconds when Docker pulls and builds everything from scratch, and
 3 minutes 47 seconds with the images already cached. Almost all of it is building.
 `make demo` ends by checking itself (`make smoke`) and printing the addresses:
@@ -207,7 +209,7 @@ access to the data.
 ## How the work went
 
 The code was written between 14 and 27 September: 43 commits by the 24th and the repository packaging after that.
-Weeks 1 and 2 are reconstructed from the programme plan and should be confirmed before submission.
+Weeks 1 and 2 are reconstructed from the programme plan.
 
 | Week | Dates | What was done |
 |---|---|---|
