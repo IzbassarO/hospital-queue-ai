@@ -1,0 +1,82 @@
+schema_version: 1
+seed: 42
+origin: 2025-03-17
+history_start: 2025-01-01
+outcome_cutoff: 2026-05-13T00:00:00
+excluded_profile_codes: [DH]
+horizons: [7, 14, 30]
+label_contract:
+  event_on_origin_is_known: true
+  outcomes_after_origin_are_censored: true
+  outcome_cutoff_is_exclusive: true
+  refusal_is_competing_terminal_event: true
+  same_day_min_duration_days: 0.5
+time_grid:
+  daily_start_day: 0
+  daily_through_day: 30
+  coarse_edges: [45, 60, 90, 120, 180, 240, 365, 500]
+similar_history:
+  columns: [org_code, profile_code]
+  min_rows: 50
+baseline:
+  hierarchy:
+    - [org_code, profile_code]
+    - [hospital_region_code, profile_code]
+    - [profile_code]
+  min_rows: 50
+training:
+  validation_registration_start: 2025-03-01
+  threads: 8
+  early_stopping_rounds: 20
+  aft:
+    max_depth: 6
+    learning_rate: 0.06855292496364511
+    min_child_weight: 5.022188646175491
+    distribution: normal
+    distribution_scale: 1.6440989660503789
+    max_rounds: 300
+  competing_hazard:
+    num_leaves: 48
+    learning_rate: 0.062473378687228756
+    min_data_in_leaf: 65
+    max_rounds: 271
+evaluation:
+  reliability_bins: 10
+  days_waited_buckets: [0, 1, 7, 14, 30, 60]
+  region_column: hospital_region_code
+  admission_interval_coverage: 0.80
+decision:
+  metric: mean_admission_and_refusal_brier_at_7_14_30
+  max_days_waited_bucket_degradation: 0.005
+  require_strict_overall_improvement: true
+  product_priority: [discrete_competing_risk, xgboost_aft]
+  fallback: aalen_johansen
+citizen_wait:
+  schema_version: 2
+  minimum_hospital_training_rows: 50
+  suppression_justification: >-
+    Fifty rows matches the model support gate, reducing small-cell privacy risk while withholding unstable
+    hospital-specific estimates.
+  admission_quantiles: [0.50, 0.80]
+  admission_quantile_estimand: conditional_on_eventual_admission_within_observable_curve
+  refusal_horizon_days: 30
+  evaluation_registration_period: [2025-03-18, 2025-03-31]
+ghost_queue:
+  schema_version: 2
+  minimum_days_waited: 30
+  admission_probability_horizon_days: 90
+  admission_probability_threshold: 0.10
+  rule_reason_code: waited_30d_and_p_admit_90d_below_0_10
+  training_only_justification: >-
+    Before hindsight evaluation, this rule selected 13,328 of 65,232 origin-queue referrals and their
+    origin-safe Aalen-Johansen mean probability of admission within 90 days was 0.99%.
+  ranking_score_name: origin_safe_verification_priority
+  ranking_score_formula: one_minus_p_admit_90d_x_wait_maturity_x_at_risk_support
+  wait_maturity_days: 30
+  minimum_comparable_at_risk_rows: 50
+  degeneracy_tolerance: 0.000001
+  yield_cutoffs: [500, 1000, 2000, 5000, 13328]
+  recommended_history_months: 21
+  ranking_justification: >-
+    The training-only score prioritizes mature low-admission-probability waits while downweighting referrals whose
+    assigned origin-safe risk set has fewer than 50 comparable referrals still under observation.
