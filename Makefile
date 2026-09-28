@@ -9,7 +9,7 @@ PYTHON3      ?= python3
 # Bare `make` prints the targets; starting a stack is always an explicit choice.
 .DEFAULT_GOAL := help
 
-.PHONY: help smoke env demo up down prod-config pipe pipe-build migrate ingest baseline psql train tournament flow-evidence flow-quantile flow-calibration flow-hierarchy flow-pressure signal-prioritization flow-scenario decision-alternatives model-assurance assurance-publish operational-intelligence-bundle operational-intelligence-publish review-evidence-bundle review-evidence-publish waiting-list-bundle waiting-list-publish predict registry marts create-key backup restore api-dev test ml-test \
+.PHONY: help smoke env demo up down prod-config pipe pipe-build migrate ingest baseline psql train tournament flow-evidence flow-quantile flow-calibration flow-hierarchy flow-pressure signal-prioritization flow-scenario decision-alternatives model-assurance assurance-publish operational-intelligence-bundle operational-intelligence-publish review-evidence-bundle review-evidence-publish waiting-list-bundle waiting-list-publish referral-estimates-bundle referral-estimates-publish verification-worklist-bundle verification-worklist-publish predict registry marts create-key backup restore api-dev test ml-test \
         models-export models-quantile-export models-test lint fmt audit fixture fixture-load seed-build seed-load web-install web-dev web-lint web-test web-build web-build-off
 
 help:          ## list the targets (bare `make` shows this)
@@ -17,7 +17,7 @@ help:          ## list the targets (bare `make` shows this)
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
 	  | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-26s\033[0m %s\n", $$1, $$2}'
 
-smoke:         ## check a running stack: API health and the three publications (make demo runs it at the end)
+smoke:         ## check a running stack: API health and the published evidence (make demo runs it at the end)
 	@test -n "$$DEMO_API_KEY" || { echo "  DEMO_API_KEY is not set in .env: run make env"; exit 1; }
 	@api=http://localhost:$${API_PORT:-8000}; ui=http://localhost:$${FRONTEND_PORT:-3000}; \
 	curl -fsS "$$api/health" > /dev/null && echo "  liveness      ok" || { echo "  liveness      FAILED ($$api/health)"; exit 1; }; \
@@ -26,6 +26,9 @@ smoke:         ## check a running stack: API health and the three publications (
 	$(PYTHON3) tools/smoke_publication.py < /tmp/hqai-smoke.json; \
 	curl -fsS -H "X-API-Key: $$DEMO_API_KEY" "$$api/api/v1/model-assurance" > /dev/null && echo "  passport      ok" || { echo "  passport      FAILED"; exit 1; }; \
 	curl -fsS -H "X-API-Key: $$DEMO_API_KEY" "$$api/api/v1/review-evidence/overview" > /dev/null && echo "  evidence      ok" || { echo "  evidence      FAILED"; exit 1; }; \
+	curl -fsS -H "X-API-Key: $$DEMO_API_KEY" "$$api/api/v1/waiting-list/hospitals?limit=1" > /dev/null && echo "  waiting list  ok" || { echo "  waiting list  FAILED"; exit 1; }; \
+	curl -fsS -H "X-API-Key: $$DEMO_API_KEY" "$$api/api/v1/referral-estimates/publication" > /dev/null && echo "  estimates     ok" || { echo "  estimates     FAILED"; exit 1; }; \
+	curl -fsS -H "X-API-Key: $$DEMO_API_KEY" "$$api/api/v1/verification-worklist/publication" > /dev/null && echo "  worklist      ok" || { echo "  worklist      FAILED"; exit 1; }; \
 	curl -fsS -o /dev/null -w "  UI            HTTP %{http_code}\n" "$$ui/" || { echo "  UI            FAILED"; exit 1; }; \
 	rm -f /tmp/hqai-smoke.json
 
@@ -134,6 +137,20 @@ waiting-list-bundle: ## offline export of the measured waiting list at the origi
 waiting-list-publish: migrate ## publish BUNDLE=/path/to/waiting_list.json
 	@test -n "$(BUNDLE)" || { echo 'usage: make waiting-list-publish BUNDLE=/path/to/waiting_list.json'; exit 2; }
 	cd backend && $(PY) -m app.cli publish-waiting-list --bundle "$(abspath $(BUNDLE))"
+
+referral-estimates-bundle: ## per-referral estimates of an origin_journey run -> artifacts/referral_estimates/
+	$(PY) tools/referral_estimates_bundle.py
+
+referral-estimates-publish: migrate ## publish BUNDLE=/path/to/referral_estimates.json
+	@test -n "$(BUNDLE)" || { echo 'usage: make referral-estimates-publish BUNDLE=/path/to/referral_estimates.json'; exit 2; }
+	cd backend && $(PY) -m app.cli publish-referral-estimates --bundle "$(abspath $(BUNDLE))"
+
+verification-worklist-bundle: ## ghost-queue run -> artifacts/verification_worklist/ (administrative review list)
+	$(PY) tools/verification_worklist_bundle.py
+
+verification-worklist-publish: migrate ## publish BUNDLE=/path/to/verification_worklist.json
+	@test -n "$(BUNDLE)" || { echo 'usage: make verification-worklist-publish BUNDLE=/path/to/verification_worklist.json'; exit 2; }
+	cd backend && $(PY) -m app.cli publish-verification-worklist --bundle "$(abspath $(BUNDLE))"
 
 predict: migrate ## predictions of the current models -> postgres (pred_referral, pred_daily_forecast, model_registry), then marts
 	PYTHONPATH=$(ML_PATH) $(PY) ml/pipelines/predict.py

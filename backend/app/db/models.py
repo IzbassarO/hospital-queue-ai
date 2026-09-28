@@ -792,6 +792,155 @@ class WaitingListReferral(Base):
     observed_days_from_origin: Mapped[int | None] = mapped_column(Integer)
 
 
+class ReferralEstimateSnapshot(Base):
+    """One published set of per-referral journey estimates. Sibling of waiting_list_snapshot, same origin."""
+
+    __tablename__ = "referral_estimate_snapshot"
+    __table_args__ = (
+        UniqueConstraint("publication_id", name="uq_referral_estimate_snapshot_publication_id"),
+        UniqueConstraint("publication_identity_sha256", name="uq_referral_estimate_snapshot_identity"),
+        Index("ux_referral_estimate_snapshot_active", "is_active", unique=True, postgresql_where=text("is_active")),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    publication_id: Mapped[str] = mapped_column(String(128))
+    schema_version: Mapped[str] = mapped_column(String(64))
+    contract_version: Mapped[str] = mapped_column(String(32))
+    publication_identity_sha256: Mapped[str] = mapped_column(String(64))
+    bundle_sha256: Mapped[str] = mapped_column(String(64))
+    source_code_commit: Mapped[str] = mapped_column(String(40))
+    origin: Mapped[dt.date] = mapped_column(Date)
+    outcome_cutoff: Mapped[dt.datetime] = mapped_column(DateTime(timezone=False))
+    generated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    published_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"), index=True)
+    referral_count: Mapped[int] = mapped_column(Integer)
+    horizons: Mapped[list] = mapped_column(JSONB)
+    admission_window_coverage: Mapped[float] = mapped_column(Double)
+    source_run: Mapped[dict] = mapped_column(JSONB)
+    selection: Mapped[dict] = mapped_column(JSONB)
+    calibration: Mapped[dict] = mapped_column(JSONB)
+    estimate_tiers: Mapped[dict] = mapped_column(JSONB)
+    abstention_counts: Mapped[dict] = mapped_column(JSONB)
+    degeneracy: Mapped[dict] = mapped_column(JSONB)
+    attention: Mapped[dict] = mapped_column(JSONB)
+    limitations: Mapped[list] = mapped_column(JSONB)
+
+
+class ReferralEstimate(Base):
+    """One referral's origin-time estimates. Joined to waiting_list_referral by referral_id at read time."""
+
+    __tablename__ = "referral_estimate"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "referral_id", name="uq_referral_estimate_row"),
+        Index("ix_referral_estimate_org_refusal", "snapshot_id", "org_code", "refused_30d"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("referral_estimate_snapshot.id", ondelete="CASCADE"), index=True
+    )
+    referral_id: Mapped[int] = mapped_column(BigInteger)
+    org_code: Mapped[str] = mapped_column(String(8))
+    profile_code: Mapped[str] = mapped_column(String(8))
+    estimate_tier: Mapped[str] = mapped_column(String(24))
+    similar_training_rows: Mapped[int] = mapped_column(Integer)
+    admitted_7d: Mapped[float] = mapped_column(Double)
+    admitted_14d: Mapped[float] = mapped_column(Double)
+    admitted_30d: Mapped[float] = mapped_column(Double)
+    refused_30d: Mapped[float] = mapped_column(Double)
+    window_lower_days: Mapped[float | None] = mapped_column(Double)
+    window_upper_days: Mapped[float | None] = mapped_column(Double)
+    abstention_reason: Mapped[str | None] = mapped_column(String(64))
+    refusal_attention: Mapped[bool] = mapped_column(Boolean)
+    degenerate_30d: Mapped[bool] = mapped_column(Boolean)
+
+
+class VerificationWorklistSnapshot(Base):
+    """One published verification worklist. An administrative review list, never a queue and never a decision."""
+
+    __tablename__ = "verification_worklist_snapshot"
+    __table_args__ = (
+        UniqueConstraint("publication_id", name="uq_verification_worklist_snapshot_publication_id"),
+        UniqueConstraint("publication_identity_sha256", name="uq_verification_worklist_snapshot_identity"),
+        Index("ux_verification_worklist_snapshot_active", "is_active", unique=True, postgresql_where=text("is_active")),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    publication_id: Mapped[str] = mapped_column(String(128))
+    schema_version: Mapped[str] = mapped_column(String(64))
+    contract_version: Mapped[str] = mapped_column(String(32))
+    publication_identity_sha256: Mapped[str] = mapped_column(String(64))
+    bundle_sha256: Mapped[str] = mapped_column(String(64))
+    source_code_commit: Mapped[str] = mapped_column(String(40))
+    origin: Mapped[dt.date] = mapped_column(Date)
+    generated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    published_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"), index=True)
+    decision_owner: Mapped[str] = mapped_column(String(32))
+    not_a_decision: Mapped[dict] = mapped_column(JSONB)
+    source_publication: Mapped[dict] = mapped_column(JSONB)
+    ranking: Mapped[dict] = mapped_column(JSONB)
+    legacy_rule: Mapped[dict] = mapped_column(JSONB)
+    history_quality: Mapped[dict] = mapped_column(JSONB)
+    estimands: Mapped[dict] = mapped_column(JSONB)
+    counts: Mapped[dict] = mapped_column(JSONB)
+    yield_curve: Mapped[dict] = mapped_column(JSONB)
+    limitations: Mapped[list] = mapped_column(JSONB)
+
+
+class VerificationWorklistArea(Base):
+    """One region's or hospital's formal queue, with how much of it rests on thin comparable history."""
+
+    __tablename__ = "verification_worklist_area"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "level", "code", name="uq_verification_worklist_area_row"),
+        Index("ix_verification_worklist_area_level", "snapshot_id", "level", "formal_queue_count"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("verification_worklist_snapshot.id", ondelete="CASCADE"), index=True
+    )
+    level: Mapped[str] = mapped_column(String(16))
+    code: Mapped[str] = mapped_column(String(8))
+    region_code: Mapped[str | None] = mapped_column(String(4))
+    formal_queue_count: Mapped[int] = mapped_column(Integer)
+    history_quality_warning_count: Mapped[int] = mapped_column(Integer)
+    history_quality_warning_share: Mapped[float] = mapped_column(Double)
+
+
+class VerificationWorklistItem(Base):
+    """One referral in the verification order. Origin-time fields only; nothing here says a patient should go."""
+
+    __tablename__ = "verification_worklist_item"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "referral_id", name="uq_verification_worklist_item_row"),
+        Index("ix_verification_worklist_item_org_rank", "snapshot_id", "org_code", "rank"),
+        Index("ix_verification_worklist_item_region_rank", "snapshot_id", "region_code", "rank"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("verification_worklist_snapshot.id", ondelete="CASCADE"), index=True
+    )
+    referral_id: Mapped[int] = mapped_column(BigInteger)
+    rank: Mapped[int] = mapped_column(Integer)
+    org_code: Mapped[str] = mapped_column(String(8))
+    region_code: Mapped[str] = mapped_column(String(4))
+    profile_code: Mapped[str] = mapped_column(String(8))
+    days_waited_at_origin: Mapped[int] = mapped_column(Integer)
+    probability_admitted_30d: Mapped[float] = mapped_column(Double)
+    probability_admitted_horizon: Mapped[float] = mapped_column(Double)
+    probability_ever_admitted: Mapped[float] = mapped_column(Double)
+    observable_curve_end_day: Mapped[float] = mapped_column(Double)
+    estimate_tier: Mapped[str] = mapped_column(String(24))
+    verification_priority_score: Mapped[float] = mapped_column(Double)
+    comparable_training_at_risk_rows: Mapped[int] = mapped_column(Integer)
+    history_quality_warning: Mapped[bool] = mapped_column(Boolean)
+    history_quality_reason_code: Mapped[str | None] = mapped_column(String(64))
+
+
 # ------------------------------------------------------------------ serving marts
 # Filled by ml/pipelines/build_marts.py (`make marts`, also at the end of `make predict`): one
 # transaction truncates and rebuilds all mart_* tables. No FKs to the data layer on purpose —

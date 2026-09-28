@@ -5,12 +5,13 @@
 
 The seed carries what the product reads at run time: the national dictionaries, daily aggregates, serving marts and
 model registry as gzipped CSV (COPY ... TO STDOUT ordered by primary key, gzip without timestamp or file name, so a
-rebuild of unchanged data is byte-identical); the four accepted publish bundles (Model Assurance, operational
-intelligence, review evidence, waiting list) byte-for-byte as they were published, so their identities do not
-change; and the referrals, per-referral predictions and daily forecasts of the same two regions as
+rebuild of unchanged data is byte-identical); the six accepted publish bundles (Model Assurance, operational
+intelligence, review evidence, waiting list, per-referral estimates, verification worklist) byte-for-byte as they
+were published, so their
+identities do not change; and the referrals, per-referral predictions and daily forecasts of the same two regions as
 tools/test_fixture.py, so the legacy referral endpoints and hospital cards work there. No raw MoH files and no
-credentials are copied; the full pipeline (`make ingest predict marts` and the publish targets) reproduces every
-row from the open data. Budget: 40 MB.
+credentials are copied; the full pipeline (`make ingest predict marts` and the publish targets) reproduces every row
+from the open data. Budget: 40 MB.
 
 Each bundle's raw SHA-256 must equal bundle_sha256 of the active snapshot in the database: the seed reproduces the
 publication that is actually serving, not a later rebuild of the same evidence.
@@ -67,6 +68,7 @@ SNAPSHOT_COUNT_COLUMNS = (
     "alternative_count",
     "hospital_count",
     "waiting_count",
+    "referral_count",
 )
 
 
@@ -94,6 +96,20 @@ BUNDLES = (
     ),
     BundleSpec("review_evidence", "review_evidence_snapshot", "publication_id", "publication_identity_sha256", True),
     BundleSpec("waiting_list", "waiting_list_snapshot", "publication_id", "publication_identity_sha256", True),
+    BundleSpec(
+        "referral_estimates",
+        "referral_estimate_snapshot",
+        "publication_id",
+        "publication_identity_sha256",
+        True,
+    ),
+    BundleSpec(
+        "verification_worklist",
+        "verification_worklist_snapshot",
+        "publication_id",
+        "publication_identity_sha256",
+        True,
+    ),
 )
 
 

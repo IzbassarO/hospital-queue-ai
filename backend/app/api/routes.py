@@ -31,6 +31,11 @@ from app.schemas.operational_intelligence import (
     SignalType,
     SupportStatus,
 )
+from app.schemas.referral_estimates import (
+    QueueReferralResponse,
+    ReferralEstimatesPublicationResponse,
+    ReferralOrder,
+)
 from app.schemas.review_evidence import (
     AlternativeSetResponse,
     AlternativeSetSummaryResponse,
@@ -46,6 +51,12 @@ from app.schemas.specialist import (
     SpecialistDecisionCreate,
 )
 from app.schemas.status import HospitalProfileCard, HospitalProfileStatus, OverviewResponse, RegionDetailResponse
+from app.schemas.verification_worklist import (
+    VerificationWorklistPublicationResponse,
+    WorklistAreaResponse,
+    WorklistHospitalResponse,
+    WorklistOrder,
+)
 from app.schemas.waiting_list import (
     SupportClass,
     WaitingHospitalDetailResponse,
@@ -62,8 +73,10 @@ from app.services import (
     model_assurance,
     operational_intelligence,
     recommend,
+    referral_estimates,
     review_evidence,
     specialist_decisions,
+    verification_worklist,
     waiting_list,
 )
 from app.services import status as status_service
@@ -722,6 +735,130 @@ def get_waiting_list_referrals(
         session,
         org_code,
         profile_code=profile,
+        order=order,
+        limit=page.limit,
+        offset=page.offset,
+    )
+
+
+# ------------------------------------------------------------------- per-referral estimates
+@router.get(
+    "/referral-estimates/publication",
+    response_model=ReferralEstimatesPublicationResponse,
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="referral_estimates_publication_get",
+    tags=["referral-estimates"],
+)
+def get_referral_estimates_publication(session: SessionDep, _: ViewerDep) -> ReferralEstimatesPublicationResponse:
+    """The active per-referral estimate publication: which model serves, why, and how well it turned out.
+
+    `selection` is the tournament as it was decided — the metric and the rule were fixed before the run, and the
+    baseline serves whenever no candidate clears them. `calibration` is hindsight over the whole published cohort
+    and carries the disclosure marker; it scores the estimates afterwards and feeds nothing.
+    """
+    return referral_estimates.publication_response(session)
+
+
+@router.get(
+    "/referral-estimates/hospitals/{org_code}/referrals",
+    response_model=Page[QueueReferralResponse],
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="referral_estimates_referrals_list",
+    tags=["referral-estimates"],
+)
+def get_referral_estimates_referrals(
+    session: SessionDep,
+    org_code: str,
+    page: PaginationDep,
+    _: ViewerDep,
+    profile: Annotated[str | None, Query(description="profile code; all profiles if omitted")] = None,
+    order: Annotated[
+        ReferralOrder, Query(description="by days waited at the origin, or by the estimated refusal risk")
+    ] = "longest_wait",
+    attention: Annotated[
+        bool, Query(description="keep only referrals over the published refusal-attention threshold")
+    ] = False,
+) -> Page[QueueReferralResponse]:
+    """One hospital's measured queue with each referral's origin-time estimate beside it.
+
+    Two publications on one row: the queue is measured data with its hindsight outcome, `estimate` is model output
+    produced from history up to the origin. `estimate` is null when no estimate publication stands at the queue's
+    origin or when this referral is not covered; `order=highest_refusal_risk` and `attention=true` are an
+    administrative follow-up order — check the referral, reach the patient — and need such a publication.
+    """
+    return referral_estimates.list_queue(
+        session,
+        org_code,
+        profile_code=profile,
+        order=order,
+        attention_only=attention,
+        limit=page.limit,
+        offset=page.offset,
+    )
+
+
+# ------------------------------------------------------------------- verification worklist
+@router.get(
+    "/verification-worklist/publication",
+    response_model=VerificationWorklistPublicationResponse,
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="verification_worklist_publication_get",
+    tags=["verification-worklist"],
+)
+def get_verification_worklist_publication(session: SessionDep, _: ViewerDep) -> VerificationWorklistPublicationResponse:
+    """The active verification worklist: its order, what the marks mean, and what checking in that order would find.
+
+    A ranked administrative verification worklist for the hospitalisation bureau — the whole formal queue, ordered
+    by the origin-safe verification priority for checking records against the patient and the paperwork. It is not
+    a queue and never shortens one: `counts.ranked_count` equals `counts.formal_queue_count`. It is not a decision
+    or a classifier either: `decision_owner` and `not_a_decision` say so on this response and on every row.
+    `legacy_rule` is the earlier binary rule, kept for comparison only. `yield_curve` is hindsight against the
+    whole queue's base rate and carries the disclosure marker.
+    """
+    return verification_worklist.publication_response(session)
+
+
+@router.get(
+    "/verification-worklist/regions",
+    response_model=list[WorklistAreaResponse],
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="verification_worklist_regions_list",
+    tags=["verification-worklist"],
+)
+def get_verification_worklist_regions(session: SessionDep, _: ViewerDep) -> list[WorklistAreaResponse]:
+    """Every region's formal queue, largest first, with how much of it rests on thin comparable history."""
+    return verification_worklist.list_regions(session)
+
+
+@router.get(
+    "/verification-worklist/hospitals/{org_code}",
+    response_model=WorklistHospitalResponse,
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="verification_worklist_hospital_get",
+    tags=["verification-worklist"],
+)
+def get_verification_worklist_hospital(
+    session: SessionDep,
+    org_code: str,
+    page: PaginationDep,
+    _: ViewerDep,
+    order: Annotated[WorklistOrder, Query(description="the published ranking, or by days already waited")] = "rank",
+    history_quality_warning: Annotated[
+        bool | None, Query(description="keep only rows that rest on thin comparable history, or only the rest")
+    ] = None,
+) -> WorklistHospitalResponse:
+    """One hospital's part of the verification order, in the published rank, with its own and its region's counts.
+
+    Each row carries its priority (`verification_priority_score`), how well supported that is (`estimate_tier`,
+    `comparable_training_at_risk_rows`, `history_quality_warning` with its reason), and repeats that the specialist
+    decides. No row carries an outcome. `registration_date` and `hospitalization_code` come from the measured queue
+    so a bureau can find the paper record; they are null when the current waiting-list publication no longer
+    carries that referral.
+    """
+    return verification_worklist.hospital_worklist(
+        session,
+        org_code,
+        warning=history_quality_warning,
         order=order,
         limit=page.limit,
         offset=page.offset,

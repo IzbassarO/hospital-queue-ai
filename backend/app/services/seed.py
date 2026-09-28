@@ -1,4 +1,4 @@
-"""Demo seed loader: seed/ (built by tools/seed_bundle.py) into a migrated database, then the four publications.
+"""Demo seed loader: seed/ (built by tools/seed_bundle.py) into a migrated database, then the six publications.
 
 Why it lives in the backend: a fresh clone has neither the 16 GB of MoH data nor the hours of pipelines that produce
 the serving tables and the accepted evidence, yet `make demo` must bring the product up complete with Docker alone.
@@ -10,9 +10,9 @@ row counts in every seeded table and the seed's mart_build_info.built_at, a chea
 publications are only re-activated); any other non-empty seeded table stops the load unless
 replace=True, which truncates the seeded data tables (plus fact_admission_refusal, which references them) and never
 api_keys, access_log or the decision tables. The bundles go through model_assurance.publish,
-operational_intelligence.publish, review_evidence.publish and waiting_list.publish, so the identity and provenance
-checks are those of the administrative publish commands, and a bundle that is already published is activated, not
-duplicated.
+operational_intelligence.publish, review_evidence.publish, waiting_list.publish, referral_estimates.publish and
+verification_worklist.publish, so the identity and provenance checks are those of the administrative publish
+commands, and a bundle that is already published is activated, not duplicated.
 """
 
 import csv
@@ -27,15 +27,30 @@ from pathlib import Path
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.services import model_assurance, operational_intelligence, review_evidence, waiting_list
+from app.services import (
+    model_assurance,
+    operational_intelligence,
+    referral_estimates,
+    review_evidence,
+    verification_worklist,
+    waiting_list,
+)
 
 IDENTIFIER = re.compile(r"^[a-z_][a-z0-9_]*$")
 # referenced by the seeded dictionaries, not seeded itself: a --replace truncate must include it
 REPLACE_ALSO = ("fact_admission_refusal",)
 SERIAL_COLUMNS = (("fact_referral", "referral_id"), ("pred_referral", "referral_id"))
-# operational intelligence verifies the assurance snapshot, review evidence verifies both;
-# the waiting list stands alone (measured data, no model provenance to verify) and goes last
-BUNDLE_ORDER = ("model_assurance", "operational_intelligence", "review_evidence", "waiting_list")
+# operational intelligence verifies the assurance snapshot, review evidence verifies both; the waiting list
+# stands alone (measured data, no model provenance to verify), and the per-referral estimates go last because
+# they are read beside a waiting-list row
+BUNDLE_ORDER = (
+    "model_assurance",
+    "operational_intelligence",
+    "review_evidence",
+    "waiting_list",
+    "referral_estimates",
+    "verification_worklist",
+)
 # the one-row table whose build timestamp identifies a mart build: equal counts alone do not prove the same content
 BUILD_INFO_TABLE = "mart_build_info"
 
@@ -223,6 +238,12 @@ def publish_bundles(session: Session, seed_dir: Path, manifest: dict) -> list[Bu
             published_id, identity = result.publication_id, result.publication_identity_sha256
         elif kind == "waiting_list":
             result = waiting_list.publish(session, waiting_list.parse_bundle(raw))
+            published_id, identity = result.publication_id, result.publication_identity_sha256
+        elif kind == "referral_estimates":
+            result = referral_estimates.publish(session, referral_estimates.parse_bundle(raw))
+            published_id, identity = result.publication_id, result.publication_identity_sha256
+        elif kind == "verification_worklist":
+            result = verification_worklist.publish(session, verification_worklist.parse_bundle(raw))
             published_id, identity = result.publication_id, result.publication_identity_sha256
         else:
             result = review_evidence.publish(session, review_evidence.parse_bundle(raw))

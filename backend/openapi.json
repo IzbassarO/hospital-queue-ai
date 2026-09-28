@@ -1699,6 +1699,56 @@
         "title": "AssuranceSupport",
         "type": "object"
       },
+      "AttentionRule": {
+        "additionalProperties": false,
+        "description": "The administrative follow-up threshold, published with its definition so the cut is auditable.\n\nThis is a queue-management cut for paperwork — check the referral is still valid, reach the patient — and the\nAPI carries that sentence next to the number. It is not triage and it is not a clinical statement.",
+        "properties": {
+          "definition": {
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Definition",
+            "type": "string"
+          },
+          "flagged_count": {
+            "minimum": 0.0,
+            "title": "Flagged Count",
+            "type": "integer"
+          },
+          "intended_use": {
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Intended Use",
+            "type": "string"
+          },
+          "metric": {
+            "const": "refused_30d",
+            "title": "Metric",
+            "type": "string"
+          },
+          "quantile": {
+            "exclusiveMaximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Quantile",
+            "type": "number"
+          },
+          "threshold": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Threshold",
+            "type": "number"
+          }
+        },
+        "required": [
+          "metric",
+          "quantile",
+          "threshold",
+          "definition",
+          "intended_use",
+          "flagged_count"
+        ],
+        "title": "AttentionRule",
+        "type": "object"
+      },
       "CalibratedUncertainty": {
         "additionalProperties": false,
         "properties": {
@@ -1744,6 +1794,152 @@
           "calibration_version"
         ],
         "title": "CalibratedUncertainty",
+        "type": "object"
+      },
+      "Calibration": {
+        "additionalProperties": false,
+        "description": "Hindsight, and labelled as such on the object itself: how the served model's numbers turned out.\n\nComputed by the ML run over the whole published cohort, never per request and never per hospital: a few dozen\nreferrals cannot support a reliability curve, and drawing one would invite exactly the reading it cannot bear.",
+        "properties": {
+          "bins": {
+            "items": {
+              "$ref": "#/components/schemas/ReliabilityBin"
+            },
+            "minItems": 1,
+            "title": "Bins",
+            "type": "array"
+          },
+          "disclosure": {
+            "const": "HINDSIGHT_NOT_AVAILABLE_AT_ORIGIN",
+            "title": "Disclosure",
+            "type": "string"
+          },
+          "model_key": {
+            "enum": [
+              "aalen_johansen",
+              "xgboost_aft",
+              "discrete_competing_risk"
+            ],
+            "title": "Model Key",
+            "type": "string"
+          },
+          "rows": {
+            "minimum": 1.0,
+            "title": "Rows",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "disclosure",
+          "model_key",
+          "rows",
+          "bins"
+        ],
+        "title": "Calibration",
+        "type": "object"
+      },
+      "CandidateDecision": {
+        "additionalProperties": false,
+        "description": "One competitor in the model tournament, scored on the metric fixed before the run.",
+        "properties": {
+          "accepted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null for the baseline: it is the thing candidates must beat",
+            "title": "Accepted"
+          },
+          "brier_by_horizon": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "mean of the admission and refusal Brier score at each horizon",
+            "minProperties": 1,
+            "title": "Brier By Horizon",
+            "type": "object"
+          },
+          "model_key": {
+            "enum": [
+              "aalen_johansen",
+              "xgboost_aft",
+              "discrete_competing_risk"
+            ],
+            "title": "Model Key",
+            "type": "string"
+          },
+          "overall_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "candidate minus baseline; negative is better",
+            "title": "Overall Delta"
+          },
+          "overall_mean_brier": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Overall Mean Brier",
+            "type": "number"
+          },
+          "role": {
+            "enum": [
+              "baseline",
+              "candidate"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "strict_overall_improvement": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strict Overall Improvement"
+          },
+          "within_bucket_tolerance": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Within Bucket Tolerance"
+          },
+          "worst_bucket_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "worst days-waited bucket, same sign rule",
+            "title": "Worst Bucket Delta"
+          }
+        },
+        "required": [
+          "model_key",
+          "role",
+          "accepted",
+          "overall_mean_brier",
+          "brier_by_horizon"
+        ],
+        "title": "CandidateDecision",
         "type": "object"
       },
       "ConfigResponse": {
@@ -2257,6 +2453,38 @@
           "actor"
         ],
         "title": "DecisionCreate",
+        "type": "object"
+      },
+      "DegeneracyRule": {
+        "additionalProperties": false,
+        "description": "How many rows put the whole 30-day mass on one outcome, and the sentence that says what that means.",
+        "properties": {
+          "by_outcome": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "count per outcome the mass collapsed onto",
+            "title": "By Outcome",
+            "type": "object"
+          },
+          "count": {
+            "minimum": 0.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "definition": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Definition",
+            "type": "string"
+          }
+        },
+        "required": [
+          "definition",
+          "count",
+          "by_outcome"
+        ],
+        "title": "DegeneracyRule",
         "type": "object"
       },
       "DictionariesResponse": {
@@ -3102,6 +3330,49 @@
         "title": "HealthResponse",
         "type": "object"
       },
+      "HistoryQuality": {
+        "additionalProperties": false,
+        "description": "How many rows rest on thin comparable history, and why. Read from the source, never re-derived.",
+        "properties": {
+          "definition": {
+            "$ref": "#/components/schemas/LocalisedText"
+          },
+          "reason_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "minProperties": 1,
+            "propertyNames": {
+              "enum": [
+                "insufficient_comparable_history",
+                "insufficient_and_degenerate_comparable_history",
+                "degenerate_conditional_distribution"
+              ]
+            },
+            "title": "Reason Counts",
+            "type": "object"
+          },
+          "warning_count": {
+            "minimum": 0.0,
+            "title": "Warning Count",
+            "type": "integer"
+          },
+          "warning_share": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Warning Share",
+            "type": "number"
+          }
+        },
+        "required": [
+          "definition",
+          "warning_count",
+          "warning_share",
+          "reason_counts"
+        ],
+        "title": "HistoryQuality",
+        "type": "object"
+      },
       "HospitalProfileCard": {
         "properties": {
           "explanation_factors": {
@@ -3458,6 +3729,67 @@
         "title": "InboxOutcome",
         "type": "object"
       },
+      "LegacyRule": {
+        "additionalProperties": false,
+        "description": "The earlier binary rule, kept for comparison only: it does not select or order this list.",
+        "properties": {
+          "horizon_days": {
+            "minimum": 1.0,
+            "title": "Horizon Days",
+            "type": "integer"
+          },
+          "minimum_days_waited": {
+            "minimum": 0.0,
+            "title": "Minimum Days Waited",
+            "type": "integer"
+          },
+          "probability_strictly_below": {
+            "exclusiveMaximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Probability Strictly Below",
+            "type": "number"
+          },
+          "reason_code": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Reason Code",
+            "type": "string"
+          },
+          "role": {
+            "const": "AUDITED_REFERENCE_ONLY",
+            "title": "Role",
+            "type": "string"
+          },
+          "selected_count": {
+            "description": "rows of this list the old rule would have selected",
+            "minimum": 0.0,
+            "title": "Selected Count",
+            "type": "integer"
+          },
+          "statement": {
+            "$ref": "#/components/schemas/LocalisedText",
+            "description": "the rule and its role in one sentence, for the screen"
+          },
+          "training_only_justification": {
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Training Only Justification",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "reason_code",
+          "minimum_days_waited",
+          "horizon_days",
+          "probability_strictly_below",
+          "selected_count",
+          "training_only_justification",
+          "statement"
+        ],
+        "title": "LegacyRule",
+        "type": "object"
+      },
       "LoadIndexComponents": {
         "description": "Scores behind load_index, each in [0, 1] (NULL when the component is undefined).",
         "properties": {
@@ -3551,6 +3883,30 @@
           "queue_trend"
         ],
         "title": "LoadIndexWeights",
+        "type": "object"
+      },
+      "LocalisedText": {
+        "additionalProperties": false,
+        "description": "One sentence in both interface languages. The framing is only as good as the half a reader understands.",
+        "properties": {
+          "kk": {
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Kk",
+            "type": "string"
+          },
+          "ru": {
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Ru",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ru",
+          "kk"
+        ],
+        "title": "LocalisedText",
         "type": "object"
       },
       "MeResponse": {
@@ -3911,6 +4267,68 @@
           "beats_baselines"
         ],
         "title": "ModelInfo",
+        "type": "object"
+      },
+      "ModelSelection": {
+        "additionalProperties": false,
+        "description": "Why this model serves. The rule is published with the numbers, so a reader can re-apply it themselves.",
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateDecision"
+            },
+            "minItems": 2,
+            "title": "Candidates",
+            "type": "array"
+          },
+          "decision_rule": {
+            "description": "the rule as it was fixed, before the run",
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Decision Rule",
+            "type": "string"
+          },
+          "fallback_used": {
+            "description": "true when no candidate cleared the rule and the baseline serves",
+            "title": "Fallback Used",
+            "type": "boolean"
+          },
+          "metric": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Metric",
+            "type": "string"
+          },
+          "require_strict_overall_improvement": {
+            "title": "Require Strict Overall Improvement",
+            "type": "boolean"
+          },
+          "selected_model": {
+            "enum": [
+              "aalen_johansen",
+              "xgboost_aft",
+              "discrete_competing_risk"
+            ],
+            "title": "Selected Model",
+            "type": "string"
+          },
+          "tolerance": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Tolerance",
+            "type": "number"
+          }
+        },
+        "required": [
+          "metric",
+          "decision_rule",
+          "tolerance",
+          "require_strict_overall_improvement",
+          "selected_model",
+          "fallback_used",
+          "candidates"
+        ],
+        "title": "ModelSelection",
         "type": "object"
       },
       "ObservedAfterOrigin": {
@@ -5199,6 +5617,38 @@
         "title": "Page[OperationalSignalResponse]",
         "type": "object"
       },
+      "Page_QueueReferralResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QueueReferralResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "description": "rows matching the filters, before limit/offset",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[QueueReferralResponse]",
+        "type": "object"
+      },
       "Page_ReferralItem_": {
         "properties": {
           "items": {
@@ -5377,6 +5827,154 @@
         "title": "PublicationRef",
         "type": "object"
       },
+      "QueueReferralResponse": {
+        "description": "A measured queue row with its origin-time estimate, or `null` when this referral has none.\n\nTwo publications on one row, each carrying its own id and identity: `observed_after_origin` is what the data\nrecorded afterwards, `estimate` is what was knowable on the origin day. Neither is derived from the other.",
+        "properties": {
+          "days_waited_at_origin": {
+            "title": "Days Waited At Origin",
+            "type": "integer"
+          },
+          "estimate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferralEstimateResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hospitalization_code": {
+            "title": "Hospitalization Code",
+            "type": "string"
+          },
+          "is_duplicate_code": {
+            "title": "Is Duplicate Code",
+            "type": "boolean"
+          },
+          "observed_after_origin": {
+            "$ref": "#/components/schemas/ObservedAfterOrigin"
+          },
+          "org_code": {
+            "title": "Org Code",
+            "type": "string"
+          },
+          "origin": {
+            "format": "date",
+            "title": "Origin",
+            "type": "string"
+          },
+          "patient_region_code": {
+            "title": "Patient Region Code",
+            "type": "string"
+          },
+          "profile_code": {
+            "title": "Profile Code",
+            "type": "string"
+          },
+          "profile_name": {
+            "title": "Profile Name",
+            "type": "string"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "string"
+          },
+          "publication_identity_sha256": {
+            "title": "Publication Identity Sha256",
+            "type": "string"
+          },
+          "referral_id": {
+            "title": "Referral Id",
+            "type": "integer"
+          },
+          "region_code": {
+            "title": "Region Code",
+            "type": "string"
+          },
+          "registration_date": {
+            "format": "date",
+            "title": "Registration Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "publication_id",
+          "publication_identity_sha256",
+          "origin",
+          "referral_id",
+          "hospitalization_code",
+          "is_duplicate_code",
+          "org_code",
+          "region_code",
+          "patient_region_code",
+          "profile_code",
+          "profile_name",
+          "registration_date",
+          "days_waited_at_origin",
+          "observed_after_origin",
+          "estimate"
+        ],
+        "title": "QueueReferralResponse",
+        "type": "object"
+      },
+      "RankingRule": {
+        "additionalProperties": false,
+        "description": "How the worklist is ordered, as the ML side fixed it before any hindsight was looked at.",
+        "properties": {
+          "definition": {
+            "$ref": "#/components/schemas/LocalisedText"
+          },
+          "keys": {
+            "description": "the ordering keys, most significant first",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Keys",
+            "type": "array"
+          },
+          "minimum_comparable_at_risk_rows": {
+            "minimum": 1.0,
+            "title": "Minimum Comparable At Risk Rows",
+            "type": "integer"
+          },
+          "score_formula": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Score Formula",
+            "type": "string"
+          },
+          "score_name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Score Name",
+            "type": "string"
+          },
+          "training_only_justification": {
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Training Only Justification",
+            "type": "string"
+          },
+          "wait_maturity_days": {
+            "minimum": 1.0,
+            "title": "Wait Maturity Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "definition",
+          "keys",
+          "score_name",
+          "score_formula",
+          "wait_maturity_days",
+          "minimum_comparable_at_risk_rows",
+          "training_only_justification"
+        ],
+        "title": "RankingRule",
+        "type": "object"
+      },
       "RawQuantiles": {
         "additionalProperties": false,
         "properties": {
@@ -5551,6 +6149,274 @@
           "min_registrations_28d"
         ],
         "title": "RecommendationRuleConfig",
+        "type": "object"
+      },
+      "ReferralEstimateResponse": {
+        "description": "One referral's estimates, with the publication that produced them repeated on the row.",
+        "properties": {
+          "abstention_reason": {
+            "anyOf": [
+              {
+                "const": "NO_ADMISSION_IN_COMPARABLE_HISTORY",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Abstention Reason"
+          },
+          "admitted_14d": {
+            "title": "Admitted 14D",
+            "type": "number"
+          },
+          "admitted_30d": {
+            "title": "Admitted 30D",
+            "type": "number"
+          },
+          "admitted_7d": {
+            "title": "Admitted 7D",
+            "type": "number"
+          },
+          "degenerate_30d": {
+            "description": "the whole 30-day mass sits on one outcome; the number is thin evidence, not a certainty",
+            "title": "Degenerate 30D",
+            "type": "boolean"
+          },
+          "estimate_tier": {
+            "enum": [
+              "hospital_profile",
+              "region_profile",
+              "profile",
+              "national"
+            ],
+            "title": "Estimate Tier",
+            "type": "string"
+          },
+          "origin": {
+            "format": "date",
+            "title": "Origin",
+            "type": "string"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "string"
+          },
+          "publication_identity_sha256": {
+            "title": "Publication Identity Sha256",
+            "type": "string"
+          },
+          "refusal_attention": {
+            "title": "Refusal Attention",
+            "type": "boolean"
+          },
+          "refused_30d": {
+            "title": "Refused 30D",
+            "type": "number"
+          },
+          "selected_model": {
+            "enum": [
+              "aalen_johansen",
+              "xgboost_aft",
+              "discrete_competing_risk"
+            ],
+            "title": "Selected Model",
+            "type": "string"
+          },
+          "similar_training_rows": {
+            "title": "Similar Training Rows",
+            "type": "integer"
+          },
+          "still_waiting_30d": {
+            "description": "1 - admitted_30d - refused_30d, clamped at zero",
+            "title": "Still Waiting 30D",
+            "type": "number"
+          },
+          "window_coverage": {
+            "title": "Window Coverage",
+            "type": "number"
+          },
+          "window_lower_days": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Lower Days"
+          },
+          "window_upper_days": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Upper Days"
+          }
+        },
+        "required": [
+          "publication_id",
+          "publication_identity_sha256",
+          "origin",
+          "selected_model",
+          "estimate_tier",
+          "similar_training_rows",
+          "admitted_7d",
+          "admitted_14d",
+          "admitted_30d",
+          "refused_30d",
+          "still_waiting_30d",
+          "window_lower_days",
+          "window_upper_days",
+          "window_coverage",
+          "abstention_reason",
+          "refusal_attention",
+          "degenerate_30d"
+        ],
+        "title": "ReferralEstimateResponse",
+        "type": "object"
+      },
+      "ReferralEstimatesPublicationResponse": {
+        "description": "The publication itself: what serves, why it was chosen, how well it turned out, and what it withholds.",
+        "properties": {
+          "abstention_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Abstention Counts",
+            "type": "object"
+          },
+          "admission_window_coverage": {
+            "title": "Admission Window Coverage",
+            "type": "number"
+          },
+          "attention": {
+            "$ref": "#/components/schemas/AttentionRule"
+          },
+          "bundle_sha256": {
+            "title": "Bundle Sha256",
+            "type": "string"
+          },
+          "calibration": {
+            "$ref": "#/components/schemas/Calibration"
+          },
+          "contract_version": {
+            "title": "Contract Version",
+            "type": "string"
+          },
+          "degeneracy": {
+            "$ref": "#/components/schemas/DegeneracyRule"
+          },
+          "estimate_tiers": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Estimate Tiers",
+            "type": "object"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "horizons": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Horizons",
+            "type": "array"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "matches_waiting_list": {
+            "description": "true when the active waiting list stands at the same origin, so the two can be read on one row",
+            "title": "Matches Waiting List",
+            "type": "boolean"
+          },
+          "origin": {
+            "format": "date",
+            "title": "Origin",
+            "type": "string"
+          },
+          "outcome_cutoff": {
+            "format": "date-time",
+            "title": "Outcome Cutoff",
+            "type": "string"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "string"
+          },
+          "publication_identity_sha256": {
+            "title": "Publication Identity Sha256",
+            "type": "string"
+          },
+          "published_at": {
+            "format": "date-time",
+            "title": "Published At",
+            "type": "string"
+          },
+          "referral_count": {
+            "title": "Referral Count",
+            "type": "integer"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/ModelSelection"
+          },
+          "source_code_commit": {
+            "title": "Source Code Commit",
+            "type": "string"
+          },
+          "source_run": {
+            "$ref": "#/components/schemas/SourceRun"
+          }
+        },
+        "required": [
+          "publication_id",
+          "schema_version",
+          "contract_version",
+          "publication_identity_sha256",
+          "bundle_sha256",
+          "source_code_commit",
+          "origin",
+          "outcome_cutoff",
+          "published_at",
+          "generated_at",
+          "referral_count",
+          "horizons",
+          "admission_window_coverage",
+          "source_run",
+          "selection",
+          "calibration",
+          "estimate_tiers",
+          "abstention_counts",
+          "degeneracy",
+          "attention",
+          "limitations",
+          "matches_waiting_list"
+        ],
+        "title": "ReferralEstimatesPublicationResponse",
         "type": "object"
       },
       "ReferralItem": {
@@ -5888,6 +6754,70 @@
           "load_index_max_hospital"
         ],
         "title": "RegionProfileStatus",
+        "type": "object"
+      },
+      "ReliabilityBin": {
+        "additionalProperties": false,
+        "description": "One row of the reliability table: what the model said, against what the data later recorded.",
+        "properties": {
+          "bin_index": {
+            "minimum": 0.0,
+            "title": "Bin Index",
+            "type": "integer"
+          },
+          "horizon_days": {
+            "title": "Horizon Days",
+            "type": "integer"
+          },
+          "mean_predicted": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Mean Predicted",
+            "type": "number"
+          },
+          "n": {
+            "minimum": 1.0,
+            "title": "N",
+            "type": "integer"
+          },
+          "observed_rate": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Observed Rate",
+            "type": "number"
+          },
+          "outcome": {
+            "enum": [
+              "hospitalized",
+              "refused"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "probability_max": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Probability Max",
+            "type": "number"
+          },
+          "probability_min": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Probability Min",
+            "type": "number"
+          }
+        },
+        "required": [
+          "horizon_days",
+          "outcome",
+          "bin_index",
+          "n",
+          "mean_predicted",
+          "observed_rate",
+          "probability_min",
+          "probability_max"
+        ],
+        "title": "ReliabilityBin",
         "type": "object"
       },
       "ReviewOverviewResponse": {
@@ -6931,6 +7861,106 @@
         "title": "SourceProvenance",
         "type": "object"
       },
+      "SourcePublication": {
+        "additionalProperties": false,
+        "description": "The ML bundle this worklist was read from, by its own identity. Part of the publication identity.",
+        "properties": {
+          "file_sha256": {
+            "description": "sha256 of the compressed artifact as produced",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "File Sha256",
+            "type": "string"
+          },
+          "model": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Model",
+            "type": "string"
+          },
+          "publication_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Publication Id",
+            "type": "string"
+          },
+          "publication_identity_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Publication Identity Sha256",
+            "type": "string"
+          },
+          "schema_version": {
+            "minimum": 2.0,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "publication_id",
+          "publication_identity_sha256",
+          "file_sha256",
+          "schema_version",
+          "model"
+        ],
+        "title": "SourcePublication",
+        "type": "object"
+      },
+      "SourceRun": {
+        "additionalProperties": false,
+        "description": "The ML run these estimates were read from, by its own identity hashes. Part of the publication identity.",
+        "properties": {
+          "artifact_identity_sha256": {
+            "description": "every file of the run directory",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Artifact Identity Sha256",
+            "type": "string"
+          },
+          "library_versions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "minProperties": 1,
+            "title": "Library Versions",
+            "type": "object"
+          },
+          "run_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Run Id",
+            "type": "string"
+          },
+          "scientific_identity_sha256": {
+            "description": "the run minus timing and memory",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Scientific Identity Sha256",
+            "type": "string"
+          },
+          "scoring_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Scoring Sha256",
+            "type": "string"
+          },
+          "seed": {
+            "title": "Seed",
+            "type": "integer"
+          },
+          "training_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Training Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "artifact_identity_sha256",
+          "scientific_identity_sha256",
+          "training_sha256",
+          "scoring_sha256",
+          "seed",
+          "library_versions"
+        ],
+        "title": "SourceRun",
+        "type": "object"
+      },
       "SpecialistDecision": {
         "properties": {
           "action": {
@@ -7461,6 +8491,120 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VerificationWorklistPublicationResponse": {
+        "description": "The publication itself: the order, what the marks mean, and what checking in this order would have found.",
+        "properties": {
+          "bundle_sha256": {
+            "title": "Bundle Sha256",
+            "type": "string"
+          },
+          "contract_version": {
+            "title": "Contract Version",
+            "type": "string"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/WorklistCounts"
+          },
+          "decision_owner": {
+            "const": "SPECIALIST_DECIDES",
+            "title": "Decision Owner",
+            "type": "string"
+          },
+          "estimands": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Estimands",
+            "type": "object"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "history_quality": {
+            "$ref": "#/components/schemas/HistoryQuality"
+          },
+          "legacy_rule": {
+            "$ref": "#/components/schemas/LegacyRule"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "not_a_decision": {
+            "$ref": "#/components/schemas/LocalisedText"
+          },
+          "origin": {
+            "format": "date",
+            "title": "Origin",
+            "type": "string"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "string"
+          },
+          "publication_identity_sha256": {
+            "title": "Publication Identity Sha256",
+            "type": "string"
+          },
+          "published_at": {
+            "format": "date-time",
+            "title": "Published At",
+            "type": "string"
+          },
+          "ranking": {
+            "$ref": "#/components/schemas/RankingRule"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "source_code_commit": {
+            "title": "Source Code Commit",
+            "type": "string"
+          },
+          "source_publication": {
+            "$ref": "#/components/schemas/SourcePublication"
+          },
+          "yield_curve": {
+            "$ref": "#/components/schemas/YieldCurve"
+          }
+        },
+        "required": [
+          "publication_id",
+          "schema_version",
+          "contract_version",
+          "publication_identity_sha256",
+          "bundle_sha256",
+          "source_code_commit",
+          "origin",
+          "published_at",
+          "generated_at",
+          "decision_owner",
+          "not_a_decision",
+          "source_publication",
+          "ranking",
+          "legacy_rule",
+          "history_quality",
+          "estimands",
+          "counts",
+          "yield_curve",
+          "limitations"
+        ],
+        "title": "VerificationWorklistPublicationResponse",
+        "type": "object"
+      },
       "WaitingDaysBucket": {
         "description": "One bar of the days-already-waited histogram; `to_days` is exclusive, null on the open-ended last bucket.",
         "properties": {
@@ -7772,6 +8916,447 @@
           "observed_after_origin"
         ],
         "title": "WaitingReferralResponse",
+        "type": "object"
+      },
+      "WorklistAreaResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "formal_queue_count": {
+            "title": "Formal Queue Count",
+            "type": "integer"
+          },
+          "history_quality_warning_count": {
+            "title": "History Quality Warning Count",
+            "type": "integer"
+          },
+          "history_quality_warning_share": {
+            "title": "History Quality Warning Share",
+            "type": "number"
+          },
+          "level": {
+            "enum": [
+              "region",
+              "hospital"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "region_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Code"
+          }
+        },
+        "required": [
+          "level",
+          "code",
+          "name",
+          "region_code",
+          "formal_queue_count",
+          "history_quality_warning_count",
+          "history_quality_warning_share"
+        ],
+        "title": "WorklistAreaResponse",
+        "type": "object"
+      },
+      "WorklistCounts": {
+        "additionalProperties": false,
+        "description": "The formal queue and the ranked list are the same referrals: the list reorders for checking, never subtracts.",
+        "properties": {
+          "formal_queue_count": {
+            "description": "the measured queue at the origin; unchanged by this list",
+            "minimum": 1.0,
+            "title": "Formal Queue Count",
+            "type": "integer"
+          },
+          "ranked_count": {
+            "description": "referrals in the verification order; always the whole formal queue",
+            "minimum": 1.0,
+            "title": "Ranked Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "formal_queue_count",
+          "ranked_count"
+        ],
+        "title": "WorklistCounts",
+        "type": "object"
+      },
+      "WorklistHospitalResponse": {
+        "description": "One hospital's part of the verification order: its counts, its region's counts, and a ranked page.",
+        "properties": {
+          "decision_owner": {
+            "const": "SPECIALIST_DECIDES",
+            "title": "Decision Owner",
+            "type": "string"
+          },
+          "formal_queue_count": {
+            "title": "Formal Queue Count",
+            "type": "integer"
+          },
+          "history_quality_warning_count": {
+            "title": "History Quality Warning Count",
+            "type": "integer"
+          },
+          "history_quality_warning_share": {
+            "title": "History Quality Warning Share",
+            "type": "number"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorklistItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "not_a_decision": {
+            "$ref": "#/components/schemas/LocalisedText"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "org_code": {
+            "title": "Org Code",
+            "type": "string"
+          },
+          "org_name": {
+            "title": "Org Name",
+            "type": "string"
+          },
+          "origin": {
+            "format": "date",
+            "title": "Origin",
+            "type": "string"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "string"
+          },
+          "publication_identity_sha256": {
+            "title": "Publication Identity Sha256",
+            "type": "string"
+          },
+          "region": {
+            "$ref": "#/components/schemas/WorklistAreaResponse"
+          },
+          "region_code": {
+            "title": "Region Code",
+            "type": "string"
+          },
+          "region_name": {
+            "title": "Region Name",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "publication_id",
+          "publication_identity_sha256",
+          "origin",
+          "decision_owner",
+          "not_a_decision",
+          "org_code",
+          "org_name",
+          "region_code",
+          "region_name",
+          "formal_queue_count",
+          "history_quality_warning_count",
+          "history_quality_warning_share",
+          "region",
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "WorklistHospitalResponse",
+        "type": "object"
+      },
+      "WorklistItemResponse": {
+        "properties": {
+          "comparable_training_at_risk_rows": {
+            "title": "Comparable Training At Risk Rows",
+            "type": "integer"
+          },
+          "days_waited_at_origin": {
+            "title": "Days Waited At Origin",
+            "type": "integer"
+          },
+          "decision_owner": {
+            "const": "SPECIALIST_DECIDES",
+            "title": "Decision Owner",
+            "type": "string"
+          },
+          "estimate_tier": {
+            "enum": [
+              "hospital_profile",
+              "region_profile",
+              "profile",
+              "global"
+            ],
+            "title": "Estimate Tier",
+            "type": "string"
+          },
+          "history_quality_reason_code": {
+            "anyOf": [
+              {
+                "enum": [
+                  "insufficient_comparable_history",
+                  "insufficient_and_degenerate_comparable_history",
+                  "degenerate_conditional_distribution"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History Quality Reason Code"
+          },
+          "history_quality_warning": {
+            "title": "History Quality Warning",
+            "type": "boolean"
+          },
+          "horizon_days": {
+            "title": "Horizon Days",
+            "type": "integer"
+          },
+          "hospitalization_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the operational code, for the bureau to look the row up",
+            "title": "Hospitalization Code"
+          },
+          "not_a_decision": {
+            "$ref": "#/components/schemas/LocalisedText"
+          },
+          "org_code": {
+            "title": "Org Code",
+            "type": "string"
+          },
+          "origin": {
+            "format": "date",
+            "title": "Origin",
+            "type": "string"
+          },
+          "probability_admitted_30d": {
+            "title": "Probability Admitted 30D",
+            "type": "number"
+          },
+          "probability_admitted_horizon": {
+            "title": "Probability Admitted Horizon",
+            "type": "number"
+          },
+          "profile_code": {
+            "title": "Profile Code",
+            "type": "string"
+          },
+          "profile_name": {
+            "title": "Profile Name",
+            "type": "string"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "string"
+          },
+          "publication_identity_sha256": {
+            "title": "Publication Identity Sha256",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "referral_id": {
+            "title": "Referral Id",
+            "type": "integer"
+          },
+          "region_code": {
+            "title": "Region Code",
+            "type": "string"
+          },
+          "registration_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "from the measured queue; null if it no longer stands",
+            "title": "Registration Date"
+          },
+          "verification_priority_score": {
+            "title": "Verification Priority Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "publication_id",
+          "publication_identity_sha256",
+          "origin",
+          "decision_owner",
+          "not_a_decision",
+          "referral_id",
+          "rank",
+          "org_code",
+          "region_code",
+          "profile_code",
+          "profile_name",
+          "days_waited_at_origin",
+          "registration_date",
+          "hospitalization_code",
+          "probability_admitted_30d",
+          "probability_admitted_horizon",
+          "horizon_days",
+          "estimate_tier",
+          "verification_priority_score",
+          "comparable_training_at_risk_rows",
+          "history_quality_warning",
+          "history_quality_reason_code"
+        ],
+        "title": "WorklistItemResponse",
+        "type": "object"
+      },
+      "YieldBase": {
+        "additionalProperties": false,
+        "description": "The whole formal queue's share that turned out no longer current: what checking at random would find.",
+        "properties": {
+          "evaluated": {
+            "minimum": 1.0,
+            "title": "Evaluated",
+            "type": "integer"
+          },
+          "no_longer_current": {
+            "minimum": 0.0,
+            "title": "No Longer Current",
+            "type": "integer"
+          },
+          "share": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Share",
+            "type": "number"
+          }
+        },
+        "required": [
+          "evaluated",
+          "no_longer_current",
+          "share"
+        ],
+        "title": "YieldBase",
+        "type": "object"
+      },
+      "YieldCurve": {
+        "additionalProperties": false,
+        "description": "Hindsight, marked as such: what checking the first N of this order would have turned up, against the base.",
+        "properties": {
+          "base": {
+            "$ref": "#/components/schemas/YieldBase"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/LocalisedText"
+          },
+          "disclosure": {
+            "const": "HINDSIGHT_NOT_AVAILABLE_AT_ORIGIN",
+            "title": "Disclosure",
+            "type": "string"
+          },
+          "outcome_source": {
+            "description": "publication the outcomes were read from",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Outcome Source",
+            "type": "string"
+          },
+          "outcome_source_identity_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Outcome Source Identity Sha256",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/YieldPoint"
+            },
+            "minItems": 1,
+            "title": "Points",
+            "type": "array"
+          }
+        },
+        "required": [
+          "disclosure",
+          "definition",
+          "outcome_source",
+          "outcome_source_identity_sha256",
+          "base",
+          "points"
+        ],
+        "title": "YieldCurve",
+        "type": "object"
+      },
+      "YieldPoint": {
+        "additionalProperties": false,
+        "description": "One point of the retrospective yield curve: check the first `checked`, find `no_longer_current`.",
+        "properties": {
+          "checked": {
+            "minimum": 1.0,
+            "title": "Checked",
+            "type": "integer"
+          },
+          "lift": {
+            "description": "share divided by the base share",
+            "minimum": 0.0,
+            "title": "Lift",
+            "type": "number"
+          },
+          "no_longer_current": {
+            "minimum": 0.0,
+            "title": "No Longer Current",
+            "type": "integer"
+          },
+          "share": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Share",
+            "type": "number"
+          }
+        },
+        "required": [
+          "checked",
+          "no_longer_current",
+          "share",
+          "lift"
+        ],
+        "title": "YieldPoint",
         "type": "object"
       }
     },
@@ -10427,6 +12012,215 @@
         ]
       }
     },
+    "/api/v1/referral-estimates/hospitals/{org_code}/referrals": {
+      "get": {
+        "description": "One hospital's measured queue with each referral's origin-time estimate beside it.\n\nTwo publications on one row: the queue is measured data with its hindsight outcome, `estimate` is model output\nproduced from history up to the origin. `estimate` is null when no estimate publication stands at the queue's\norigin or when this referral is not covered; `order=highest_refusal_risk` and `attention=true` are an\nadministrative follow-up order — check the referral, reach the patient — and need such a publication.",
+        "operationId": "referral_estimates_referrals_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_code",
+            "required": true,
+            "schema": {
+              "title": "Org Code",
+              "type": "string"
+            }
+          },
+          {
+            "description": "profile code; all profiles if omitted",
+            "in": "query",
+            "name": "profile",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "profile code; all profiles if omitted",
+              "title": "Profile"
+            }
+          },
+          {
+            "description": "by days waited at the origin, or by the estimated refusal risk",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "longest_wait",
+              "description": "by days waited at the origin, or by the estimated refusal risk",
+              "enum": [
+                "longest_wait",
+                "shortest_wait",
+                "highest_refusal_risk"
+              ],
+              "title": "Order",
+              "type": "string"
+            }
+          },
+          {
+            "description": "keep only referrals over the published refusal-attention threshold",
+            "in": "query",
+            "name": "attention",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "keep only referrals over the published refusal-attention threshold",
+              "title": "Attention",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "page size",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "page size",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_QueueReferralResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Referral Estimates Referrals",
+        "tags": [
+          "referral-estimates"
+        ]
+      }
+    },
+    "/api/v1/referral-estimates/publication": {
+      "get": {
+        "description": "The active per-referral estimate publication: which model serves, why, and how well it turned out.\n\n`selection` is the tournament as it was decided — the metric and the rule were fixed before the run, and the\nbaseline serves whenever no candidate clears them. `calibration` is hindsight over the whole published cohort\nand carries the disclosure marker; it scores the estimates afterwards and feeds nothing.",
+        "operationId": "referral_estimates_publication_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralEstimatesPublicationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Referral Estimates Publication",
+        "tags": [
+          "referral-estimates"
+        ]
+      }
+    },
     "/api/v1/regions/{region_code}": {
       "get": {
         "description": "Region KPIs and every profile of the region with its status.",
@@ -11344,6 +13138,263 @@
         "summary": "Post Specialist Decision",
         "tags": [
           "control-centre"
+        ]
+      }
+    },
+    "/api/v1/verification-worklist/hospitals/{org_code}": {
+      "get": {
+        "description": "One hospital's part of the verification order, in the published rank, with its own and its region's counts.\n\nEach row carries its priority (`verification_priority_score`), how well supported that is (`estimate_tier`,\n`comparable_training_at_risk_rows`, `history_quality_warning` with its reason), and repeats that the specialist\ndecides. No row carries an outcome. `registration_date` and `hospitalization_code` come from the measured queue\nso a bureau can find the paper record; they are null when the current waiting-list publication no longer\ncarries that referral.",
+        "operationId": "verification_worklist_hospital_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_code",
+            "required": true,
+            "schema": {
+              "title": "Org Code",
+              "type": "string"
+            }
+          },
+          {
+            "description": "the published ranking, or by days already waited",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "rank",
+              "description": "the published ranking, or by days already waited",
+              "enum": [
+                "rank",
+                "longest_wait"
+              ],
+              "title": "Order",
+              "type": "string"
+            }
+          },
+          {
+            "description": "keep only rows that rest on thin comparable history, or only the rest",
+            "in": "query",
+            "name": "history_quality_warning",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "keep only rows that rest on thin comparable history, or only the rest",
+              "title": "History Quality Warning"
+            }
+          },
+          {
+            "description": "page size",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "page size",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorklistHospitalResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Verification Worklist Hospital",
+        "tags": [
+          "verification-worklist"
+        ]
+      }
+    },
+    "/api/v1/verification-worklist/publication": {
+      "get": {
+        "description": "The active verification worklist: its order, what the marks mean, and what checking in that order would find.\n\nA ranked administrative verification worklist for the hospitalisation bureau — the whole formal queue, ordered\nby the origin-safe verification priority for checking records against the patient and the paperwork. It is not\na queue and never shortens one: `counts.ranked_count` equals `counts.formal_queue_count`. It is not a decision\nor a classifier either: `decision_owner` and `not_a_decision` say so on this response and on every row.\n`legacy_rule` is the earlier binary rule, kept for comparison only. `yield_curve` is hindsight against the\nwhole queue's base rate and carries the disclosure marker.",
+        "operationId": "verification_worklist_publication_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationWorklistPublicationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Verification Worklist Publication",
+        "tags": [
+          "verification-worklist"
+        ]
+      }
+    },
+    "/api/v1/verification-worklist/regions": {
+      "get": {
+        "description": "Every region's formal queue, largest first, with how much of it rests on thin comparable history.",
+        "operationId": "verification_worklist_regions_list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WorklistAreaResponse"
+                  },
+                  "title": "Response Verification Worklist Regions List",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Verification Worklist Regions",
+        "tags": [
+          "verification-worklist"
         ]
       }
     },

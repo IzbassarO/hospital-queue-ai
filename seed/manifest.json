@@ -1,6 +1,6 @@
 {
   "description": "demo seed for `make demo` (tools/seed_bundle.py): MoH open-data derived tables and the accepted publish bundles; no raw MoH files, no credentials",
-  "built_at": "2026-09-27T20:53:07+00:00",
+  "built_at": "2026-09-28T13:42:49+00:00",
   "as_of_date": "2025-03-31",
   "slice": {
     "tables": [
@@ -233,7 +233,37 @@
         "waiting_count": 65232
       },
       "current_origin": "2025-03-17"
+    },
+    {
+      "kind": "referral_estimates",
+      "file": "referral_estimates.json.gz",
+      "bytes": 820228,
+      "sha256": "34673becc7e325b56b20f96d3c63a5b89be2b98003056dcc87b58e47c8a33dd0",
+      "raw_bytes": 22322173,
+      "raw_sha256": "cf56fbe0af5f6bbf7a2b581d30f79e9148f7b7170c3dc6981926e553c9487aee",
+      "publication_id": "referral-estimates-origin-2025-03-17-v1",
+      "identity_sha256": "8c83c771af730e6edd793da913813ff0c503cff09d6ca863ce07cfb71b5d1b17",
+      "source_code_commit": "85a79256b738f12f2b4b66fc68bd745695867112",
+      "generated_at": "2026-09-28T05:58:10+00:00",
+      "counts": {
+        "referral_count": 65232
+      },
+      "current_origin": "2025-03-17"
+    },
+    {
+      "kind": "verification_worklist",
+      "file": "verification_worklist.json.gz",
+      "bytes": 1138565,
+      "sha256": "c468e15e74f10a76c605579e9eb2c81aa2e2d54b08e432dfa2d722a64cda0be5",
+      "raw_bytes": 29503109,
+      "raw_sha256": "ffe196cfcf5c6d086d286f3d3780217394d24064708c875c38c0530f9a74b3ca",
+      "publication_id": "verification-worklist-origin-2025-03-17-v2",
+      "identity_sha256": "e9d93b009064bf8b2eb88192e2b846052550a835a44732ec7ce25cc73eb59e1f",
+      "source_code_commit": "85a79256b738f12f2b4b66fc68bd745695867112",
+      "generated_at": "2026-09-28T17:21:00+00:00",
+      "counts": {},
+      "current_origin": "2025-03-17"
     }
   ],
-  "total_bytes": 30684892
+  "total_bytes": 32643685
 }

@@ -1038,6 +1038,180 @@ origin-time claim after the fact. It must never be read back into a prediction, 
 }
 ```
 
+### `GET /referral-estimates/publication`
+
+**role: viewer.** The active per-referral estimate publication
+(`referral-estimates-origin-2025-03-17-v1`: origin 2025-03-17, 65 232 referrals, read from origin_journey run
+`b2-origin-2025-03-17-v2`). 404 when nothing is published. This is the only publication in the product that
+attaches a model number to a single referral, and it is deliberately separate from the waiting list, whose
+contract forbids a model column.
+
+* `selection` is the tournament. `metric` and `decision_rule` were fixed **before** the run: the mean Brier score
+  of admission and refusal at 7, 14 and 30 days; a candidate replaces the baseline only if it strictly improves
+  the overall score and degrades no days-waited bucket by more than `tolerance` (0.005). `candidates` holds one
+  `baseline` (hierarchical Aalen–Johansen) and the candidates with their `overall_mean_brier`, `overall_delta`,
+  `worst_bucket_delta` and `brier_by_horizon`. `fallback_used: true` means no candidate cleared the rule and the
+  baseline serves — which is what happened at this origin.
+* `calibration` is **hindsight**: the reliability table of the model that serves, over the whole published cohort,
+  ten bins per outcome per horizon, carrying the `HINDSIGHT_NOT_AVAILABLE_AT_ORIGIN` disclosure. It scores the
+  estimates after the fact and feeds nothing.
+* `attention` is the administrative follow-up threshold: the upper decile of P(refusal ≤ 30 days) over the cohort.
+  `definition` and `intended_use` are published with the number — check the referral is still valid, reach the
+  patient — and it is not triage, not a hospitalization priority and not grounds to refuse anyone.
+* `estimate_tiers` counts the referrals per evidence tier (`hospital_profile`, `region_profile`, `profile`,
+  `national`) and `abstention_counts` per withheld admission window.
+* `degeneracy` counts the rows whose whole 30-day probability mass landed on one outcome, split by that outcome,
+  with the sentence that says what it means. The served curve is conditional on the wait already served, so past
+  sixty days the comparable history still at risk is thin and the estimate collapses to 0% or 100% — 8 984 rows
+  of 65 232 at this origin, and 76% of the referrals already waiting 60+ days. Those rows carry
+  `degenerate_30d`, and a client must not present them as confident probabilities.
+* `matches_waiting_list` is true when the active waiting list stands at the same origin, so the two publications
+  can be read on one row.
+
+```json
+{
+  "publication_id": "referral-estimates-origin-2025-03-17-v1", "origin": "2025-03-17", "referral_count": 65232,
+  "horizons": [7, 14, 30], "admission_window_coverage": 0.8, "matches_waiting_list": true,
+  "source_run": {"run_id": "b2-origin-2025-03-17-v2", "artifact_identity_sha256": "dda838da…", "seed": 42},
+  "selection": {"metric": "mean_admission_and_refusal_brier_at_7_14_30", "tolerance": 0.005, "selected_model": "aalen_johansen", "fallback_used": true,
+    "candidates": [{"model_key": "aalen_johansen", "role": "baseline", "accepted": null, "overall_mean_brier": 0.097865, "overall_delta": null, "brier_by_horizon": {"7": 0.0784, "14": 0.097583, "30": 0.117648}},
+                   {"model_key": "xgboost_aft", "role": "candidate", "accepted": false, "overall_mean_brier": 0.104514, "overall_delta": 0.006648, "worst_bucket_delta": 0.023325}]},
+  "calibration": {"disclosure": "HINDSIGHT_NOT_AVAILABLE_AT_ORIGIN", "model_key": "aalen_johansen", "rows": 65232,
+    "bins": [{"horizon_days": 14, "outcome": "hospitalized", "bin_index": 9, "n": 6523, "mean_predicted": 0.852589, "observed_rate": 0.676989, "probability_min": 0.75, "probability_max": 1.0}]},
+  "estimate_tiers": {"hospital_profile": 60634, "region_profile": 3859, "profile": 729, "national": 10},
+  "abstention_counts": {"NO_ADMISSION_IN_COMPARABLE_HISTORY": 10454},
+  "degeneracy": {"definition": "…", "count": 8984, "by_outcome": {"still_waiting": 8154, "admitted": 590, "refused": 240}},
+  "attention": {"metric": "refused_30d", "quantile": 0.9, "threshold": 0.215675, "definition": "…", "intended_use": "…", "flagged_count": 6525}
+}
+```
+
+### `GET /referral-estimates/hospitals/{org_code}/referrals?profile=&order=&attention=&limit=&offset=`
+
+**role: viewer.** One hospital's measured queue with each referral's origin-time estimate beside it — the sibling
+of `GET /waiting-list/hospitals/{org_code}/referrals`, same cohort, same paging, same 404 for an unknown hospital,
+with one field added. Two publications meet on every row and each keeps its own `publication_id` and
+`publication_identity_sha256`: the measured half with its **hindsight** `observed_after_origin`, and `estimate`
+with what was knowable on the origin day. Neither is derived from the other.
+
+`estimate` is `null` — never a zero and never an empty string — when no estimate publication stands at the
+queue's origin, or when this referral is not covered by it.
+
+* `admitted_7d` / `admitted_14d` / `admitted_30d` — P(hospitalized by that day), non-decreasing.
+* `refused_30d` — P(refusal by day 30), the competing terminal event. `still_waiting_30d` is the remainder.
+* `window_lower_days` / `window_upper_days` — the central `window_coverage` (80%) interval of the admission day,
+  conditional on an admission inside the model's grid. Both null exactly when `abstention_reason` is set:
+  `NO_ADMISSION_IN_COMPARABLE_HISTORY` means the comparable history holds no admission inside the grid, so no
+  interval exists to quote. Abstention is a published value, not a missing one.
+* `degenerate_30d` — the whole 30-day mass sits on one outcome. Read it as "the comparable history still at risk
+  at this wait holds no variety of outcomes", not as certainty: it is an absence of evidence, and it is common on
+  exactly the rows a specialist opens first, since `order=longest_wait` is the default.
+* `estimate_tier` — which historical cell the curve came from (`hospital_profile`, `region_profile`, `profile`,
+  `national`), with `similar_training_rows` for this hospital and profile. Provenance, not confidence.
+* `refusal_attention` — at or above the publication's `attention.threshold`. `order=highest_refusal_risk` sorts by
+  `refused_30d` descending with uncovered referrals last, and `attention=true` keeps only the flagged rows; both
+  need an estimate publication at the queue's origin and 404 without one. They are an **administrative**
+  follow-up order, under the sentence in `attention.intended_use`.
+
+`order` also accepts the measured `longest_wait` (the default) and `shortest_wait`, which behave exactly as on the
+waiting-list endpoint.
+
+```json
+{
+  "items": [{"publication_id": "waiting-list-origin-2025-03-17-v1", "origin": "2025-03-17", "referral_id": 12345, "hospitalization_code": "…", "org_code": "01W9", "profile_code": "021", "profile_name": "Терапевтические", "registration_date": "2025-01-02", "days_waited_at_origin": 74,
+    "observed_after_origin": {"disclosure": "HINDSIGHT_NOT_AVAILABLE_AT_ORIGIN", "status": "ADMITTED", "event_date": "2025-03-25", "days_from_origin": 8},
+    "estimate": {"publication_id": "referral-estimates-origin-2025-03-17-v1", "publication_identity_sha256": "5694c689…", "origin": "2025-03-17", "selected_model": "aalen_johansen", "estimate_tier": "hospital_profile", "similar_training_rows": 1284, "admitted_7d": 0.1731, "admitted_14d": 0.3402, "admitted_30d": 0.5518, "refused_30d": 0.1204, "still_waiting_30d": 0.3278, "window_lower_days": 3.0, "window_upper_days": 29.0, "window_coverage": 0.8, "abstention_reason": null, "refusal_attention": false, "degenerate_30d": false}}],
+  "total": 2275, "limit": 50, "offset": 0
+}
+```
+
+### `GET /verification-worklist/publication`
+
+**role: viewer.** The active verification worklist (`verification-worklist-origin-2025-03-17-v2`: origin
+2025-03-17, read from the final B5.1 ghost-queue bundle `ghost-queue-2025-03-17-v2`, schema 2, publication identity
+`b34c6970…f6daaa`, compressed file `219c4116…d33edf`; the builder refuses any other source bytes). 404 when
+nothing is published.
+
+A **ranked administrative verification worklist for the hospitalisation bureau** — the order in which to check
+records against the patient and the paperwork. It is not a ghost classifier, not a fake-referral detector, not a
+stale-referral classifier and not a deletion recommendation. Two things it is not, and the contract holds both:
+
+* **Not a queue.** The measured queue is `GET /waiting-list/*` and it is unchanged by this publication. The list
+  ranks the **whole** formal queue: `counts.ranked_count` must equal `counts.formal_queue_count` (65 232), so
+  there is no subset whose difference could be presented as "the real queue", and no count is ever reduced by it.
+* **Not a decision.** `decision_owner` is the literal `SPECIALIST_DECIDES` and `not_a_decision` is the sentence
+  that says so; both are required by the parser and repeated on every row of every response. Every sentence the
+  product puts on a screen — `not_a_decision`, `ranking.definition`, `legacy_rule.statement`,
+  `history_quality.definition`, `yield_curve.definition` — is an object `{"ru": …, "kk": …}`.
+
+* `ranking` is the order as the ML side fixed it before looking at any outcome: the origin-safe verification
+  priority score (`(1 − P(admission within 90 d)) × min(days waited / 30, 1) × min(comparable at-risk rows / 50,
+  1)`), higher first, then longer wait. Ranks are the source's own `verification_rank`, served verbatim.
+* `legacy_rule` is the earlier binary rule (waited ≥ 30 days and P(admission within 90 d) < 0.10), with
+  `role: "AUDITED_REFERENCE_ONLY"`: it neither selects nor orders the list. `selected_count` (13 328) is how many
+  referrals it would have selected.
+* `history_quality` counts the rows whose number rests on thin comparable history, with the source's reason codes:
+  19 950 of 65 232 (30.6%) — `insufficient_comparable_history` 10 895, `insufficient_and_degenerate_comparable_history`
+  6 463, `degenerate_conditional_distribution` 2 592. A low probability on such a row means missing observations,
+  not a confident model.
+* `yield_curve` is **hindsight**, carries the disclosure marker, and names the publication the outcomes were read
+  from. `base` is the whole formal queue: 19 769 of 65 232 (30.3%) were never admitted by the source's cutoff
+  (later refused or still open). Each point is the same share among the first N in this order, with `lift` against
+  the base: top 500 — 159 (31.8%, 1.05×); top 1 000 — 298 (29.8%, 0.98×); top 2 000 — 768 (38.4%, 1.27×);
+  top 5 000 — 2 040 (40.8%, 1.35×); top 13 328 — 4 842 (36.3%, 1.20×). The lift is modest and uneven — the first
+  thousand is no better than the base — so the order helps plan clerical work and says nothing reliable about any
+  single referral. No row carries an outcome.
+
+```json
+{
+  "publication_id": "verification-worklist-origin-2025-03-17-v2", "origin": "2025-03-17",
+  "schema_version": "verification_worklist_v2", "contract_version": "2.0.0",
+  "decision_owner": "SPECIALIST_DECIDES", "not_a_decision": {"ru": "Это список на сверку, а не решение. …", "kk": "Бұл — тексеруге арналған тізім, шешім емес. …"},
+  "source_publication": {"publication_id": "ghost-queue-2025-03-17-v2", "publication_identity_sha256": "b34c69702936dc7afe6f3781dbb028d2d4c743eb97c0234ba820e07940f6daaa", "file_sha256": "219c4116e5e2c7e965123e12b456024bcd397fbb5a661924301d152ffde33edf", "schema_version": 2, "model": "origin-safe hierarchical Aalen-Johansen"},
+  "ranking": {"definition": {"ru": "…", "kk": "…"}, "keys": ["origin_safe_verification_priority desc", "days_waited_at_origin_desc", "referral_id_asc"], "score_name": "origin_safe_verification_priority", "wait_maturity_days": 30, "minimum_comparable_at_risk_rows": 50},
+  "legacy_rule": {"role": "AUDITED_REFERENCE_ONLY", "reason_code": "waited_30d_and_p_admit_90d_below_0_10", "minimum_days_waited": 30, "horizon_days": 90, "probability_strictly_below": 0.1, "selected_count": 13328, "statement": {"ru": "…", "kk": "…"}},
+  "history_quality": {"definition": {"ru": "…", "kk": "…"}, "warning_count": 19950, "warning_share": 0.305831, "reason_counts": {"insufficient_comparable_history": 10895, "insufficient_and_degenerate_comparable_history": 6463, "degenerate_conditional_distribution": 2592}},
+  "counts": {"formal_queue_count": 65232, "ranked_count": 65232},
+  "yield_curve": {"disclosure": "HINDSIGHT_NOT_AVAILABLE_AT_ORIGIN", "outcome_source": "waiting-list-origin-2025-03-17-v1", "outcome_source_identity_sha256": "1c4fceb1…",
+    "base": {"evaluated": 65232, "no_longer_current": 19769, "share": 0.303057},
+    "points": [{"checked": 500, "no_longer_current": 159, "share": 0.318, "lift": 1.049308}, {"checked": 1000, "no_longer_current": 298, "share": 0.298, "lift": 0.983314}, {"checked": 2000, "no_longer_current": 768, "share": 0.384, "lift": 1.267089}, {"checked": 5000, "no_longer_current": 2040, "share": 0.408, "lift": 1.346282}, {"checked": 13328, "no_longer_current": 4842, "share": 0.363295, "lift": 1.19877}]}
+}
+```
+
+### `GET /verification-worklist/regions`
+
+**role: viewer.** Every region's formal queue, largest first, with how much of it rests on thin comparable
+history. A flat array, not a page: there are 20 regions.
+
+```json
+[{"level": "region", "code": "75", "name": "…", "region_code": null, "formal_queue_count": 15406, "history_quality_warning_count": 4278, "history_quality_warning_share": 0.277684}]
+```
+
+### `GET /verification-worklist/hospitals/{org_code}?order=&history_quality_warning=&limit=&offset=`
+
+**role: viewer.** One hospital's part of the verification order, in the published national rank, with its own and
+its region's counts. 404 when the hospital is not in the current publication. `order` is `rank` (the published
+ranking, the default) or `longest_wait`; `history_quality_warning=true` keeps only the rows that rest on thin
+comparable history, `false` only the rest. `total` without the filter equals the hospital's `formal_queue_count`.
+
+Each row carries its priority and how well supported it is: `verification_priority_score`,
+`probability_admitted_horizon` with `horizon_days`, `estimate_tier`, `comparable_training_at_risk_rows`,
+`history_quality_warning` and `history_quality_reason_code`. Rows hold origin-time fields only — no outcome.
+`registration_date` and `hospitalization_code` are read from the measured queue so a bureau can find the paper
+record; they are null when the current waiting-list publication no longer carries that referral. Nothing in a row
+is an instruction to act on a patient, and every row repeats `decision_owner` and `not_a_decision`.
+
+```json
+{
+  "publication_id": "verification-worklist-origin-2025-03-17-v2", "origin": "2025-03-17",
+  "decision_owner": "SPECIALIST_DECIDES", "not_a_decision": {"ru": "…", "kk": "…"},
+  "org_code": "01W9", "org_name": "…", "region_code": "61", "region_name": "Туркестанская область",
+  "formal_queue_count": 2275, "history_quality_warning_count": 470, "history_quality_warning_share": 0.206593,
+  "region": {"level": "region", "code": "61", "name": "Туркестанская область", "formal_queue_count": 7960, "history_quality_warning_count": 2484, "history_quality_warning_share": 0.31206},
+  "items": [{"referral_id": 495396, "rank": 1153, "org_code": "01W9", "region_code": "61", "profile_code": "051", "profile_name": "…", "days_waited_at_origin": 54, "registration_date": "…", "hospitalization_code": "…", "probability_admitted_30d": 0.0, "probability_admitted_horizon": 0.0, "horizon_days": 90, "estimate_tier": "hospital_profile", "verification_priority_score": 1.0, "comparable_training_at_risk_rows": 52, "history_quality_warning": true, "history_quality_reason_code": "degenerate_conditional_distribution"}],
+  "total": 2275, "limit": 50, "offset": 0
+}
+```
+
 ### `GET /dictionaries`
 
 **role: viewer.** Regions (sorted by name), all bed profiles, and `organizations` (medical organization codes with

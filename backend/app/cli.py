@@ -8,6 +8,8 @@
   python -m app.cli publish-operational-intelligence --bundle /path/to/operational_intelligence.json
   python -m app.cli publish-review-evidence --bundle /path/to/review_evidence.json
   python -m app.cli publish-waiting-list --bundle /path/to/waiting_list.json
+  python -m app.cli publish-referral-estimates --bundle /path/to/referral_estimates.json
+  python -m app.cli publish-verification-worklist --bundle /path/to/verification_worklist.json
   python -m app.cli load-seed --dir /seed [--replace]   demo seed: tables + the three publications (make demo)
 
 create-key prints the key once; only its SHA-256 is stored.
@@ -53,6 +55,16 @@ def main(argv: list[str] | None = None) -> int:
         help="validate and publish a waiting-list JSON bundle (measured queue at one origin, no model output)",
     )
     publish_waiting.add_argument("--bundle", type=Path, required=True)
+    publish_estimates = sub.add_parser(
+        "publish-referral-estimates",
+        help="validate and publish a per-referral estimate JSON bundle (origin-time model output)",
+    )
+    publish_estimates.add_argument("--bundle", type=Path, required=True)
+    publish_worklist = sub.add_parser(
+        "publish-verification-worklist",
+        help="validate and publish a verification-worklist JSON bundle (administrative review list)",
+    )
+    publish_worklist.add_argument("--bundle", type=Path, required=True)
     load_seed = sub.add_parser("load-seed", help="load the committed demo seed: tables + publications (seed/README.md)")
     load_seed.add_argument("--dir", type=Path, required=True, help="seed directory holding manifest.json")
     load_seed.add_argument(
@@ -140,6 +152,36 @@ def main(argv: list[str] | None = None) -> int:
             state = "published" if result.created else "already published; activated"
             print(
                 f"Waiting list {result.publication_id} {state} "
+                f"(snapshot {result.snapshot_id}, identity {result.publication_identity_sha256})"
+            )
+            return 0
+        if args.command == "publish-referral-estimates":
+            from app.services import referral_estimates
+
+            try:
+                parsed = referral_estimates.load_bundle(args.bundle)
+                result = referral_estimates.publish(session, parsed)
+            except (ValidationError, ConflictError) as exc:
+                print(f"Referral-estimates publication failed: {exc}", file=sys.stderr)
+                return 2
+            state = "published" if result.created else "already published; activated"
+            print(
+                f"Referral estimates {result.publication_id} {state} "
+                f"(snapshot {result.snapshot_id}, identity {result.publication_identity_sha256})"
+            )
+            return 0
+        if args.command == "publish-verification-worklist":
+            from app.services import verification_worklist
+
+            try:
+                parsed = verification_worklist.load_bundle(args.bundle)
+                result = verification_worklist.publish(session, parsed)
+            except (ValidationError, ConflictError) as exc:
+                print(f"Verification-worklist publication failed: {exc}", file=sys.stderr)
+                return 2
+            state = "published" if result.created else "already published; activated"
+            print(
+                f"Verification worklist {result.publication_id} {state} "
                 f"(snapshot {result.snapshot_id}, identity {result.publication_identity_sha256})"
             )
             return 0
