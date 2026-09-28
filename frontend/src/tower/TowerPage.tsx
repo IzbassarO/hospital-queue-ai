@@ -81,18 +81,20 @@ function Board({ model }: { model: TowerModel }) {
   return (
     <>
       <section className="tower-lead" data-tour="lead">
-        <h1>{t.control.title}</h1>
-        <p>
-          {t.control.lead(
-            fmtNumber(c.total, 0),
-            fmtNumber(c.hospitals, 0),
-            fmtNumber(c.attention, 0),
-            fmtNumber(c.highMaterial, 0),
-            fmtNumber(c.lowVolume, 0),
-            fmtDate(model.origin),
-          )}
-          {c.complete ? "" : ` ${t.control.leadIncomplete}`}
-        </p>
+        <div className="tower-lead-text">
+          <h1>{t.control.title}</h1>
+          <p>
+            {t.control.lead(
+              fmtNumber(c.total, 0),
+              fmtNumber(c.hospitals, 0),
+              fmtNumber(c.attention, 0),
+              fmtNumber(c.highMaterial, 0),
+              fmtNumber(c.lowVolume, 0),
+              fmtDate(model.origin),
+            )}
+            {c.complete ? "" : ` ${t.control.leadIncomplete}`}
+          </p>
+        </div>
         <dl className="count-chain" aria-label={t.control.title}>
           <div>
             <dd>{fmtNumber(c.total, 0)}</dd>

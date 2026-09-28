@@ -1,4 +1,8 @@
-/** The hospital in focus: what is happening there in one paragraph, its forecast, its queue and its neighbours. */
+/**
+ * The hospital in focus: what is happening there in one paragraph, its forecast, its queue and its neighbours.
+ * Clicking a dot on the map opens this panel; "Режим стационара" carries the same hospital into /hospital/{org}.
+ */
+import { Link } from "react-router-dom";
 import { useForecasts } from "../../api/operational";
 import { t } from "../../i18n";
 import { flowDecimals, fmtDate, fmtNumber } from "../../lib/format";
@@ -73,6 +77,9 @@ export function FocusPanel({
           <p>{hospital.regionName}</p>
         </div>
         <div className="focus-head-actions">
+          <Link className="btn-accent btn-sm" to={`/hospital/${hospital.org}`}>
+            {t.control.focus.openHospital}
+          </Link>
           {simAlert ? (
             <button
               type="button"

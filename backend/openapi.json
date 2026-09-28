@@ -3913,6 +3913,88 @@
         "title": "ModelInfo",
         "type": "object"
       },
+      "ObservedAfterOrigin": {
+        "additionalProperties": false,
+        "description": "Hindsight only. Never an input to anything: see the module docstring.",
+        "properties": {
+          "days_from_origin": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "event_date - origin, in days",
+            "title": "Days From Origin"
+          },
+          "disclosure": {
+            "const": "HINDSIGHT_NOT_AVAILABLE_AT_ORIGIN",
+            "title": "Disclosure",
+            "type": "string"
+          },
+          "event_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "admission or refusal date; null while waiting",
+            "title": "Event Date"
+          },
+          "status": {
+            "enum": [
+              "ADMITTED",
+              "REFUSED",
+              "STILL_WAITING_AT_CUTOFF"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "disclosure",
+          "status"
+        ],
+        "title": "ObservedAfterOrigin",
+        "type": "object"
+      },
+      "ObservedAfterOriginCounts": {
+        "description": "Hindsight totals, under the same rule as the per-referral field: display only, never an input.",
+        "properties": {
+          "admitted": {
+            "title": "Admitted",
+            "type": "integer"
+          },
+          "disclosure": {
+            "const": "HINDSIGHT_NOT_AVAILABLE_AT_ORIGIN",
+            "title": "Disclosure",
+            "type": "string"
+          },
+          "refused": {
+            "title": "Refused",
+            "type": "integer"
+          },
+          "still_waiting_at_cutoff": {
+            "title": "Still Waiting At Cutoff",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "disclosure",
+          "admitted",
+          "refused",
+          "still_waiting_at_cutoff"
+        ],
+        "title": "ObservedAfterOriginCounts",
+        "type": "object"
+      },
       "OperationalCounts": {
         "properties": {
           "calibrated": {
@@ -5179,6 +5261,70 @@
           "offset"
         ],
         "title": "Page[SpecialistDecision]",
+        "type": "object"
+      },
+      "Page_WaitingHospitalResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WaitingHospitalResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "description": "rows matching the filters, before limit/offset",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[WaitingHospitalResponse]",
+        "type": "object"
+      },
+      "Page_WaitingReferralResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WaitingReferralResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "description": "rows matching the filters, before limit/offset",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[WaitingReferralResponse]",
         "type": "object"
       },
       "ProfileItem": {
@@ -7313,6 +7459,319 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "WaitingDaysBucket": {
+        "description": "One bar of the days-already-waited histogram; `to_days` is exclusive, null on the open-ended last bucket.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "from_days": {
+            "title": "From Days",
+            "type": "integer"
+          },
+          "to_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Days"
+          }
+        },
+        "required": [
+          "from_days",
+          "to_days",
+          "count"
+        ],
+        "title": "WaitingDaysBucket",
+        "type": "object"
+      },
+      "WaitingHospitalDetailResponse": {
+        "description": "One hospital's queue at the origin, with everything the hospital screen needs in a single request.",
+        "properties": {
+          "days_waited_histogram": {
+            "items": {
+              "$ref": "#/components/schemas/WaitingDaysBucket"
+            },
+            "title": "Days Waited Histogram",
+            "type": "array"
+          },
+          "max_days_waited": {
+            "title": "Max Days Waited",
+            "type": "integer"
+          },
+          "median_days_waited": {
+            "title": "Median Days Waited",
+            "type": "number"
+          },
+          "observed_after_origin": {
+            "$ref": "#/components/schemas/ObservedAfterOriginCounts"
+          },
+          "org_code": {
+            "title": "Org Code",
+            "type": "string"
+          },
+          "org_name": {
+            "title": "Org Name",
+            "type": "string"
+          },
+          "origin": {
+            "format": "date",
+            "title": "Origin",
+            "type": "string"
+          },
+          "profile_count": {
+            "title": "Profile Count",
+            "type": "integer"
+          },
+          "profiles": {
+            "items": {
+              "$ref": "#/components/schemas/WaitingProfileBreakdown"
+            },
+            "title": "Profiles",
+            "type": "array"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "string"
+          },
+          "publication_identity_sha256": {
+            "title": "Publication Identity Sha256",
+            "type": "string"
+          },
+          "region_code": {
+            "title": "Region Code",
+            "type": "string"
+          },
+          "region_name": {
+            "title": "Region Name",
+            "type": "string"
+          },
+          "support_class": {
+            "enum": [
+              "SUFFICIENT",
+              "LIMITED",
+              "SPARSE"
+            ],
+            "title": "Support Class",
+            "type": "string"
+          },
+          "waiting_count": {
+            "title": "Waiting Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "publication_id",
+          "publication_identity_sha256",
+          "origin",
+          "org_code",
+          "org_name",
+          "region_code",
+          "region_name",
+          "waiting_count",
+          "profile_count",
+          "median_days_waited",
+          "max_days_waited",
+          "support_class",
+          "profiles",
+          "days_waited_histogram",
+          "observed_after_origin"
+        ],
+        "title": "WaitingHospitalDetailResponse",
+        "type": "object"
+      },
+      "WaitingHospitalResponse": {
+        "properties": {
+          "max_days_waited": {
+            "title": "Max Days Waited",
+            "type": "integer"
+          },
+          "median_days_waited": {
+            "title": "Median Days Waited",
+            "type": "number"
+          },
+          "org_code": {
+            "title": "Org Code",
+            "type": "string"
+          },
+          "org_name": {
+            "title": "Org Name",
+            "type": "string"
+          },
+          "origin": {
+            "format": "date",
+            "title": "Origin",
+            "type": "string"
+          },
+          "profile_count": {
+            "title": "Profile Count",
+            "type": "integer"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "string"
+          },
+          "publication_identity_sha256": {
+            "title": "Publication Identity Sha256",
+            "type": "string"
+          },
+          "region_code": {
+            "title": "Region Code",
+            "type": "string"
+          },
+          "region_name": {
+            "title": "Region Name",
+            "type": "string"
+          },
+          "support_class": {
+            "enum": [
+              "SUFFICIENT",
+              "LIMITED",
+              "SPARSE"
+            ],
+            "title": "Support Class",
+            "type": "string"
+          },
+          "waiting_count": {
+            "title": "Waiting Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "publication_id",
+          "publication_identity_sha256",
+          "origin",
+          "org_code",
+          "org_name",
+          "region_code",
+          "region_name",
+          "waiting_count",
+          "profile_count",
+          "median_days_waited",
+          "max_days_waited",
+          "support_class"
+        ],
+        "title": "WaitingHospitalResponse",
+        "type": "object"
+      },
+      "WaitingProfileBreakdown": {
+        "description": "One bed profile's share of a hospital's queue at the origin. Counts only.",
+        "properties": {
+          "max_days_waited": {
+            "title": "Max Days Waited",
+            "type": "integer"
+          },
+          "median_days_waited": {
+            "title": "Median Days Waited",
+            "type": "number"
+          },
+          "profile_code": {
+            "title": "Profile Code",
+            "type": "string"
+          },
+          "profile_name": {
+            "title": "Profile Name",
+            "type": "string"
+          },
+          "waiting_count": {
+            "title": "Waiting Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "profile_code",
+          "profile_name",
+          "waiting_count",
+          "median_days_waited",
+          "max_days_waited"
+        ],
+        "title": "WaitingProfileBreakdown",
+        "type": "object"
+      },
+      "WaitingReferralResponse": {
+        "properties": {
+          "days_waited_at_origin": {
+            "title": "Days Waited At Origin",
+            "type": "integer"
+          },
+          "hospitalization_code": {
+            "title": "Hospitalization Code",
+            "type": "string"
+          },
+          "is_duplicate_code": {
+            "title": "Is Duplicate Code",
+            "type": "boolean"
+          },
+          "observed_after_origin": {
+            "$ref": "#/components/schemas/ObservedAfterOrigin"
+          },
+          "org_code": {
+            "title": "Org Code",
+            "type": "string"
+          },
+          "origin": {
+            "format": "date",
+            "title": "Origin",
+            "type": "string"
+          },
+          "patient_region_code": {
+            "title": "Patient Region Code",
+            "type": "string"
+          },
+          "profile_code": {
+            "title": "Profile Code",
+            "type": "string"
+          },
+          "profile_name": {
+            "title": "Profile Name",
+            "type": "string"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "string"
+          },
+          "publication_identity_sha256": {
+            "title": "Publication Identity Sha256",
+            "type": "string"
+          },
+          "referral_id": {
+            "title": "Referral Id",
+            "type": "integer"
+          },
+          "region_code": {
+            "title": "Region Code",
+            "type": "string"
+          },
+          "registration_date": {
+            "format": "date",
+            "title": "Registration Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "publication_id",
+          "publication_identity_sha256",
+          "origin",
+          "referral_id",
+          "hospitalization_code",
+          "is_duplicate_code",
+          "org_code",
+          "region_code",
+          "patient_region_code",
+          "profile_code",
+          "profile_name",
+          "registration_date",
+          "days_waited_at_origin",
+          "observed_after_origin"
+        ],
+        "title": "WaitingReferralResponse",
         "type": "object"
       }
     },
@@ -10885,6 +11344,377 @@
         "summary": "Post Specialist Decision",
         "tags": [
           "control-centre"
+        ]
+      }
+    },
+    "/api/v1/waiting-list/hospitals": {
+      "get": {
+        "description": "Hospitals with a measured queue at the published origin, largest first, each with its support class.\n\nCounts only: this publication carries no model output. `support_class` says whether the queue is large enough\nto read a per-hospital view from (thresholds in the publication), it is not a severity.",
+        "operationId": "waiting_list_hospitals_list",
+        "parameters": [
+          {
+            "description": "region code of the hospital; all regions if omitted",
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "region code of the hospital; all regions if omitted",
+              "title": "Region"
+            }
+          },
+          {
+            "in": "query",
+            "name": "support",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "SUFFICIENT",
+                    "LIMITED",
+                    "SPARSE"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Support"
+            }
+          },
+          {
+            "description": "keep hospitals with at least this many waiting",
+            "in": "query",
+            "name": "min_waiting",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "keep hospitals with at least this many waiting",
+              "title": "Min Waiting"
+            }
+          },
+          {
+            "description": "page size",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "page size",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_WaitingHospitalResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Waiting List Hospitals",
+        "tags": [
+          "waiting-list"
+        ]
+      }
+    },
+    "/api/v1/waiting-list/hospitals/{org_code}": {
+      "get": {
+        "description": "One hospital's measured queue at the origin: totals, profile breakdown and days-already-waited histogram.\n\nCounts only — no model output. `observed_after_origin` totals are hindsight (what the data recorded after the\norigin) and are shown for checking an origin-time claim afterwards, never used to rank or filter.",
+        "operationId": "waiting_list_hospital_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_code",
+            "required": true,
+            "schema": {
+              "title": "Org Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WaitingHospitalDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Waiting List Hospital",
+        "tags": [
+          "waiting-list"
+        ]
+      }
+    },
+    "/api/v1/waiting-list/hospitals/{org_code}/referrals": {
+      "get": {
+        "description": "One hospital's real waiting list at the published origin, by days already waited.\n\nDe-identified referrals as recorded by the Ministry of Health, with no score attached. `observed_after_origin`\nis hindsight — the outcome the data recorded after the origin — and must never be fed back into a prediction,\na ranking or a threshold; it is there to check an origin-time claim afterwards.",
+        "operationId": "waiting_list_referrals_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_code",
+            "required": true,
+            "schema": {
+              "title": "Org Code",
+              "type": "string"
+            }
+          },
+          {
+            "description": "profile code; all profiles if omitted",
+            "in": "query",
+            "name": "profile",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "profile code; all profiles if omitted",
+              "title": "Profile"
+            }
+          },
+          {
+            "description": "by days waited at the origin",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "longest_wait",
+              "description": "by days waited at the origin",
+              "enum": [
+                "longest_wait",
+                "shortest_wait"
+              ],
+              "title": "Order",
+              "type": "string"
+            }
+          },
+          {
+            "description": "page size",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "page size",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_WaitingReferralResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Waiting List Referrals",
+        "tags": [
+          "waiting-list"
         ]
       }
     }

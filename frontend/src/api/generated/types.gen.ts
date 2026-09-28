@@ -2249,6 +2249,58 @@ export type ModelInfo = {
 };
 
 /**
+ * ObservedAfterOrigin
+ *
+ * Hindsight only. Never an input to anything: see the module docstring.
+ */
+export type ObservedAfterOrigin = {
+  /**
+   * Days From Origin
+   *
+   * event_date - origin, in days
+   */
+  days_from_origin?: number | null;
+  /**
+   * Disclosure
+   */
+  disclosure: "HINDSIGHT_NOT_AVAILABLE_AT_ORIGIN";
+  /**
+   * Event Date
+   *
+   * admission or refusal date; null while waiting
+   */
+  event_date?: string | null;
+  /**
+   * Status
+   */
+  status: "ADMITTED" | "REFUSED" | "STILL_WAITING_AT_CUTOFF";
+};
+
+/**
+ * ObservedAfterOriginCounts
+ *
+ * Hindsight totals, under the same rule as the per-referral field: display only, never an input.
+ */
+export type ObservedAfterOriginCounts = {
+  /**
+   * Admitted
+   */
+  admitted: number;
+  /**
+   * Disclosure
+   */
+  disclosure: "HINDSIGHT_NOT_AVAILABLE_AT_ORIGIN";
+  /**
+   * Refused
+   */
+  refused: number;
+  /**
+   * Still Waiting At Cutoff
+   */
+  still_waiting_at_cutoff: number;
+};
+
+/**
  * OperationalCounts
  */
 export type OperationalCounts = {
@@ -2956,6 +3008,54 @@ export type PageSpecialistDecision = {
    * Items
    */
   items: Array<SpecialistDecision>;
+  /**
+   * Limit
+   */
+  limit: number;
+  /**
+   * Offset
+   */
+  offset: number;
+  /**
+   * Total
+   *
+   * rows matching the filters, before limit/offset
+   */
+  total: number;
+};
+
+/**
+ * Page[WaitingHospitalResponse]
+ */
+export type PageWaitingHospitalResponse = {
+  /**
+   * Items
+   */
+  items: Array<WaitingHospitalResponse>;
+  /**
+   * Limit
+   */
+  limit: number;
+  /**
+   * Offset
+   */
+  offset: number;
+  /**
+   * Total
+   *
+   * rows matching the filters, before limit/offset
+   */
+  total: number;
+};
+
+/**
+ * Page[WaitingReferralResponse]
+ */
+export type PageWaitingReferralResponse = {
+  /**
+   * Items
+   */
+  items: Array<WaitingReferralResponse>;
   /**
    * Limit
    */
@@ -4154,6 +4254,232 @@ export type ValidationError = {
    * Error Type
    */
   type: string;
+};
+
+/**
+ * WaitingDaysBucket
+ *
+ * One bar of the days-already-waited histogram; `to_days` is exclusive, null on the open-ended last bucket.
+ */
+export type WaitingDaysBucket = {
+  /**
+   * Count
+   */
+  count: number;
+  /**
+   * From Days
+   */
+  from_days: number;
+  /**
+   * To Days
+   */
+  to_days: number | null;
+};
+
+/**
+ * WaitingHospitalDetailResponse
+ *
+ * One hospital's queue at the origin, with everything the hospital screen needs in a single request.
+ */
+export type WaitingHospitalDetailResponse = {
+  /**
+   * Days Waited Histogram
+   */
+  days_waited_histogram: Array<WaitingDaysBucket>;
+  /**
+   * Max Days Waited
+   */
+  max_days_waited: number;
+  /**
+   * Median Days Waited
+   */
+  median_days_waited: number;
+  observed_after_origin: ObservedAfterOriginCounts;
+  /**
+   * Org Code
+   */
+  org_code: string;
+  /**
+   * Org Name
+   */
+  org_name: string;
+  /**
+   * Origin
+   */
+  origin: string;
+  /**
+   * Profile Count
+   */
+  profile_count: number;
+  /**
+   * Profiles
+   */
+  profiles: Array<WaitingProfileBreakdown>;
+  /**
+   * Publication Id
+   */
+  publication_id: string;
+  /**
+   * Publication Identity Sha256
+   */
+  publication_identity_sha256: string;
+  /**
+   * Region Code
+   */
+  region_code: string;
+  /**
+   * Region Name
+   */
+  region_name: string;
+  /**
+   * Support Class
+   */
+  support_class: "SUFFICIENT" | "LIMITED" | "SPARSE";
+  /**
+   * Waiting Count
+   */
+  waiting_count: number;
+};
+
+/**
+ * WaitingHospitalResponse
+ */
+export type WaitingHospitalResponse = {
+  /**
+   * Max Days Waited
+   */
+  max_days_waited: number;
+  /**
+   * Median Days Waited
+   */
+  median_days_waited: number;
+  /**
+   * Org Code
+   */
+  org_code: string;
+  /**
+   * Org Name
+   */
+  org_name: string;
+  /**
+   * Origin
+   */
+  origin: string;
+  /**
+   * Profile Count
+   */
+  profile_count: number;
+  /**
+   * Publication Id
+   */
+  publication_id: string;
+  /**
+   * Publication Identity Sha256
+   */
+  publication_identity_sha256: string;
+  /**
+   * Region Code
+   */
+  region_code: string;
+  /**
+   * Region Name
+   */
+  region_name: string;
+  /**
+   * Support Class
+   */
+  support_class: "SUFFICIENT" | "LIMITED" | "SPARSE";
+  /**
+   * Waiting Count
+   */
+  waiting_count: number;
+};
+
+/**
+ * WaitingProfileBreakdown
+ *
+ * One bed profile's share of a hospital's queue at the origin. Counts only.
+ */
+export type WaitingProfileBreakdown = {
+  /**
+   * Max Days Waited
+   */
+  max_days_waited: number;
+  /**
+   * Median Days Waited
+   */
+  median_days_waited: number;
+  /**
+   * Profile Code
+   */
+  profile_code: string;
+  /**
+   * Profile Name
+   */
+  profile_name: string;
+  /**
+   * Waiting Count
+   */
+  waiting_count: number;
+};
+
+/**
+ * WaitingReferralResponse
+ */
+export type WaitingReferralResponse = {
+  /**
+   * Days Waited At Origin
+   */
+  days_waited_at_origin: number;
+  /**
+   * Hospitalization Code
+   */
+  hospitalization_code: string;
+  /**
+   * Is Duplicate Code
+   */
+  is_duplicate_code: boolean;
+  observed_after_origin: ObservedAfterOrigin;
+  /**
+   * Org Code
+   */
+  org_code: string;
+  /**
+   * Origin
+   */
+  origin: string;
+  /**
+   * Patient Region Code
+   */
+  patient_region_code: string;
+  /**
+   * Profile Code
+   */
+  profile_code: string;
+  /**
+   * Profile Name
+   */
+  profile_name: string;
+  /**
+   * Publication Id
+   */
+  publication_id: string;
+  /**
+   * Publication Identity Sha256
+   */
+  publication_identity_sha256: string;
+  /**
+   * Referral Id
+   */
+  referral_id: number;
+  /**
+   * Region Code
+   */
+  region_code: string;
+  /**
+   * Registration Date
+   */
+  registration_date: string;
 };
 
 export type AdminAccessLogListData = {
@@ -5972,3 +6298,184 @@ export type SpecialistDecisionCreateResponses = {
 
 export type SpecialistDecisionCreateResponse =
   SpecialistDecisionCreateResponses[keyof SpecialistDecisionCreateResponses];
+
+export type WaitingListHospitalsListData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Region
+     *
+     * region code of the hospital; all regions if omitted
+     */
+    region?: string | null;
+    /**
+     * Support
+     */
+    support?: "SUFFICIENT" | "LIMITED" | "SPARSE" | null;
+    /**
+     * Min Waiting
+     *
+     * keep hospitals with at least this many waiting
+     */
+    min_waiting?: number | null;
+    /**
+     * Limit
+     *
+     * page size
+     */
+    limit?: number;
+    /**
+     * Offset
+     *
+     * rows to skip
+     */
+    offset?: number;
+  };
+  url: "/api/v1/waiting-list/hospitals";
+};
+
+export type WaitingListHospitalsListErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type WaitingListHospitalsListError =
+  WaitingListHospitalsListErrors[keyof WaitingListHospitalsListErrors];
+
+export type WaitingListHospitalsListResponses = {
+  /**
+   * Successful Response
+   */
+  200: PageWaitingHospitalResponse;
+};
+
+export type WaitingListHospitalsListResponse =
+  WaitingListHospitalsListResponses[keyof WaitingListHospitalsListResponses];
+
+export type WaitingListHospitalGetData = {
+  body?: never;
+  path: {
+    /**
+     * Org Code
+     */
+    org_code: string;
+  };
+  query?: never;
+  url: "/api/v1/waiting-list/hospitals/{org_code}";
+};
+
+export type WaitingListHospitalGetErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type WaitingListHospitalGetError =
+  WaitingListHospitalGetErrors[keyof WaitingListHospitalGetErrors];
+
+export type WaitingListHospitalGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: WaitingHospitalDetailResponse;
+};
+
+export type WaitingListHospitalGetResponse =
+  WaitingListHospitalGetResponses[keyof WaitingListHospitalGetResponses];
+
+export type WaitingListReferralsListData = {
+  body?: never;
+  path: {
+    /**
+     * Org Code
+     */
+    org_code: string;
+  };
+  query?: {
+    /**
+     * Profile
+     *
+     * profile code; all profiles if omitted
+     */
+    profile?: string | null;
+    /**
+     * Order
+     *
+     * by days waited at the origin
+     */
+    order?: "longest_wait" | "shortest_wait";
+    /**
+     * Limit
+     *
+     * page size
+     */
+    limit?: number;
+    /**
+     * Offset
+     *
+     * rows to skip
+     */
+    offset?: number;
+  };
+  url: "/api/v1/waiting-list/hospitals/{org_code}/referrals";
+};
+
+export type WaitingListReferralsListErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type WaitingListReferralsListError =
+  WaitingListReferralsListErrors[keyof WaitingListReferralsListErrors];
+
+export type WaitingListReferralsListResponses = {
+  /**
+   * Successful Response
+   */
+  200: PageWaitingReferralResponse;
+};
+
+export type WaitingListReferralsListResponse =
+  WaitingListReferralsListResponses[keyof WaitingListReferralsListResponses];

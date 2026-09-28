@@ -7,6 +7,7 @@
   python -m app.cli publish-assurance --bundle /path/to/model_assurance.json
   python -m app.cli publish-operational-intelligence --bundle /path/to/operational_intelligence.json
   python -m app.cli publish-review-evidence --bundle /path/to/review_evidence.json
+  python -m app.cli publish-waiting-list --bundle /path/to/waiting_list.json
   python -m app.cli load-seed --dir /seed [--replace]   demo seed: tables + the three publications (make demo)
 
 create-key prints the key once; only its SHA-256 is stored.
@@ -47,6 +48,11 @@ def main(argv: list[str] | None = None) -> int:
         help="validate and publish a review-evidence JSON bundle (stress tests, decision alternatives)",
     )
     publish_review.add_argument("--bundle", type=Path, required=True)
+    publish_waiting = sub.add_parser(
+        "publish-waiting-list",
+        help="validate and publish a waiting-list JSON bundle (measured queue at one origin, no model output)",
+    )
+    publish_waiting.add_argument("--bundle", type=Path, required=True)
     load_seed = sub.add_parser("load-seed", help="load the committed demo seed: tables + publications (seed/README.md)")
     load_seed.add_argument("--dir", type=Path, required=True, help="seed directory holding manifest.json")
     load_seed.add_argument(
@@ -119,6 +125,21 @@ def main(argv: list[str] | None = None) -> int:
             state = "published" if result.created else "already published; activated"
             print(
                 f"Review evidence {result.publication_id} {state} "
+                f"(snapshot {result.snapshot_id}, identity {result.publication_identity_sha256})"
+            )
+            return 0
+        if args.command == "publish-waiting-list":
+            from app.services import waiting_list
+
+            try:
+                parsed = waiting_list.load_bundle(args.bundle)
+                result = waiting_list.publish(session, parsed)
+            except (ValidationError, ConflictError) as exc:
+                print(f"Waiting-list publication failed: {exc}", file=sys.stderr)
+                return 2
+            state = "published" if result.created else "already published; activated"
+            print(
+                f"Waiting list {result.publication_id} {state} "
                 f"(snapshot {result.snapshot_id}, identity {result.publication_identity_sha256})"
             )
             return 0

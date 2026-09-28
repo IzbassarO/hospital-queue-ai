@@ -46,6 +46,12 @@ from app.schemas.specialist import (
     SpecialistDecisionCreate,
 )
 from app.schemas.status import HospitalProfileCard, HospitalProfileStatus, OverviewResponse, RegionDetailResponse
+from app.schemas.waiting_list import (
+    SupportClass,
+    WaitingHospitalDetailResponse,
+    WaitingHospitalResponse,
+    WaitingReferralResponse,
+)
 from app.services import (
     activity,
     admin,
@@ -58,6 +64,7 @@ from app.services import (
     recommend,
     review_evidence,
     specialist_decisions,
+    waiting_list,
 )
 from app.services import status as status_service
 
@@ -637,6 +644,88 @@ def get_review_decision_alternatives(
 def get_review_decision_alternative_set(set_id: str, session: SessionDep, _: ViewerDep) -> AlternativeSetResponse:
     """One alternative set with its verified alternatives, states, non-claims and provenance."""
     return review_evidence.get_alternative_set(session, set_id)
+
+
+# ------------------------------------------------------------------------------- waiting list
+@router.get(
+    "/waiting-list/hospitals",
+    response_model=Page[WaitingHospitalResponse],
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="waiting_list_hospitals_list",
+    tags=["waiting-list"],
+)
+def get_waiting_list_hospitals(
+    session: SessionDep,
+    page: PaginationDep,
+    _: ViewerDep,
+    region: Annotated[str | None, Query(description="region code of the hospital; all regions if omitted")] = None,
+    support: SupportClass | None = None,
+    min_waiting: Annotated[
+        int | None, Query(ge=1, description="keep hospitals with at least this many waiting")
+    ] = None,
+) -> Page[WaitingHospitalResponse]:
+    """Hospitals with a measured queue at the published origin, largest first, each with its support class.
+
+    Counts only: this publication carries no model output. `support_class` says whether the queue is large enough
+    to read a per-hospital view from (thresholds in the publication), it is not a severity.
+    """
+    return waiting_list.list_hospitals(
+        session,
+        region_code=region,
+        support_class=support,
+        min_waiting=min_waiting,
+        limit=page.limit,
+        offset=page.offset,
+    )
+
+
+@router.get(
+    "/waiting-list/hospitals/{org_code}",
+    response_model=WaitingHospitalDetailResponse,
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="waiting_list_hospital_get",
+    tags=["waiting-list"],
+)
+def get_waiting_list_hospital(org_code: str, session: SessionDep, _: ViewerDep) -> WaitingHospitalDetailResponse:
+    """One hospital's measured queue at the origin: totals, profile breakdown and days-already-waited histogram.
+
+    Counts only — no model output. `observed_after_origin` totals are hindsight (what the data recorded after the
+    origin) and are shown for checking an origin-time claim afterwards, never used to rank or filter.
+    """
+    return waiting_list.hospital_detail(session, org_code)
+
+
+@router.get(
+    "/waiting-list/hospitals/{org_code}/referrals",
+    response_model=Page[WaitingReferralResponse],
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="waiting_list_referrals_list",
+    tags=["waiting-list"],
+)
+def get_waiting_list_referrals(
+    session: SessionDep,
+    org_code: str,
+    page: PaginationDep,
+    _: ViewerDep,
+    profile: Annotated[str | None, Query(description="profile code; all profiles if omitted")] = None,
+    order: Annotated[
+        Literal["longest_wait", "shortest_wait"], Query(description="by days waited at the origin")
+    ] = "longest_wait",
+) -> Page[WaitingReferralResponse]:
+    """One hospital's real waiting list at the published origin, by days already waited.
+
+    De-identified referrals as recorded by the Ministry of Health, with no score attached. `observed_after_origin`
+    is hindsight — the outcome the data recorded after the origin — and must never be fed back into a prediction,
+    a ranking or a threshold; it is there to check an origin-time claim afterwards.
+    """
+    return waiting_list.list_referrals(
+        session,
+        org_code,
+        profile_code=profile,
+        order=order,
+        limit=page.limit,
+        offset=page.offset,
+    )
 
 
 @router.get(

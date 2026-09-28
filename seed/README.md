@@ -1,6 +1,6 @@
 # seed/ — demo seed for `make demo`
 
-What a fresh clone needs to show the product with Docker alone: the serving tables for all 20 regions and the three
+What a fresh clone needs to show the product with Docker alone: the serving tables for all 20 regions and the four
 accepted publications, about 30 MB in total. `make demo` loads it into the compose database
 (`backend/app/services/seed.py`, `python -m app.cli load-seed`). Nothing here is needed by the pipelines, which
 rebuild every row from the MoH open data; the seed only spares a stranger the 16 GB of raw files and the hours of
@@ -29,6 +29,7 @@ pipeline runs. `manifest.json` is the authoritative list of files, rows, sizes a
 | `model_assurance.json` | 13 capabilities | `model-assurance-6b5-v1`, identity `f504defe…39f5` |
 | `operational_intelligence.json.gz` | 225 680 forecasts, 4 194 signals | `operational-intelligence-slice5-final-test-2025-03-17-v1`, identity `43da33ec…5cfd` |
 | `review_evidence.json.gz` | 4 scenarios, 10 084 entities, 141 176 cells, 460 alternative sets | `review-evidence-slice6-final-test-2025-03-17-v1`, identity `e07be2f1…3c22` |
+| `waiting_list.json.gz` | 640 hospitals, 65 232 waiting referrals | `waiting-list-origin-2025-03-17-v1`, identity `1c4fceb1…b188` |
 
 Tables are `COPY … TO STDOUT (FORMAT csv, HEADER true)` ordered by primary key, gzip level 9 without timestamp or file
 name, so a rebuild of unchanged data is byte-identical and `git diff` shows only real changes. The bundles are the
@@ -38,9 +39,11 @@ seeded database serves the same `publication_identity_sha256` values as the mach
 
 ## National versus two regions
 
-Everything the map, the region and hospital cards, the signals inbox, Model Assurance and the review evidence read is
-national: dictionaries, daily aggregates, serving marts (built from the full data as of 2025-03-31), model registry
-and the three publications. Only `fact_referral`, `pred_referral` and `pred_daily_forecast` are a slice, the same one
+Everything the map, the region and hospital cards, the signals inbox, Model Assurance, the review evidence and the
+waiting list read is national: dictionaries, daily aggregates, serving marts (built from the full data as of
+2025-03-31), model registry and the four publications. The waiting list is national in particular: all 20 regions,
+all 640 hospitals that had a queue at the 17.03.2025 origin, so `/waiting-list/hospitals` answers everywhere even
+though `fact_referral` itself is a two-region slice. Only `fact_referral`, `pred_referral` and `pred_daily_forecast` are a slice, the same one
 as the CI fixture (`tools/test_fixture.py`): regions 62 and 59, referrals since 2025-02-02, per-referral predictions
 for the test period 2025-03-01 to 2025-03-31, daily forecasts from the serving origin. The referral list endpoints and
 per-referral predictions therefore answer for those two regions and return empty pages elsewhere. Do not run
@@ -62,8 +65,9 @@ make seed-load REPLACE=1                      # truncate the seeded data tables 
 The loader verifies every file's size and SHA-256 against `manifest.json` before writing anything, refuses a database
 that holds data other than this seed unless `--replace` is given, leaves a database that already holds exactly the
 seed alone (the publications are re-activated, not duplicated), loads the tables in foreign-key order in one
-transaction with row counts checked against the manifest, then publishes the three bundles through the same services
-as `make assurance-publish`, `make operational-intelligence-publish` and `make review-evidence-publish`. Exit code 2
+transaction with row counts checked against the manifest, then publishes the four bundles through the same services
+as `make assurance-publish`, `make operational-intelligence-publish`, `make review-evidence-publish` and
+`make waiting-list-publish`. Exit code 2
 on any failure. A full load takes about 2.5 minutes on a laptop; the two large publications dominate.
 
 ## Rebuilding

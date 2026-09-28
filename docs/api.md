@@ -976,6 +976,66 @@ review) with filters; ordered by origin, donor signal and budget. Never a rankin
 result, mandatory non-claims (`NOT_PHYSICAL_CAPACITY_VALIDATED`, `THRESHOLD_COMPARATOR_ASSUMPTION`,
 `PHYSICAL_FEASIBILITY_UNKNOWN`) and versioned provenance.
 
+### `GET /waiting-list/hospitals?region=&support=&min_waiting=&limit=&offset=`
+
+**role: viewer.** Hospitals with a measured queue at the published origin (`waiting-list-origin-2025-03-17-v1`:
+origin 2025-03-17, 640 hospitals, 65 232 referrals), largest queue first. Counts only — this publication carries
+no model output at all, so there is nothing here to leak from and nothing to calibrate.
+
+`support_class` is a size statement, never a severity: `SUFFICIENT` (waiting_count ≥ 50), `LIMITED` (≥ 20) or
+`SPARSE`. The thresholds are published in the bundle, so a reader can check the classification. A per-hospital
+view of a `SPARSE` hospital is a handful of rows and should say so rather than draw a chart.
+
+```json
+{
+  "items": [{"publication_id": "waiting-list-origin-2025-03-17-v1", "publication_identity_sha256": "1c4fceb1…", "origin": "2025-03-17", "org_code": "01W9", "org_name": "…", "region_code": "61", "region_name": "Туркестанская область", "waiting_count": 2275, "profile_count": 25, "median_days_waited": 26.0, "max_days_waited": 76, "support_class": "SUFFICIENT"}],
+  "total": 640, "limit": 50, "offset": 0
+}
+```
+
+### `GET /waiting-list/hospitals/{org_code}`
+
+**role: viewer.** One hospital's measured queue at the published origin in a single request: the same totals as the
+list row, plus `profiles` (per bed profile: count, median and max days waited, largest first),
+`days_waited_histogram` (buckets 0–2, 3–6, 7–13, 14–29, 30–59, 60+ days; `to_days` is exclusive and null on the
+open-ended last bucket) and `observed_after_origin` totals. 404 when the hospital has no waiting referrals in the
+current publication.
+
+Counts only — no model output. The `observed_after_origin` totals are **hindsight** and carry the same
+`disclosure` marker as the per-referral field: they show what the data recorded after the origin, for checking an
+origin-time claim afterwards, and are never used to rank, filter or predict.
+
+```json
+{
+  "publication_id": "waiting-list-origin-2025-03-17-v1", "origin": "2025-03-17",
+  "org_code": "01W9", "org_name": "…", "region_code": "61", "region_name": "Туркестанская область",
+  "waiting_count": 2275, "profile_count": 25, "median_days_waited": 26.0, "max_days_waited": 76, "support_class": "SUFFICIENT",
+  "profiles": [{"profile_code": "031", "profile_name": "Кардиологические для взрослых", "waiting_count": 243, "median_days_waited": 24.0, "max_days_waited": 74}],
+  "days_waited_histogram": [{"from_days": 0, "to_days": 3, "count": 96}, {"from_days": 60, "to_days": null, "count": 41}],
+  "observed_after_origin": {"disclosure": "HINDSIGHT_NOT_AVAILABLE_AT_ORIGIN", "admitted": 1603, "refused": 588, "still_waiting_at_cutoff": 84}
+}
+```
+
+### `GET /waiting-list/hospitals/{org_code}/referrals?profile=&order=&limit=&offset=`
+
+**role: viewer.** One hospital's real waiting list at the origin, by days already waited (`order`:
+`longest_wait`, the default, or `shortest_wait`). De-identified exactly as `fact_referral` stores it: the row key
+is the surrogate `referral_id`, and `hospitalization_code` is the operational code, which is **not** unique in the
+source — rows whose code repeats carry `is_duplicate_code: true`. 404 when the hospital has no waiting referrals
+in the current publication.
+
+`observed_after_origin` is **hindsight**. It is what the Ministry of Health data recorded after the origin
+(`ADMITTED`, `REFUSED` or `STILL_WAITING_AT_CUTOFF` with the event date and its distance from the origin), it was
+not knowable on 17.03.2025, and every row repeats that in its `disclosure` field. It exists to check an
+origin-time claim after the fact. It must never be read back into a prediction, a ranking or a threshold.
+
+```json
+{
+  "items": [{"publication_id": "waiting-list-origin-2025-03-17-v1", "origin": "2025-03-17", "referral_id": 12345, "hospitalization_code": "…", "is_duplicate_code": false, "org_code": "01W9", "region_code": "61", "patient_region_code": "61", "profile_code": "021", "profile_name": "Терапевтические", "registration_date": "2025-01-02", "days_waited_at_origin": 74, "observed_after_origin": {"disclosure": "HINDSIGHT_NOT_AVAILABLE_AT_ORIGIN", "status": "ADMITTED", "event_date": "2025-03-25", "days_from_origin": 8}}],
+  "total": 2275, "limit": 50, "offset": 0
+}
+```
+
 ### `GET /dictionaries`
 
 **role: viewer.** Regions (sorted by name), all bed profiles, and `organizations` (medical organization codes with

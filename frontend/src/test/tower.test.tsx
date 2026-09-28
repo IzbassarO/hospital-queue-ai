@@ -67,6 +67,27 @@ describe("Control centre", () => {
     expect(primaryText()).not.toMatch(MACHINE_WORD);
   });
 
+  it("the lede and the funnel counters are siblings, so they can sit side by side above the map", async () => {
+    renderAt("/");
+    await heading();
+    const lead = document.querySelector("section.tower-lead") as HTMLElement;
+    expect(lead).toBeVisible();
+    // The text block and the counters must stay direct children of .tower-lead: the two-column layout that keeps
+    // the map above the fold is a grid on that element, and a wrapper around either one would collapse it.
+    const children = [...lead.children].map((node) => node.className);
+    expect(children).toEqual(["tower-lead-text", "count-chain"]);
+    const text = lead.querySelector(".tower-lead-text") as HTMLElement;
+    expect(text.querySelector("h1")).toBeVisible();
+    expect(text.querySelector("p")).toBeVisible();
+    // Four counters, each a number above its label, still readable as the published → attention → high funnel.
+    const chain = lead.querySelector("dl.count-chain") as HTMLElement;
+    expect(within(chain).getAllByRole("definition")).toHaveLength(4);
+    expect(counterValue(t.control.chain.published)).not.toBe("");
+    expect(counterValue(t.control.chain.attention)).not.toBe("");
+    expect(counterValue(t.control.chain.high)).not.toBe("");
+    expect(counterValue(t.control.chain.lowVolume)).not.toBe("");
+  });
+
   it("the clock walks through the day and stops when the model asks the specialist", async () => {
     renderAt("/");
     await heading();

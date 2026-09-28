@@ -709,6 +709,87 @@ class ReviewAlternative(Base):
     details: Mapped[dict] = mapped_column(JSONB)
 
 
+# ---------------------------------------------------------------------- waiting list
+# Published by tools/waiting_list_bundle.py -> app/services/waiting_list.py (`make waiting-list-publish`).
+# Measured queue at a fixed origin plus, in observed_* columns only, the outcome the source data recorded
+# afterwards. No model output is stored here and none may be derived from the observed_* columns:
+# docs/api.md, app/schemas/waiting_list.py.
+class WaitingListSnapshot(Base):
+    __tablename__ = "waiting_list_snapshot"
+    __table_args__ = (
+        UniqueConstraint("publication_id", name="uq_waiting_list_snapshot_publication_id"),
+        UniqueConstraint("publication_identity_sha256", name="uq_waiting_list_snapshot_identity"),
+        Index("ux_waiting_list_snapshot_active", "is_active", unique=True, postgresql_where=text("is_active")),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    publication_id: Mapped[str] = mapped_column(String(128))
+    schema_version: Mapped[str] = mapped_column(String(64))
+    contract_version: Mapped[str] = mapped_column(String(32))
+    publication_identity_sha256: Mapped[str] = mapped_column(String(64))
+    bundle_sha256: Mapped[str] = mapped_column(String(64))
+    source_code_commit: Mapped[str] = mapped_column(String(40))
+    origin: Mapped[dt.date] = mapped_column(Date)
+    outcome_cutoff: Mapped[dt.datetime] = mapped_column(DateTime(timezone=False))
+    observed_through: Mapped[dt.date] = mapped_column(Date)
+    generated_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    published_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"), index=True)
+    hospital_count: Mapped[int] = mapped_column(Integer)
+    waiting_count: Mapped[int] = mapped_column(Integer)
+    cohort: Mapped[dict] = mapped_column(JSONB)
+    support_thresholds: Mapped[dict] = mapped_column(JSONB)
+    limitations: Mapped[list] = mapped_column(JSONB)
+
+
+class WaitingListHospital(Base):
+    __tablename__ = "waiting_list_hospital"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "org_code", name="uq_waiting_list_hospital_row"),
+        Index("ix_waiting_list_hospital_snapshot_count", "snapshot_id", "waiting_count"),
+        Index("ix_waiting_list_hospital_snapshot_region", "snapshot_id", "region_code"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("waiting_list_snapshot.id", ondelete="CASCADE"), index=True
+    )
+    org_code: Mapped[str] = mapped_column(String(8))
+    region_code: Mapped[str] = mapped_column(String(4))
+    waiting_count: Mapped[int] = mapped_column(Integer)
+    profile_count: Mapped[int] = mapped_column(Integer)
+    median_days_waited: Mapped[float] = mapped_column(Double)
+    max_days_waited: Mapped[int] = mapped_column(Integer)
+    support_class: Mapped[str] = mapped_column(String(16))
+
+
+class WaitingListReferral(Base):
+    """One waiting referral. observed_* is hindsight: never an input to a prediction, ranking or threshold."""
+
+    __tablename__ = "waiting_list_referral"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "referral_id", name="uq_waiting_list_referral_row"),
+        Index("ix_waiting_list_referral_org_days", "snapshot_id", "org_code", "days_waited_at_origin"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("waiting_list_snapshot.id", ondelete="CASCADE"), index=True
+    )
+    referral_id: Mapped[int] = mapped_column(BigInteger)
+    hospitalization_code: Mapped[str] = mapped_column(String(32))
+    is_duplicate_code: Mapped[bool] = mapped_column(Boolean)
+    org_code: Mapped[str] = mapped_column(String(8))
+    region_code: Mapped[str] = mapped_column(String(4))
+    patient_region_code: Mapped[str] = mapped_column(String(4))
+    profile_code: Mapped[str] = mapped_column(String(8))
+    registration_date: Mapped[dt.date] = mapped_column(Date)
+    days_waited_at_origin: Mapped[int] = mapped_column(Integer)
+    observed_status: Mapped[str] = mapped_column(String(32))
+    observed_event_date: Mapped[dt.date | None] = mapped_column(Date)
+    observed_days_from_origin: Mapped[int | None] = mapped_column(Integer)
+
+
 # ------------------------------------------------------------------ serving marts
 # Filled by ml/pipelines/build_marts.py (`make marts`, also at the end of `make predict`): one
 # transaction truncates and rebuilds all mart_* tables. No FKs to the data layer on purpose —

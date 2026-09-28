@@ -10,6 +10,7 @@ export const controlKk: typeof controlRu = {
     howItWorksLead: "Алты қадам: жолдамадан маман шешіміне дейін",
     menu: "Бөлімдер",
     notifications: "Хабарламалар",
+    hospital: "Стационар",
     queue: "Кезек",
     language: "Тіл",
     languages: { ru: "Русский", kk: "Қазақша" },
@@ -557,6 +558,7 @@ export const controlKk: typeof controlRu = {
       `Кезекте ${waiting} адам${requests ? `, шұғыл өтінімдер: ${requests}` : ""}.`,
     neighbours: "Осы қалада тағы",
     openAlert: "Хабарламаны ашу",
+    openHospital: "Стационар режимі",
   },
   tour: {
     title: "Қалай пайдалану",

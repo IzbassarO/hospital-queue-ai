@@ -1,6 +1,7 @@
 /** Kazakh messages: the same shape as `ru`, checked by the type system. */
 import { controlKk } from "./control.kk";
 import { demoKk } from "./demo.kk";
+import { hospitalKk } from "./hospital.kk";
 import type { Messages } from "./ru";
 import { towerKk } from "./tower.kk";
 
@@ -8,6 +9,7 @@ export const kk: Messages = {
   tower: towerKk,
   demo: demoKk,
   control: controlKk,
+  hospital: hospitalKk,
   app: {
     title: "Жоспарлы госпитализацияға кезек",
     subtitle: "Стационарлар жүктемесінің мониторингі",

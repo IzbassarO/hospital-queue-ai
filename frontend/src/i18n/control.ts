@@ -18,6 +18,7 @@ export const control = {
     howItWorksLead: "Шесть шагов: от направления до решения специалиста",
     menu: "Разделы",
     notifications: "Уведомления",
+    hospital: "Стационар",
     queue: "Очередь",
     language: "Язык",
     languages: { ru: "Русский", kk: "Қазақша" },
@@ -577,6 +578,7 @@ export const control = {
       `В очереди ${waiting} ${waiting === 1 ? "человек" : waiting < 5 ? "человека" : "человек"}${requests ? `, срочных заявок: ${requests}` : ""}.`,
     neighbours: "В этом городе также",
     openAlert: "Открыть уведомление",
+    openHospital: "Режим стационара",
   },
   tour: {
     title: "Как пользоваться",

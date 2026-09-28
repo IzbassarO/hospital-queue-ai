@@ -188,6 +188,20 @@
 }
 
 /* ------------------------------------------------------------------ lead */
+/* The lede and the four counters sit side by side from 1280px up: the counters are the same four numbers the
+   sentence spells out, so stacking them cost ~200px of height and pushed the map below the fold. Below that the
+   lede is full width and the counters stay one horizontal row, which is still far shorter than the stacked list. */
+.tower-lead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.9rem 1.8rem;
+  align-items: start;
+}
+@media (min-width: 1280px) {
+  .tower-lead {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
 .tower-lead h1 {
   font-size: clamp(1.5rem, 2.2vw, 2.05rem);
   font-weight: 700;
@@ -198,10 +212,73 @@
 }
 .tower-lead p {
   color: var(--c-muted);
-  font-size: 0.98rem;
-  line-height: 1.55;
-  max-width: 64rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  max-width: 58rem;
   text-wrap: pretty;
+}
+
+/* The published → attention → high funnel, with the below-the-floor count set apart from it. */
+.count-chain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1.15rem;
+  margin: 0;
+}
+.count-chain > div {
+  position: relative;
+  flex: 1 1 8.5rem;
+  min-width: 7.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--c-paper);
+  border: 1px solid var(--c-line);
+  padding: 0.62rem 0.8rem 0.7rem;
+}
+.count-chain dd {
+  margin: 0;
+  font-size: 1.65rem;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.count-chain dt {
+  margin-top: 0.3rem;
+  color: var(--c-muted);
+  font-size: 0.73rem;
+  line-height: 1.3;
+}
+.count-chain .is-attention dd {
+  color: var(--c-amber);
+}
+.count-chain .is-high dd {
+  color: var(--c-red);
+}
+/* Below the materiality floor: outside the funnel, so it is dashed and never arrowed into. */
+.count-chain .is-muted {
+  background: transparent;
+  border-style: dashed;
+}
+.count-chain .is-muted dd {
+  color: var(--c-dim);
+}
+.count-chain > div + div:not(.is-muted)::before {
+  content: "→";
+  position: absolute;
+  left: -0.92rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--c-dim);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+@media (max-width: 620px) {
+  .count-chain {
+    gap: 0.45rem;
+  }
+  .count-chain > div + div:not(.is-muted)::before {
+    content: none;
+  }
 }
 
 /* ------------------------------------------------------------------ blocks */
@@ -2664,5 +2741,632 @@
   }
   .fact-cells {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ------------------------------------------------------------------ hospital mode */
+/* One hospital at the published origin. Same surfaces and tokens as the control centre: paper blocks on the page
+   ground, the count-chain for the header numbers, the spark idiom for both charts. The only new visual language is
+   the hindsight marking — a dashed amber outline and a tag — used wherever a value was measured after the origin. */
+.hos-head {
+  align-items: end;
+}
+/* Four tiles stay on one row in both languages: the Kazakh labels are longer, so the tiles are allowed to shrink
+   and let the label wrap rather than pushing the fourth one onto a row of its own. */
+.hos-head .count-chain > div {
+  flex: 1 1 7.5rem;
+  min-width: 6.5rem;
+}
+.hos-head .count-chain {
+  max-width: 40rem;
+}
+.hos-kicker {
+  color: var(--c-muted);
+  font-size: 0.8rem;
+  margin-bottom: 0.3rem;
+}
+.hos-head h1 {
+  font-size: clamp(1.3rem, 1.9vw, 1.8rem);
+  text-wrap: balance;
+}
+.hos-support {
+  display: inline-block;
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--c-accent-soft);
+  color: var(--c-accent-ink);
+}
+.hos-support.is-limited {
+  background: var(--c-amber-soft);
+  color: #7a5205;
+}
+.hos-support.is-sparse {
+  background: var(--c-bg-2);
+  color: var(--c-muted);
+}
+.hos-change {
+  font-size: 0.82rem;
+  color: var(--c-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.hos-warn {
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--c-amber);
+  background: var(--c-amber-soft);
+  color: #6a4704;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+/* ---- blocks ---- */
+.hos-block,
+.hos-pick {
+  border-radius: var(--radius);
+  background: var(--c-paper);
+  border: 1px solid var(--c-line);
+  box-shadow: var(--shadow-1);
+  padding: 1.1rem 1.2rem 1.2rem;
+  min-width: 0;
+}
+.hos-note {
+  color: var(--c-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin-bottom: 0.8rem;
+}
+.hos-note.is-hindsight-note {
+  border-left: 2px solid var(--c-amber);
+  padding-left: 0.7rem;
+}
+.hos-empty {
+  padding: 1.6rem 0.4rem;
+  text-align: center;
+  color: var(--c-muted);
+}
+.hos-empty h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--c-ink);
+  margin-bottom: 0.25rem;
+}
+.hos-empty p {
+  font-size: 0.85rem;
+}
+.hos-empty .btn-sm {
+  margin-top: 0.8rem;
+  display: inline-block;
+}
+
+/* ---- the hindsight marking ---- */
+.hos-hindsight-tag {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  border: 1px dashed var(--c-amber);
+  color: #7a5205;
+  background: var(--c-amber-soft);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ---- picker ---- */
+.hos-pick-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: end;
+  margin-bottom: 0.7rem;
+}
+.hos-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  min-width: 0;
+  flex: 1 1 14rem;
+}
+.hos-field label {
+  font-size: 0.76rem;
+  color: var(--c-muted);
+}
+.hos-field input,
+.hos-field select {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--c-line-2);
+  background: var(--c-paper);
+  color: var(--c-ink);
+  min-width: 0;
+  width: 100%;
+}
+.hos-field input:focus-visible,
+.hos-field select:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 1px;
+}
+.hos-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--c-ink-2);
+  cursor: pointer;
+}
+.hos-pick-count {
+  color: var(--c-muted);
+  font-size: 0.8rem;
+  margin-bottom: 0.6rem;
+}
+.hos-list {
+  display: grid;
+  gap: 0.35rem;
+  max-height: 32rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.hos-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "name count" "meta count";
+  gap: 0.1rem 0.8rem;
+  align-items: center;
+  padding: 0.6rem 0.7rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--c-line);
+  color: inherit;
+  text-decoration: none;
+}
+.hos-row:hover,
+.hos-row:focus-visible {
+  border-color: var(--c-accent);
+  background: var(--c-accent-soft);
+}
+.hos-row-name {
+  grid-area: name;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.hos-row-meta {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--c-muted);
+  font-size: 0.78rem;
+}
+.hos-thin {
+  font-style: normal;
+  border: 1px dashed var(--c-line-2);
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.7rem;
+}
+.hos-row-count {
+  grid-area: count;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.hos-row-count b {
+  font-size: 1.15rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.hos-row-count small {
+  color: var(--c-muted);
+  font-size: 0.68rem;
+  max-width: 7rem;
+  line-height: 1.2;
+}
+
+/* ---- profile bar ---- */
+.hos-profile-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem 1.2rem;
+}
+.hos-profile-bar .hos-field {
+  flex: 0 1 26rem;
+}
+.hos-sub-hint {
+  color: var(--c-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  flex: 1 1 16rem;
+}
+
+/* ---- facts under the forecast ---- */
+.hos-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+.hos-facts > div {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--c-line);
+  padding: 0.55rem 0.7rem;
+}
+.hos-facts dt {
+  color: var(--c-muted);
+  font-size: 0.72rem;
+  margin-bottom: 0.22rem;
+}
+.hos-facts dd {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.hos-facts .is-crossing dd {
+  color: var(--c-amber);
+}
+.hos-facts .is-high dd {
+  color: var(--c-red);
+}
+.hos-facts .is-elevated dd {
+  color: var(--c-amber);
+}
+
+/* ---- waiting totals, bars, histogram ---- */
+.hos-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+}
+.hos-totals > div {
+  flex: 1 1 8rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--c-line);
+  padding: 0.6rem 0.75rem;
+}
+.hos-totals dd {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.hos-totals dt {
+  margin-top: 0.3rem;
+  color: var(--c-muted);
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+.hos-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.2rem;
+  margin-bottom: 1.2rem;
+}
+@media (min-width: 900px) {
+  .hos-split {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  }
+}
+.hos-sub h3 {
+  font-size: 0.92rem;
+  font-weight: 650;
+  margin-bottom: 0.15rem;
+}
+.hos-bars {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 0.6rem;
+}
+.hos-bars li {
+  display: grid;
+  grid-template-columns: minmax(0, 8.5rem) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+.hos-bar-label {
+  color: var(--c-ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hos-bar-track {
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--c-bg-2);
+  overflow: hidden;
+}
+.hos-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--c-accent);
+}
+.hos-bar-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.hos-hist {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0.35rem;
+  align-items: end;
+  margin-top: 0.6rem;
+  min-height: 8.5rem;
+}
+.hos-hist li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.hos-hist-bar {
+  width: 100%;
+  height: 5.5rem;
+  display: flex;
+  align-items: flex-end;
+}
+.hos-hist-bar > span {
+  display: block;
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: var(--c-dark);
+}
+.hos-hist-count {
+  font-size: 0.78rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.hos-hist-label {
+  color: var(--c-muted);
+  font-size: 0.66rem;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* ---- tables ---- */
+.hos-table-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+}
+.hos-table-head h3 {
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+.hos-table-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+.hos-segment {
+  display: inline-flex;
+  border: 1px solid var(--c-line-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.hos-segment button {
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.3rem 0.7rem;
+  border: 0;
+  background: transparent;
+  color: var(--c-muted);
+  cursor: pointer;
+}
+.hos-segment button.is-on {
+  background: var(--c-dark);
+  color: var(--c-on-dark);
+}
+.hos-table-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.hos-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  min-width: 34rem;
+}
+.hos-table th,
+.hos-table td {
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--c-line);
+  vertical-align: top;
+}
+.hos-table th {
+  color: var(--c-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.hos-table td.is-num,
+.hos-table th.is-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.hos-table td.is-code {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.hos-table .is-hindsight {
+  border-left: 1px dashed var(--c-amber);
+}
+.hos-dup {
+  margin-left: 0.3rem;
+  font-style: normal;
+  font-size: 0.68rem;
+  color: var(--c-muted);
+}
+.hos-outcome {
+  font-weight: 600;
+}
+.hos-outcome.is-admitted {
+  color: var(--c-accent-ink);
+}
+.hos-outcome.is-refused {
+  color: var(--c-red);
+}
+.hos-outcome.is-still_waiting_at_cutoff {
+  color: var(--c-muted);
+}
+.hos-table td small {
+  display: block;
+  color: var(--c-muted);
+  font-size: 0.7rem;
+  margin-top: 0.1rem;
+}
+.hos-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  margin-top: 0.7rem;
+  font-size: 0.8rem;
+  color: var(--c-muted);
+}
+
+/* ---- replay ---- */
+.hos-replay-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--radius-sm);
+  background: var(--c-dark);
+  color: var(--c-on-dark);
+  margin-bottom: 0.9rem;
+}
+.hos-replay-clock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.hos-replay-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.hos-tally {
+  color: var(--c-lime);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.hos-replay-chart {
+  margin-bottom: 0.9rem;
+}
+.hos-actual-line {
+  fill: none;
+  stroke: var(--c-lime-ink);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.hos-actual-dot {
+  stroke: var(--c-paper);
+  stroke-width: 1.5;
+}
+.hos-actual-dot.is-inside {
+  fill: var(--c-accent);
+}
+.hos-actual-dot.is-above {
+  fill: var(--c-red);
+}
+.hos-actual-dot.is-below {
+  fill: var(--c-amber);
+}
+.sw-actual {
+  background: var(--c-lime-ink);
+}
+.hos-verdict {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.hos-verdict.is-inside {
+  color: var(--c-accent-ink);
+}
+.hos-verdict.is-above {
+  color: var(--c-red);
+}
+.hos-verdict.is-below {
+  color: var(--c-amber);
+}
+.hos-replay-table tr.is-future td {
+  color: var(--c-dim);
+}
+
+@media (max-width: 620px) {
+  /* A phone cannot hold five columns. The queue keeps the three that answer the question — which referral, how
+     long it has waited, what happened to it — and drops profile and registration date, which the profile selector
+     and the card above already say. Nothing is behind a sideways scroll that a reader needs. */
+  .hos-table .is-secondary {
+    display: none;
+  }
+  .hos-table {
+    min-width: 0;
+    font-size: 0.78rem;
+  }
+  /* the hindsight tag drops under its heading instead of being clipped off the right edge */
+  .hos-table th {
+    white-space: normal;
+  }
+  .hos-table th .hos-hindsight-tag {
+    display: inline-block;
+    margin-top: 0.15rem;
+  }
+  .hos-table th,
+  .hos-table td {
+    padding: 0.4rem 0.35rem;
+  }
+  .hos-table td.is-code {
+    font-size: 0.72rem;
+  }
+  .hos-replay-table {
+    min-width: 0;
+  }
+  .hos-block,
+  .hos-pick {
+    padding: 0.85rem 0.8rem 1rem;
+    border-radius: var(--radius-sm);
+  }
+  .hos-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .hos-row-count b {
+    font-size: 1rem;
+  }
+  .hos-totals > div {
+    flex-basis: 45%;
+  }
+  .hos-hist-label {
+    font-size: 0.6rem;
+  }
+  .hos-bars li {
+    grid-template-columns: minmax(0, 6rem) minmax(0, 1fr) auto;
+  }
+  .hos-replay-bar {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

@@ -2,6 +2,7 @@ import { Navigate, type RouteObject } from "react-router-dom";
 
 import { DemoLayout } from "./demo/DemoLayout";
 import { DemoScene } from "./demo/scenes/DemoScene";
+import { HospitalPage } from "./hospital/HospitalPage";
 import { NotificationsPage } from "./tower/NotificationsPage";
 import { QueuePage } from "./tower/QueuePage";
 import { TowerLayout } from "./tower/TowerLayout";
@@ -18,6 +19,8 @@ export const routes: RouteObject[] = [
       { index: true, path: "/", element: <TowerPage /> },
       { path: "notifications", element: <NotificationsPage /> },
       { path: "queue", element: <QueuePage /> },
+      { path: "hospital", element: <HospitalPage /> },
+      { path: "hospital/:orgCode", element: <HospitalPage /> },
     ],
   },
   {

@@ -4,12 +4,14 @@
  */
 import { control } from "./control";
 import { demo } from "./demo";
+import { hospital } from "./hospital";
 import { tower } from "./tower";
 
 export const ru = {
   tower,
   demo,
   control,
+  hospital,
   app: {
     title: "Очереди на плановую госпитализацию",
     subtitle: "Мониторинг нагрузки стационаров",

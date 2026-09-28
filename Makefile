@@ -9,7 +9,7 @@ PYTHON3      ?= python3
 # Bare `make` prints the targets; starting a stack is always an explicit choice.
 .DEFAULT_GOAL := help
 
-.PHONY: help smoke env demo up down prod-config pipe pipe-build migrate ingest baseline psql train tournament flow-evidence flow-quantile flow-calibration flow-hierarchy flow-pressure signal-prioritization flow-scenario decision-alternatives model-assurance assurance-publish operational-intelligence-bundle operational-intelligence-publish review-evidence-bundle review-evidence-publish predict registry marts create-key backup restore api-dev test ml-test \
+.PHONY: help smoke env demo up down prod-config pipe pipe-build migrate ingest baseline psql train tournament flow-evidence flow-quantile flow-calibration flow-hierarchy flow-pressure signal-prioritization flow-scenario decision-alternatives model-assurance assurance-publish operational-intelligence-bundle operational-intelligence-publish review-evidence-bundle review-evidence-publish waiting-list-bundle waiting-list-publish predict registry marts create-key backup restore api-dev test ml-test \
         models-export models-quantile-export models-test lint fmt audit fixture fixture-load seed-build seed-load web-install web-dev web-lint web-test web-build web-build-off
 
 help:          ## list the targets (bare `make` shows this)
@@ -127,6 +127,13 @@ review-evidence-bundle: ## offline projection of the accepted stress-test and de
 review-evidence-publish: migrate ## publish BUNDLE=/path/to/review_evidence.json (requires the operational publication)
 	@test -n "$(BUNDLE)" || { echo 'usage: make review-evidence-publish BUNDLE=/path/to/review_evidence.json'; exit 2; }
 	cd backend && $(PY) -m app.cli publish-review-evidence --bundle "$(BUNDLE)"
+
+waiting-list-bundle: ## offline export of the measured waiting list at the origin from postgres; no model output
+	$(PY) tools/waiting_list_bundle.py
+
+waiting-list-publish: migrate ## publish BUNDLE=/path/to/waiting_list.json
+	@test -n "$(BUNDLE)" || { echo 'usage: make waiting-list-publish BUNDLE=/path/to/waiting_list.json'; exit 2; }
+	cd backend && $(PY) -m app.cli publish-waiting-list --bundle "$(abspath $(BUNDLE))"
 
 predict: migrate ## predictions of the current models -> postgres (pred_referral, pred_daily_forecast, model_registry), then marts
 	PYTHONPATH=$(ML_PATH) $(PY) ml/pipelines/predict.py

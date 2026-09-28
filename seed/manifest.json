@@ -1,6 +1,6 @@
 {
   "description": "demo seed for `make demo` (tools/seed_bundle.py): MoH open-data derived tables and the accepted publish bundles; no raw MoH files, no credentials",
-  "built_at": "2026-09-26T17:40:18+00:00",
+  "built_at": "2026-09-27T20:53:07+00:00",
   "as_of_date": "2025-03-31",
   "slice": {
     "tables": [
@@ -216,7 +216,24 @@
         "decision_alternatives": "decision-alternatives-6b4-real-v3",
         "signal_prioritization": "signal-prioritization-6b2c2-real-v2"
       }
+    },
+    {
+      "kind": "waiting_list",
+      "file": "waiting_list.json.gz",
+      "bytes": 822930,
+      "sha256": "73146bfd4f8bc93cfe5d6c29d28d75d56dc7667a7b50e7c86eb6478c6f0e7415",
+      "raw_bytes": 24703078,
+      "raw_sha256": "77d59c58d0768378f3ff556f83ab358f86f728e078e64957d22bc84c079c46a5",
+      "publication_id": "waiting-list-origin-2025-03-17-v1",
+      "identity_sha256": "1c4fceb133538ae7ed08c11a885bcf68c001a66aef0840b7ec572a453a12b188",
+      "source_code_commit": "f64d9bce7e7c539f7736f4d59c054cffb46e43c9",
+      "generated_at": "2026-09-27T20:47:26+00:00",
+      "counts": {
+        "hospital_count": 640,
+        "waiting_count": 65232
+      },
+      "current_origin": "2025-03-17"
     }
   ],
-  "total_bytes": 29861962
+  "total_bytes": 30684892
 }

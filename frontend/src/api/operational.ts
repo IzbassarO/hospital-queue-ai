@@ -152,10 +152,17 @@ export const useOperationalRegion = (code: string) =>
     queryFn: () => operationalApi.region(code),
     ...settings,
   });
-export const useOperationalHospital = (org: string, profile: string) =>
+/** `enabled` lets a caller hold the request until it knows which profile to ask for (hospital mode picks one
+ * only after the waiting list has answered); omitted, it behaves exactly as before. */
+export const useOperationalHospital = (
+  org: string,
+  profile: string,
+  enabled = true,
+) =>
   useQuery({
     queryKey: ["operational", "hospital", org, profile],
     queryFn: () => operationalApi.hospital(org, profile),
+    enabled,
     ...settings,
   });
 export const useForecasts = (filters: ForecastFilters) =>

@@ -25,6 +25,7 @@ SEED_DIR = Path(__file__).resolve().parents[2] / "seed"
 ASSURANCE_IDENTITY = "f504defefdd87bcbb01c670b68469ba4c0e016be7f40ca89452baf69b73f39f5"
 OPERATIONAL_IDENTITY = "43da33ece7231a70348043c2bb8ec4b63161f94ed67dfe96e3c36de69c425cfd"
 REVIEW_IDENTITY = "e07be2f158c69ed50c9da2286a9459424947d02266e5094c5627b7648be33c22"
+WAITING_IDENTITY = "1c4fceb133538ae7ed08c11a885bcf68c001a66aef0840b7ec572a453a12b188"
 
 
 @pytest.fixture(scope="module")
@@ -59,6 +60,7 @@ def test_manifest_identities(manifest):
         "model_assurance": ASSURANCE_IDENTITY,
         "operational_intelligence": OPERATIONAL_IDENTITY,
         "review_evidence": REVIEW_IDENTITY,
+        "waiting_list": WAITING_IDENTITY,
     }
 
 
@@ -103,3 +105,26 @@ async def test_overview_and_dictionaries(client, manifest):
     dictionaries = await get_json(client, "/dictionaries")
     assert len(dictionaries["regions"]) == rows(manifest, "dim_region")
     assert len(dictionaries["profiles"]) == rows(manifest, "dim_profile")
+
+
+async def test_waiting_list_is_national_in_the_seed(client, manifest):
+    """The referral tables are a two-region slice, but the waiting list answers for the whole country."""
+    counts = bundle(manifest, "waiting_list")["counts"]
+    hospitals = await get_json(client, "/waiting-list/hospitals", limit=500)
+    assert hospitals["total"] == counts["hospital_count"]
+    assert {row["publication_identity_sha256"] for row in hospitals["items"]} == {WAITING_IDENTITY}
+    assert len({row["region_code"] for row in hospitals["items"]}) == rows(manifest, "dim_region")
+    assert sum(row["waiting_count"] for row in hospitals["items"]) == counts["waiting_count"]
+
+
+async def test_waiting_list_referrals_carry_no_model_value(client):
+    hospitals = await get_json(client, "/waiting-list/hospitals", limit=1)
+    org = hospitals["items"][0]["org_code"]
+    body = await get_json(client, f"/waiting-list/hospitals/{org}/referrals", limit=25)
+    assert body["total"] == hospitals["items"][0]["waiting_count"]
+    forbidden = ("pred", "probability", "severity", "forecast", "score", "risk", "calibration")
+    for item in body["items"]:
+        assert item["registration_date"] <= item["origin"]
+        assert item["profile_code"] != "DH"
+        assert item["observed_after_origin"]["disclosure"] == "HINDSIGHT_NOT_AVAILABLE_AT_ORIGIN"
+        assert not [key for key in item if any(token in key for token in forbidden)]

@@ -69,6 +69,9 @@ export function TowerLayout() {
           <NavLink to="/queue" className="tower-nav-link">
             {t.control.nav.queue}
           </NavLink>
+          <NavLink to="/hospital" className="tower-nav-link">
+            {t.control.nav.hospital}
+          </NavLink>
           <details className="tower-menu">
             <summary className="tower-nav-link">
               {t.control.nav.howItWorks}
