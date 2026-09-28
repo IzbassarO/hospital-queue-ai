@@ -34,3 +34,4 @@ records belong under `docs/adr/`.
 | [0005](0005-candidate-independent-intelligence-serving-semantics.md) | Accepted | Candidate-independent intelligence serving semantics |
 | [0006](0006-exact-constrained-decision-alternatives.md) | Accepted | Exact constrained decision alternatives over the accepted scenario surrogate |
 | [0007](0007-committed-release-data.md) | Accepted | Committed release data: demo seed and released model modules |
+| [0008](0008-transparency-ledger.md) | Proposed | Transparency ledger for publications and decisions |

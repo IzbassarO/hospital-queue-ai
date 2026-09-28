@@ -616,7 +616,9 @@ the authenticated key is stored separately in `api_key_label`). Validation: regi
 the hospital must belong to `region_code` and have referrals for the profile; the alternative must be another
 hospital of the same region and match the last part of `recommendation_id` (it is derived from it when omitted)
 (`404` unknown region/profile, `422` otherwise). Returns `201` with the stored row, including
-`alternative_org_name` and `api_key_label`.
+`alternative_org_name`, `api_key_label` and `receipt` — the transparency-ledger entry written in the same
+transaction (subject `hospital_decision:<id>`; see `POST /specialist-decisions` and
+[transparency-ledger.md](transparency-ledger.md)).
 
 **Idempotency.** `idempotency_key` (8–128 characters `A–Z a–z 0–9 . _ : -`, unique index): a client generates one
 per submission (the UI: `ui-<uuid>`) and resends it on retry. If the key is already stored with the same content,
@@ -687,6 +689,12 @@ operational-intelligence publication that was active when the decision was writt
 It is set by the server and ignored in the request body, so a decision can later be read against the evidence the
 person saw; an idempotent replay returns the identity as first stored.
 
+**Receipt.** The decision and its [transparency-ledger](transparency-ledger.md) entry are written in one transaction;
+`receipt` names that entry (`ledger_seq`, `entry_hash`, `subject`, `created_at`, `verify_path` for the UI). An
+idempotent replay returns the original receipt and appends nothing. The entry carries the decision's codes, the
+publication identity and the ledger number of that publication's own entry; `comment`, `actor`, `api_key_label` and
+`idempotency_key` are only committed to (salted SHA-256), never copied.
+
 ```json
 {"origin": "2025-03-17", "run_id": "run-m1x9k2-4f7a", "sim_day": 1, "subject_kind": "alert", "subject_id": "cc50965694cb0b6862928df5", "region_code": "39", "org_code": "000V", "profile_code": "391", "action": "accept", "comment": "согласовано с заведующим", "actor": "Иванова А.", "idempotency_key": "ui-5b1d9c0e-8f7a-4f5e-9d38-2a6f1b7c4e21"}
 ```
@@ -694,7 +702,7 @@ person saw; an idempotent replay returns the identity as first stored.
 → `201`
 
 ```json
-{"origin": "2025-03-17", "run_id": "run-m1x9k2-4f7a", "sim_day": 1, "subject_kind": "alert", "subject_id": "cc50965694cb0b6862928df5", "region_code": "39", "org_code": "000V", "profile_code": "391", "action": "accept", "comment": "согласовано с заведующим", "actor": "Иванова А.", "idempotency_key": "ui-5b1d9c0e-8f7a-4f5e-9d38-2a6f1b7c4e21", "id": 3, "created_at": "2026-09-23T21:10:02.114Z", "api_key_label": "demo", "publication_identity_sha256": "43da33ece7231a70348043c2bb8ec4b63161f94ed67dfe96e3c36de69c425cfd"}
+{"origin": "2025-03-17", "run_id": "run-m1x9k2-4f7a", "sim_day": 1, "subject_kind": "alert", "subject_id": "cc50965694cb0b6862928df5", "region_code": "39", "org_code": "000V", "profile_code": "391", "action": "accept", "comment": "согласовано с заведующим", "actor": "Иванова А.", "idempotency_key": "ui-5b1d9c0e-8f7a-4f5e-9d38-2a6f1b7c4e21", "id": 3, "created_at": "2026-09-23T21:10:02.114Z", "api_key_label": "demo", "publication_identity_sha256": "43da33ece7231a70348043c2bb8ec4b63161f94ed67dfe96e3c36de69c425cfd", "receipt": {"ledger_seq": 7, "entry_hash": "3442b84de77d1f0c9ad3a1d5c3b2f8e6a0c7d9e4b1f2a3c5d6e7f8091a2b3c4d", "event_type": "decision.recorded", "subject": "specialist_decision:3", "created_at": "2026-09-23T21:10:02.114000Z", "verify_path": "/verify?seq=7"}}
 ```
 
 ### `GET /specialist-decisions?origin=&run_id=&subject_kind=&limit=&offset=`
@@ -1225,6 +1233,67 @@ clients treat it as an empty list.
   "profiles": [{"code": "011", "name": "Общие", "is_day_hospital": false}, {"code": "021", "name": "Терапевтические", "is_day_hospital": false}, "…"]
 }
 ```
+
+### Transparency ledger
+
+An append-only, hash-chained record of publications and decisions: what information existed when a person decided
+([transparency-ledger.md](transparency-ledger.md)). **role: viewer** for every endpoint below — they return public
+data only: identifiers, codes, hashes and salted commitments; no salt and no free text a person typed. Entries are
+exactly the bytes that are hashed; `created_at` is the canonical UTC form `YYYY-MM-DDTHH:MM:SS.ffffffZ`.
+
+### `GET /transparency/head`
+
+The newest entry and the protocol it follows. `seq` equals the chain length; `genesis_hash` is the same on every
+database (`e7be5330…eb50`).
+
+```json
+{"seq": 4, "entry_hash": "b7c816357eb7a1f2e3d4c5b6a7980f1e2d3c4b5a69788796a5b4c3d2e1f0a9b8", "created_at": "2026-09-28T15:02:37.273896Z", "chain_length": 4, "genesis_hash": "e7be5330076067f7dd9a0e83868fabb9821fce2238689f525483589724b0eb50", "protocol": "aqyl-kezek-transparency-ledger", "protocol_version": 1, "canonicalization": "hqai-canonical-json-v1"}
+```
+
+### `GET /transparency/entries?order=&event_type=&limit=&offset=`
+
+Entries by `seq`, newest first by default (`order=asc` from the genesis). `event_type` ∈ `ledger.genesis`,
+`publication.published`, `publication.activated`, `publication.deactivated`, `decision.recorded`.
+
+```json
+{"items": [{"seq": 2, "created_at": "2026-09-28T15:02:37.273896Z", "event_type": "decision.recorded", "subject": "specialist_decision:35", "payload": {"action": "accept", "commitments": {"actor": "5d2c…", "api_key_label": "9a41…", "comment": "e0b7…", "idempotency_key": "71fe…"}, "decision_id": 35, "decision_kind": "specialist_decision", "evidence": {"operational_publication_identity_sha256": "43da33ece7231a70348043c2bb8ec4b63161f94ed67dfe96e3c36de69c425cfd", "operational_publication_ledger_seq": 1}, "org_code": "000V", "origin": "2025-03-17", "profile_code": "391", "region_code": "39", "run_id": "smoke", "sim_day": 1, "subject_id": "sig-1", "subject_kind": "alert"}, "prev_hash": "e7be5330076067f7dd9a0e83868fabb9821fce2238689f525483589724b0eb50", "entry_hash": "c22cbf3d98df884bf54753b4a8cc56ccf161709339b3b7eeadee6374943c1ab0"}], "total": 2, "limit": 1, "offset": 0}
+```
+
+(Commitment hashes shortened here; they are 64 hex characters.)
+
+### `GET /transparency/entries/{seq}`
+
+One entry; `404` when there is none.
+
+### `GET /transparency/lookup?entry_hash=&subject=`
+
+Exactly one of: `entry_hash` — a full receipt hash or a prefix of at least 8 hex characters; `subject` — e.g.
+`specialist_decision:35`, `hospital_decision:12`, `publication:operational_intelligence:<publication_id>`. Returns up
+to 50 entries by `seq`; `422` for neither, both, or a malformed hash.
+
+### `GET /transparency/verify`
+
+Server verification: the public chain (canonical JSON, protocol genesis, contiguous `seq`, `prev_hash` links,
+recomputed SHA-256) and then every covered source row against its entry — each decision's fields and the salted
+commitments of its private text, each publication snapshot's identity and hashes, rows without an entry, and the
+latest recorded activation against the active publications. The first problem by `seq` is `failure_seq` /
+`reason_code` / `subject`; `issues` lists up to 20. Details name fields, never values.
+
+```json
+{"status": "BROKEN", "mode": "server", "verified_at": "2026-09-28T15:20:11.402Z", "duration_ms": 31, "chain_length": 4, "verified_through_seq": 2, "head_seq": 4, "head_hash": "b7c816357eb7a1f2e3d4c5b6a7980f1e2d3c4b5a69788796a5b4c3d2e1f0a9b8", "failure_seq": 3, "reason_code": "COMMITMENT_MISMATCH", "subject": "specialist_decision:2", "issues": [{"seq": 3, "reason_code": "COMMITMENT_MISMATCH", "subject": "specialist_decision:2", "detail": "current value of comment does not match the committed value"}], "covered_decisions": 3, "covered_publications": 0, "checks": ["canonical JSON of every entry (hqai-canonical-json-v1)", "…"]}
+```
+
+Reason codes: `EMPTY_LEDGER`, `MALFORMED_ENTRY`, `NONCANONICAL_VALUE`, `NONCANONICAL_ENCODING`, `GENESIS_INVALID`,
+`DUPLICATE_SEQ`, `SEQUENCE_GAP`, `SEQUENCE_ORDER`, `PREV_HASH_MISMATCH`, `ENTRY_HASH_MISMATCH`,
+`TRUSTED_HEAD_MISSING`, `TRUSTED_HEAD_MISMATCH` (chain, shared with the offline and browser verifiers);
+`UNKNOWN_EVENT_TYPE`, `SOURCE_ROW_MISSING`, `SALT_MISSING`, `COMMITMENT_MISMATCH`, `SOURCE_FIELD_MISMATCH`,
+`PUBLICATION_MISMATCH`, `DUPLICATE_SUBJECT_EVENT`, `UNCOVERED_SOURCE_ROW`, `ACTIVE_STATE_MISMATCH` (server only).
+
+### `GET /transparency/export`
+
+The whole public ledger as `application/x-ndjson`: one canonical JSON entry per line, in `seq` order, ending with
+`\n`, as an attachment. It is what `tools/ledger_verify.py` and the browser verify; it contains no salts and no free
+text.
 
 ### `GET /admin/keys`
 

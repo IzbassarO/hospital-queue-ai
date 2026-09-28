@@ -52,7 +52,9 @@ API docs http://localhost:8000/docs
 Карта всех 1 406 стационаров, окрашенная по опубликованным сигналам. Входящие уведомления с детерминированным
 рангом. Очередь направлений и журнал решений. Паспорт модели с хешами. История одного сигнала из шести сцен.
 AI-ассистент, который объясняет опубликованные факты и не даёт советов; без ключа провайдера он честно говорит, что
-не подключён, и всё остальное продолжает работать.
+не подключён, и всё остальное продолжает работать. «Проверяемый ИИ» (`/verify`): каждая публикация и каждое решение
+специалиста попадают в журнал прозрачности — цепочку SHA-256, которую браузер проверяет сам, а решение получает
+криптографическую квитанцию ([docs/transparency-ledger.md](docs/transparency-ledger.md)).
 
 На дату отсчёта 17.03.2025 опубликовано 4 194 сигнала. Состав важно называть точно:
 
@@ -248,7 +250,8 @@ CI гоняет на каждый push четыре задания: `backend` (�
 [docs/api.md](docs/api.md) — 38 операций с примерами · [docs/data.md](docs/data.md) — источники и правила очистки ·
 [docs/model_card.md](docs/model_card.md), [docs/project-evidence-index.md](docs/project-evidence-index.md) — модели
 и принятые прогоны · [docs/integration.md](docs/integration.md), [docs/security.md](docs/security.md),
-[docs/monitoring.md](docs/monitoring.md) — внедрение · [models/README.md](models/README.md),
+[docs/monitoring.md](docs/monitoring.md) — внедрение · [docs/transparency-ledger.md](docs/transparency-ledger.md) —
+журнал прозрачности · [models/README.md](models/README.md),
 [seed/README.md](seed/README.md), [frontend/src/synthetic/README.md](frontend/src/synthetic/README.md).
 
 English version: [README.en.md](README.en.md). Лицензия: [MIT](LICENSE); данные Минздрава и производные от них

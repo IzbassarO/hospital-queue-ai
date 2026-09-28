@@ -6,7 +6,8 @@ boundaries already exist. Detailed endpoint, data, UI, model and security behavi
 [`api.md`](api.md), [`data.md`](data.md), [`frontend.md`](frontend.md),
 [`model_card.md`](model_card.md) and [`security.md`](security.md).
 
-The decisions behind the proposed direction are under [`adr/`](adr/). ADRs 0001–0007 are **Accepted**. The
+The decisions behind the proposed direction are under [`adr/`](adr/). ADRs 0001–0007 are **Accepted**; ADR 0008
+(transparency ledger) is **Proposed**. The
 candidate-independent [`6B.2D intelligence serving contract`](serving-contract-6b2d.md) is **Accepted / closed** as
 a semantic design; persistence, API, frontend, and legal-origin runtime scoring remain future work. The boundaries
 automated today are listed in section 13.
@@ -77,9 +78,12 @@ validation, recommendation policy, export assembly and schema mapping. They depe
 SQLAlchemy sessions/models and on Pydantic response types; some contain raw SQL. Authentication,
 configuration and access logging live under `app/core/`.
 
-This is **not currently hexagonal architecture**. There are no application, domain or
-infrastructure boundaries, and service code mixes application policy with persistence and
-presentation concerns. Route functions do not contain raw SQL, which provides a useful starting
+This is **not currently hexagonal architecture**. There are no application or infrastructure
+boundaries, and service code mixes application policy with persistence and presentation concerns.
+The one domain package is `app/domain/transparency` ([ADR 0008](adr/0008-transparency-ledger.md),
+[transparency-ledger.md](transparency-ledger.md)): canonical JSON, the hash chain, commitments and the ledger's event
+builders, standard library only. The decision and publish services append to the ledger through
+`app/services/transparency.py` inside their own transactions. Route functions do not contain raw SQL, which provides a useful starting
 boundary.
 
 ### ML and data
@@ -270,6 +274,9 @@ selected and protected by tests.
   decision/security tables; details are in `data.md` and `api.md`.
 - Neither backend runtime code nor ML pipelines may create or alter schema outside Alembic
   migrations. Pipelines may load/truncate/rebuild data only according to the table contract.
+- `transparency_ledger` and `transparency_commitment_salt` are append-only: triggers reject `UPDATE`, `DELETE` and
+  `TRUNCATE`, and appends are serialized by a transaction-scoped advisory lock inside the business transaction
+  ([transparency-ledger.md](transparency-ledger.md) §5–6).
 - Indexing and measured query-plan work precede speculative database scaling changes.
 - Partitioning is not assumed. It requires measured table volume, retention or query-plan evidence.
 - Docker Compose is not the production database architecture.
@@ -383,8 +390,8 @@ on every push.
 | ARCH005 | ENFORCED | `backend/app/api/**/*.py` must not construct raw SQL through `sqlalchemy.text` or pass a literal SQL statement to `execute`/`executemany` |
 | ARCH006 | DEFERRED | a repository-wide DDL-string rule would flag legitimate ephemeral DuckDB table creation in ML ingestion and cannot reliably identify the target database without connection/data-flow analysis; Alembic drift checking remains active but is not claimed as full static enforcement |
 
-ARCH003 and ARCH004 require no empty scaffolding: they have no targets today and activate
-automatically when the corresponding directories contain Python files.
+ARCH003 and ARCH004 require no empty scaffolding: they activate automatically when the corresponding directories
+contain Python files. ARCH003 has had a target since `app/domain/transparency`; ARCH004 has none yet.
 
 Still planned for later steps: frontend layer/public-API rules after physical slices exist; explicit
 backward-compatibility classification beyond freshness checks; explicit shared-table ownership checks; model
