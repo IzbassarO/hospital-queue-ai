@@ -26,6 +26,10 @@ ASSURANCE_IDENTITY = "f504defefdd87bcbb01c670b68469ba4c0e016be7f40ca89452baf69b7
 OPERATIONAL_IDENTITY = "43da33ece7231a70348043c2bb8ec4b63161f94ed67dfe96e3c36de69c425cfd"
 REVIEW_IDENTITY = "e07be2f158c69ed50c9da2286a9459424947d02266e5094c5627b7648be33c22"
 WAITING_IDENTITY = "1c4fceb133538ae7ed08c11a885bcf68c001a66aef0840b7ec572a453a12b188"
+REFERRAL_ESTIMATES_IDENTITY = "8c83c771af730e6edd793da913813ff0c503cff09d6ca863ce07cfb71b5d1b17"
+VERIFICATION_WORKLIST_IDENTITY = "e9d93b009064bf8b2eb88192e2b846052550a835a44732ec7ce25cc73eb59e1f"
+# hindsight lives in its own disclosed fields; an origin-time row of a model publication never carries it
+HINDSIGHT_TOKENS = ("observed", "outcome", "status", "hindsight", "event_date")
 
 
 @pytest.fixture(scope="module")
@@ -55,12 +59,17 @@ def test_row_counts_match_manifest(manifest):
 
 
 def test_manifest_identities(manifest):
+    """Exactly these six publications: a missing, an extra or a changed one all fail."""
+    kinds = [entry["kind"] for entry in manifest["bundles"]]
+    assert len(kinds) == len(set(kinds)), f"duplicate bundle kinds: {kinds}"
     identities = {entry["kind"]: entry["identity_sha256"] for entry in manifest["bundles"]}
     assert identities == {
         "model_assurance": ASSURANCE_IDENTITY,
         "operational_intelligence": OPERATIONAL_IDENTITY,
         "review_evidence": REVIEW_IDENTITY,
         "waiting_list": WAITING_IDENTITY,
+        "referral_estimates": REFERRAL_ESTIMATES_IDENTITY,
+        "verification_worklist": VERIFICATION_WORKLIST_IDENTITY,
     }
 
 
@@ -140,3 +149,59 @@ async def test_waiting_list_referrals_carry_no_model_value(client):
         assert item["profile_code"] != "DH"
         assert item["observed_after_origin"]["disclosure"] == "HINDSIGHT_NOT_AVAILABLE_AT_ORIGIN"
         assert not [key for key in item if any(token in key for token in forbidden)]
+
+
+async def busiest_hospital(client: httpx.AsyncClient) -> dict:
+    return (await get_json(client, "/waiting-list/hospitals", limit=1))["items"][0]
+
+
+async def test_referral_estimates_publication(client, manifest):
+    body = await get_json(client, "/referral-estimates/publication")
+    entry = bundle(manifest, "referral_estimates")
+    assert body["publication_identity_sha256"] == REFERRAL_ESTIMATES_IDENTITY
+    assert body["publication_id"] == entry["publication_id"]
+    assert body["referral_count"] == entry["counts"]["referral_count"]
+    # it stands at the waiting list's origin, so the queue screen can show both on one row
+    assert body["matches_waiting_list"] is True
+
+
+async def test_referral_estimates_ride_on_the_queue_with_their_own_lineage(client):
+    publication = await get_json(client, "/referral-estimates/publication")
+    hospital = await busiest_hospital(client)
+    body = await get_json(client, f"/referral-estimates/hospitals/{hospital['org_code']}/referrals", limit=25)
+    assert body["total"] == hospital["waiting_count"]
+    estimates = [item["estimate"] for item in body["items"] if item["estimate"] is not None]
+    assert estimates, "no served queue row carries an origin-time estimate"
+    for estimate in estimates:
+        assert estimate["publication_identity_sha256"] == REFERRAL_ESTIMATES_IDENTITY
+        assert estimate["publication_id"] == publication["publication_id"]
+        assert estimate["origin"] == publication["origin"]
+        assert not [key for key in estimate if any(token in key for token in HINDSIGHT_TOKENS)]
+
+
+async def test_verification_worklist_publication(client, manifest):
+    body = await get_json(client, "/verification-worklist/publication")
+    assert body["publication_identity_sha256"] == VERIFICATION_WORKLIST_IDENTITY
+    assert body["publication_id"] == bundle(manifest, "verification_worklist")["publication_id"]
+    assert body["schema_version"] == "verification_worklist_v2"
+    assert body["source_publication"]["publication_id"] == "ghost-queue-2025-03-17-v2"
+    assert body["source_publication"]["schema_version"] == 2
+    assert body["decision_owner"] == "SPECIALIST_DECIDES"
+    assert body["legacy_rule"]["role"] == "AUDITED_REFERENCE_ONLY"
+    # the list orders the whole measured queue and subtracts nothing from it
+    waiting = bundle(manifest, "waiting_list")["counts"]["waiting_count"]
+    assert body["counts"] == {"formal_queue_count": waiting, "ranked_count": waiting}
+
+
+async def test_verification_worklist_rows_are_origin_time_and_leave_the_queue_whole(client):
+    hospital = await busiest_hospital(client)
+    body = await get_json(client, f"/verification-worklist/hospitals/{hospital['org_code']}", limit=25)
+    assert body["formal_queue_count"] == hospital["waiting_count"]
+    assert body["total"] == hospital["waiting_count"]
+    assert body["items"]
+    for item in body["items"]:
+        assert item["publication_identity_sha256"] == VERIFICATION_WORKLIST_IDENTITY
+        assert item["decision_owner"] == "SPECIALIST_DECIDES"
+        assert not [key for key in item if any(token in key for token in HINDSIGHT_TOKENS)]
+    # reading the worklist did not touch the measured queue
+    assert (await busiest_hospital(client))["waiting_count"] == hospital["waiting_count"]
