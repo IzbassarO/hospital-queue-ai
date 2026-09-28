@@ -93,6 +93,14 @@ def test_migrations_import_nothing_from_the_application() -> None:
                 assert all(alias.name.split(".")[0] != "app" for alias in node.names), path.name
 
 
+def test_audit_migrations_are_marked_for_the_deploy_rollback() -> None:
+    """tools/deploy.sh rollback refuses to downgrade across a migration with this exact line (deploy_test.sh tests
+    that side); only the ledger migrations carry it."""
+    for path in sorted(VERSIONS.glob("*.py")):
+        marked = "\nAUDIT_SENSITIVE = True\n" in path.read_text(encoding="utf-8")
+        assert marked == path.name.startswith(("0018_", "0019_")), path.name
+
+
 def test_frozen_constants_match_protocol_v1() -> None:
     assert LEDGER.genesis() == chain.genesis().public()
     assert tuple(LEDGER.PUBLICATION_TABLES) == events.PUBLICATION_KINDS

@@ -49,6 +49,8 @@ revision: str = "0019"
 down_revision: str | None = "0018"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
+# tools/deploy.sh rollback never downgrades across this revision (docs/deploy-shared-server.md §10).
+AUDIT_SENSITIVE = True
 
 TABLE = "transparency_ledger"
 

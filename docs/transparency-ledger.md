@@ -321,9 +321,13 @@ Operator procedure when a release that ran 0018/0019 must be abandoned:
 4. The `-x transparency_audit=discard` downgrade exists for development databases and for an operator who has done
    step 2 and accepts the loss in writing; it is never automatic.
 
-Deployment tooling: the shared-server scripts proposed in PR #17 (`tools/deploy.sh rollback`) run a plain
-`alembic downgrade`, so across 0018/0019 they hit this refusal and stop with it; that PR is not on `main` yet, so
-its own script and runbook are not changed here (see the PR description).
+Deployment tooling: [`tools/deploy.sh rollback`](../tools/deploy.sh) does not rely on reaching this refusal. Both
+migrations carry `AUDIT_SENSITIVE = True` (`test_audit_migrations_are_marked_for_the_deploy_rollback` holds exactly
+these two to it). The script refuses a rollback to a commit without them before it backs up, downgrades, checks out
+or restarts anything, and prints choices 1–3 above. The one exception is a database that never reached them. No
+`DEPLOY_ALLOW_*` variable affects this, and the script never passes `-x transparency_audit=discard`
+([deploy-shared-server.md §10.1](deploy-shared-server.md#101-rollback-across-the-transparency-ledger-audit-sensitive-migrations);
+tests in `tools/deploy_test.sh`).
 
 ## 11. Performance and limits
 

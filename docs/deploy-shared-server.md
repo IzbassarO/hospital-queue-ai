@@ -13,7 +13,7 @@ in [`tools/deploy.sh`](../tools/deploy.sh):
 | `make deploy-check` (`tools/deploy.sh check`) | prerequisites, `.env` settings, free ports, file permissions | no |
 | `tools/deploy.sh update` | check → fast-forward → backup if migrations come → `chmod -R o+rX db seed` → `make up` → health | yes |
 | `tools/deploy.sh health` | health checks of the running stack | no |
-| `tools/deploy.sh rollback [COMMIT]` | back to the commit before the last update (§10) | yes |
+| `tools/deploy.sh rollback [COMMIT]` | back to the commit before the last update (§10); refuses to downgrade across the transparency ledger (§10.1) | yes |
 
 The script stops at the first failing step and prints what to do next. It reads single values from `.env` (ports,
 `UI_BIND`, whether a secret is set) without sourcing the file and never prints the file or any secret. It never uses
@@ -26,6 +26,8 @@ Two overrides exist for a deliberate operator decision and are never needed rout
 |---|---|
 | `DEPLOY_ALLOW_NO_BACKUP=1` | apply incoming migrations although PostgreSQL is not up, so no backup can be taken first |
 | `DEPLOY_ALLOW_LOW_MEMORY=1` | build and start with less than 1 GB of memory available |
+
+Neither of them, and no other setting, lets `rollback` downgrade across an audit-sensitive migration (§10.1).
 
 This deployment uses the base `docker-compose.yml` (the same one as `make up`), not the production overlay: the
 overlay drops the host ports of PostgreSQL and the API, and the SSH-tunnel load in §6 needs the PostgreSQL port on
@@ -276,7 +278,8 @@ tools/deploy.sh rollback <commit>    # or an explicit one
 ```
 
 1. Refuses with local changes to tracked files.
-2. If `backend/alembic/versions/` differs between the current and the target commit, it takes a backup (as in §5)
+2. If `backend/alembic/versions/` differs between the current and the target commit, it first refuses a rollback
+   across the transparency ledger's audit-sensitive migrations (§10.1). Otherwise it takes a backup (as in §5)
    and then downgrades the database, **with the currently running backend** — only the newer code knows how to undo
    its own migrations. A downgrade can drop what the newer version stored (its tables and their rows), which is
    why the backup comes first:
@@ -298,6 +301,42 @@ make up
 tools/deploy.sh health
 ```
 
+### 10.1 Rollback across the transparency ledger (audit-sensitive migrations)
+
+Migrations `0018` (commitment salts) and `0019` (the transparency ledger) hold audit evidence: a downgrade across
+them destroys ledger entries and random salts that nothing can recreate
+([transparency-ledger.md §10](transparency-ledger.md#10-audit-preserving-downgrade-and-rollback)). They mark
+themselves with a module-level `AUDIT_SENSITIVE = True`. When the rollback target lacks such a migration that the
+current commit has, `rollback` checks this **before** anything else in step 2: before the backup, the downgrade,
+the checkout and the restart. It stops (exit 1) with `FAIL audit-sensitive migration: rolling back to <commit>
+crosses 0018_… 0019_…`, and git, the database and the state file are left exactly as they were.
+
+The only exception is a database that never reached those migrations: the update stopped before the backend
+migrated, so the database is still at the revision recorded before the update. Nothing needs downgrading, and the
+code goes back as in §10. `DEPLOY_ALLOW_NO_BACKUP`, `DEPLOY_ALLOW_LOW_MEMORY` and any other environment variable
+have no effect on this check, and there is no switch to lift it.
+
+The refusal lists the safe choices:
+
+1. **Roll back the application only, keeping the schema.** Choose a target that already contains the migrations
+   (the commit that added them, or a later one): `tools/deploy.sh rollback <commit>`. The rollback then stays
+   above the audit boundary and works as in §10. Code older than that commit cannot start against this schema,
+   because the backend runs `alembic upgrade head` when it starts and does not know the newer revision.
+2. **Roll forward.** Fix the problem upstream, then `git checkout main && tools/deploy.sh update`.
+3. **Reviewed recovery, recorded as an incident.**
+   1. Archive `GET /api/v1/transparency/export` and `GET /api/v1/transparency/head` to storage outside this
+      server.
+   2. Run `make backup`.
+   3. Restore a verified backup from before the upgrade with `make restore FILE=backups/hqai_<timestamp>.dump`.
+      Entries written since that backup survive only in the archive.
+   4. Re-verify the restored ledger against the archived head.
+
+The migrations also have their own guard. Run by hand, `alembic downgrade` below `0019` or `0018` refuses while
+the ledger holds live history or any salt. Only the explicit, destructive
+`alembic -x transparency_audit=discard downgrade <revision>` lifts that refusal. It is meant for development
+databases, or for an operator who has archived the evidence and accepts the loss in writing. `tools/deploy.sh`
+never runs it; CI checks that the script's code does not contain `transparency_audit`.
+
 Published data is rolled back separately: every publication stays in the database, so republishing the previous
 bundle (§6) makes it active again (operations.md §8).
 
@@ -313,6 +352,9 @@ bundle (§6) makes it active again (operations.md §8).
   starts; fast-forwards; makes pulled files world-readable under `umask 0007`; is a no-op the second time; warns on
   a degraded API but fails when the backend cannot reach its database, when the schema is behind the code, or when
   `make up` fails; refuses a diverged branch and a detached HEAD. `rollback`: backup, then downgrade, then checkout.
-  No command prints a value from `.env`. No daemon, no credentials, nothing deployed.
+  It refuses a rollback across an `AUDIT_SENSITIVE` migration before any backup, downgrade, checkout or restart,
+  also with every `DEPLOY_ALLOW_*` set: git, the database and the state file stay unchanged, and the message names
+  the safe choices. It goes ahead without a downgrade when the database never reached the migration, and an
+  ordinary rollback above the boundary still backs up and downgrades. No command prints a value from `.env`. No daemon, no credentials, nothing deployed.
 - `update`, `rollback` and `health` against a real rootless daemon on the target server have not been rehearsed from
   this repository; run `make deploy-check` and a first `tools/deploy.sh update` there and note anything that differs.
