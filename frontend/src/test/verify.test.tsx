@@ -246,9 +246,12 @@ describe("/verify", () => {
         seenAt: "2026-09-27T10:00:00Z",
       }),
     );
-    await userEvent.click(
-      within(browserCard()).getByRole("button", { name: t.verify.browser.run }),
-    );
+    // a run still in flight disables the button (a click would be ignored): wait until it is idle again
+    const rerun = within(browserCard()).getByRole("button", {
+      name: t.verify.browser.run,
+    });
+    await waitFor(() => expect(rerun).toBeEnabled());
+    await userEvent.click(rerun);
     await waitFor(() =>
       expect(
         within(browserCard()).getByText(/№2/, { selector: "p" }),

@@ -188,13 +188,26 @@ function useBrowserVerification() {
     error: null,
   });
   const exportText = useRef<string | null>(null);
+  // one run at a time, and none that outlives the page: a run left over from an unmounted page must not overwrite
+  // the remembered head a later run is checking against
+  const busy = useRef(false);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const run = useCallback(async () => {
+    if (busy.current) return;
+    busy.current = true;
     setState((s) => ({ ...s, status: "running", error: null }));
     try {
       const text = await transparencyApi.exportText();
       exportText.current = text;
       const trusted = loadTrustedHead();
       const verdict = await verifyExport(text, trusted);
+      if (!mounted.current) return;
       if (verdict.status === "OK" && verdict.headSeq && verdict.headHash)
         saveTrustedHead({
           seq: verdict.headSeq,
@@ -217,6 +230,8 @@ function useBrowserVerification() {
             ? error.message
             : String(error),
       });
+    } finally {
+      busy.current = false;
     }
   }, []);
   return { state, run, exportText };
