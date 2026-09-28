@@ -8,12 +8,18 @@
  *
  * The clock is remount state: the parent keys this block by profile, so switching profile starts a fresh replay
  * rather than leaving a half-played one on screen.
+ *
+ * The block closes with the calibration of the per-referral estimates, when they are published: the same question
+ * asked of the other half of the screen — of the referrals the model gave about X% by day 14, how many were
+ * actually admitted. It belongs here because it is hindsight, and everything in this block is.
  */
 import { useEffect, useRef, useState } from "react";
 import { t } from "../i18n";
 import { fmtDate, fmtDayMonth, fmtNumber } from "../lib/format";
 import { GlyphPause, GlyphPlay, GlyphReplay } from "../demo/glyphs";
 import { niceTicks } from "../demo/charts/scale";
+import type { ReferralEstimatesPublication } from "../api/referral-estimates";
+import { CalibrationPanel } from "./CalibrationPanel";
 import type { ReplayDay } from "./useHospitalProfile";
 
 const STEP_MS = 900;
@@ -110,9 +116,11 @@ function ReplayChart({ days, upTo }: { days: ReplayDay[]; upTo: number }) {
 export function ReplayBlock({
   days,
   origin,
+  estimates,
 }: {
   days: ReplayDay[];
   origin: string;
+  estimates: ReferralEstimatesPublication | null;
 }) {
   const [upTo, setUpTo] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -141,6 +149,7 @@ export function ReplayBlock({
         <div className="hos-empty" role="status">
           <h3>{t.hospital.replay.empty}</h3>
         </div>
+        {estimates ? <CalibrationPanel publication={estimates} /> : null}
       </section>
     );
 
@@ -239,7 +248,10 @@ export function ReplayBlock({
       <ReplayChart days={days} upTo={upTo} />
 
       <div className="hos-table-scroll">
-        <table className="hos-table hos-replay-table">
+        <table
+          className="hos-table hos-replay-table"
+          aria-label={t.hospital.replay.title}
+        >
           <thead>
             <tr>
               <th scope="col">{t.hospital.replay.columns.date}</th>
@@ -290,6 +302,8 @@ export function ReplayBlock({
           </tbody>
         </table>
       </div>
+
+      {estimates ? <CalibrationPanel publication={estimates} /> : null}
     </section>
   );
 }

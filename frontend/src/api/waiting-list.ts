@@ -60,7 +60,8 @@ const observedAfterOriginSchema = object({
   days_from_origin: nullable(num),
 });
 
-export const waitingReferralSchema: Schema<WaitingReferralResponse> = object({
+/** Exported as a shape so the estimates transport can extend it without restating a single field. */
+export const waitingReferralShape = {
   ...publicationFields,
   referral_id: num,
   hospitalization_code: str,
@@ -73,7 +74,10 @@ export const waitingReferralSchema: Schema<WaitingReferralResponse> = object({
   registration_date: isoDate,
   days_waited_at_origin: num,
   observed_after_origin: observedAfterOriginSchema,
-});
+};
+
+export const waitingReferralSchema: Schema<WaitingReferralResponse> =
+  object(waitingReferralShape);
 
 export const waitingHospitalDetailSchema: Schema<WaitingHospitalDetailResponse> =
   object({

@@ -1,6 +1,7 @@
 /**
  * Hospital mode: one hospital at the published origin. Without an org code the page is the picker; with one it is
- * the three blocks — what was forecast, who was waiting, and what actually happened.
+ * four blocks — what was forecast, the queue section (who was waiting, with each referral's origin-time estimate,
+ * and the verification worklist as a second tab), why that model serves, and what actually happened.
  *
  * Deep link: /hospital/{org_code}. The control-centre map links here too, so a dot on the map and a row in the
  * picker land on the same screen.
@@ -10,11 +11,14 @@ import { Link, useParams } from "react-router-dom";
 import { t } from "../i18n";
 import { fmtDate, fmtNumber } from "../lib/format";
 import { useWaitingHospital, useWaitingHospitals } from "../api/waiting-list";
+import { useReferralEstimatesPublication } from "../api/referral-estimates";
+import { useWorklistPublication } from "../api/verification-worklist";
 import { ForecastBlock } from "./ForecastBlock";
 import { HospitalPicker } from "./HospitalPicker";
+import { ModelChoiceBlock } from "./ModelChoiceBlock";
+import { QueueSection } from "./QueueSection";
 import { ReplayBlock } from "./ReplayBlock";
 import { useHospitalProfile } from "./useHospitalProfile";
-import { WaitingBlock } from "./WaitingBlock";
 
 function Loading() {
   return (
@@ -52,6 +56,12 @@ function PickerScreen() {
 
 function HospitalScreen({ org }: { org: string }) {
   const detail = useWaitingHospital(org);
+  // One request for the whole screen: the queue table, the model panel and the calibration view all read it, and
+  // it resolves to null when nothing is published, which every consumer treats as "no estimates", not an error.
+  const estimates = useReferralEstimatesPublication();
+  const published = estimates.data ?? null;
+  // the verification worklist is a separate publication and a separate tab; null means the tab simply is not there
+  const worklist = useWorklistPublication();
   // Derived, not stored: until the specialist picks one, the profile is the hospital's longest queue. The screen
   // is keyed by org code, so choosing another hospital starts from that hospital's own largest profile.
   const [picked, setPicked] = useState<string | null>(null);
@@ -149,9 +159,22 @@ function HospitalScreen({ org }: { org: string }) {
       ) : (
         <ForecastBlock series={series} signal={signal} origin={d.origin} />
       )}
-      <WaitingBlock detail={d} profile={profile} />
+      <QueueSection
+        detail={d}
+        profile={profile}
+        estimates={published}
+        worklist={worklist.data ?? null}
+      />
+      {published?.matches_waiting_list ? (
+        <ModelChoiceBlock publication={published} />
+      ) : null}
       {isLoading ? null : (
-        <ReplayBlock key={profile ?? "none"} days={replay} origin={d.origin} />
+        <ReplayBlock
+          key={profile ?? "none"}
+          days={replay}
+          origin={d.origin}
+          estimates={published?.matches_waiting_list ? published : null}
+        />
       )}
     </>
   );

@@ -978,6 +978,41 @@ export type AssuranceSupport = {
 };
 
 /**
+ * AttentionRule
+ *
+ * The administrative follow-up threshold, published with its definition so the cut is auditable.
+ *
+ * This is a queue-management cut for paperwork — check the referral is still valid, reach the patient — and the
+ * API carries that sentence next to the number. It is not triage and it is not a clinical statement.
+ */
+export type AttentionRule = {
+  /**
+   * Definition
+   */
+  definition: string;
+  /**
+   * Flagged Count
+   */
+  flagged_count: number;
+  /**
+   * Intended Use
+   */
+  intended_use: string;
+  /**
+   * Metric
+   */
+  metric: "refused_30d";
+  /**
+   * Quantile
+   */
+  quantile: number;
+  /**
+   * Threshold
+   */
+  threshold: number;
+};
+
+/**
  * CalibratedUncertainty
  */
 export type CalibratedUncertainty = {
@@ -1005,6 +1040,87 @@ export type CalibratedUncertainty = {
    * Upper
    */
   upper: number;
+};
+
+/**
+ * Calibration
+ *
+ * Hindsight, and labelled as such on the object itself: how the served model's numbers turned out.
+ *
+ * Computed by the ML run over the whole published cohort, never per request and never per hospital: a few dozen
+ * referrals cannot support a reliability curve, and drawing one would invite exactly the reading it cannot bear.
+ */
+export type Calibration = {
+  /**
+   * Bins
+   */
+  bins: Array<ReliabilityBin>;
+  /**
+   * Disclosure
+   */
+  disclosure: "HINDSIGHT_NOT_AVAILABLE_AT_ORIGIN";
+  /**
+   * Model Key
+   */
+  model_key: "aalen_johansen" | "xgboost_aft" | "discrete_competing_risk";
+  /**
+   * Rows
+   */
+  rows: number;
+};
+
+/**
+ * CandidateDecision
+ *
+ * One competitor in the model tournament, scored on the metric fixed before the run.
+ */
+export type CandidateDecision = {
+  /**
+   * Accepted
+   *
+   * null for the baseline: it is the thing candidates must beat
+   */
+  accepted: boolean | null;
+  /**
+   * Brier By Horizon
+   *
+   * mean of the admission and refusal Brier score at each horizon
+   */
+  brier_by_horizon: {
+    [key: string]: number;
+  };
+  /**
+   * Model Key
+   */
+  model_key: "aalen_johansen" | "xgboost_aft" | "discrete_competing_risk";
+  /**
+   * Overall Delta
+   *
+   * candidate minus baseline; negative is better
+   */
+  overall_delta?: number | null;
+  /**
+   * Overall Mean Brier
+   */
+  overall_mean_brier: number;
+  /**
+   * Role
+   */
+  role: "baseline" | "candidate";
+  /**
+   * Strict Overall Improvement
+   */
+  strict_overall_improvement?: boolean | null;
+  /**
+   * Within Bucket Tolerance
+   */
+  within_bucket_tolerance?: boolean | null;
+  /**
+   * Worst Bucket Delta
+   *
+   * worst days-waited bucket, same sign rule
+   */
+  worst_bucket_delta?: number | null;
 };
 
 /**
@@ -1278,6 +1394,30 @@ export type DecisionCreate = {
    * Region Code
    */
   region_code: string;
+};
+
+/**
+ * DegeneracyRule
+ *
+ * How many rows put the whole 30-day mass on one outcome, and the sentence that says what that means.
+ */
+export type DegeneracyRule = {
+  /**
+   * By Outcome
+   *
+   * count per outcome the mass collapsed onto
+   */
+  by_outcome: {
+    [key: string]: number;
+  };
+  /**
+   * Count
+   */
+  count: number;
+  /**
+   * Definition
+   */
+  definition: string;
 };
 
 /**
@@ -1745,6 +1885,29 @@ export type HealthResponse = {
 };
 
 /**
+ * HistoryQuality
+ *
+ * How many rows rest on thin comparable history, and why. Read from the source, never re-derived.
+ */
+export type HistoryQuality = {
+  definition: LocalisedText;
+  /**
+   * Reason Counts
+   */
+  reason_counts: {
+    [key: string]: number;
+  };
+  /**
+   * Warning Count
+   */
+  warning_count: number;
+  /**
+   * Warning Share
+   */
+  warning_share: number;
+};
+
+/**
  * HospitalProfileCard
  */
 export type HospitalProfileCard = {
@@ -1945,6 +2108,48 @@ export type InboxOutcome = {
 };
 
 /**
+ * LegacyRule
+ *
+ * The earlier binary rule, kept for comparison only: it does not select or order this list.
+ */
+export type LegacyRule = {
+  /**
+   * Horizon Days
+   */
+  horizon_days: number;
+  /**
+   * Minimum Days Waited
+   */
+  minimum_days_waited: number;
+  /**
+   * Probability Strictly Below
+   */
+  probability_strictly_below: number;
+  /**
+   * Reason Code
+   */
+  reason_code: string;
+  /**
+   * Role
+   */
+  role: "AUDITED_REFERENCE_ONLY";
+  /**
+   * Selected Count
+   *
+   * rows of this list the old rule would have selected
+   */
+  selected_count: number;
+  /**
+   * the rule and its role in one sentence, for the screen
+   */
+  statement: LocalisedText;
+  /**
+   * Training Only Justification
+   */
+  training_only_justification: string;
+};
+
+/**
  * LoadIndexComponents
  *
  * Scores behind load_index, each in [0, 1] (NULL when the component is undefined).
@@ -2005,6 +2210,22 @@ export type LoadIndexWeights = {
    * Refusal Rate
    */
   refusal_rate: number;
+};
+
+/**
+ * LocalisedText
+ *
+ * One sentence in both interface languages. The framing is only as good as the half a reader understands.
+ */
+export type LocalisedText = {
+  /**
+   * Kk
+   */
+  kk: string;
+  /**
+   * Ru
+   */
+  ru: string;
 };
 
 /**
@@ -2246,6 +2467,46 @@ export type ModelInfo = {
    * Version
    */
   version: string;
+};
+
+/**
+ * ModelSelection
+ *
+ * Why this model serves. The rule is published with the numbers, so a reader can re-apply it themselves.
+ */
+export type ModelSelection = {
+  /**
+   * Candidates
+   */
+  candidates: Array<CandidateDecision>;
+  /**
+   * Decision Rule
+   *
+   * the rule as it was fixed, before the run
+   */
+  decision_rule: string;
+  /**
+   * Fallback Used
+   *
+   * true when no candidate cleared the rule and the baseline serves
+   */
+  fallback_used: boolean;
+  /**
+   * Metric
+   */
+  metric: string;
+  /**
+   * Require Strict Overall Improvement
+   */
+  require_strict_overall_improvement: boolean;
+  /**
+   * Selected Model
+   */
+  selected_model: "aalen_johansen" | "xgboost_aft" | "discrete_competing_risk";
+  /**
+   * Tolerance
+   */
+  tolerance: number;
 };
 
 /**
@@ -2977,6 +3238,30 @@ export type PageOperationalSignalResponse = {
 };
 
 /**
+ * Page[QueueReferralResponse]
+ */
+export type PageQueueReferralResponse = {
+  /**
+   * Items
+   */
+  items: Array<QueueReferralResponse>;
+  /**
+   * Limit
+   */
+  limit: number;
+  /**
+   * Offset
+   */
+  offset: number;
+  /**
+   * Total
+   *
+   * rows matching the filters, before limit/offset
+   */
+  total: number;
+};
+
+/**
  * Page[ReferralItem]
  */
 export type PageReferralItem = {
@@ -3115,6 +3400,106 @@ export type PublicationRef = {
 };
 
 /**
+ * QueueReferralResponse
+ *
+ * A measured queue row with its origin-time estimate, or `null` when this referral has none.
+ *
+ * Two publications on one row, each carrying its own id and identity: `observed_after_origin` is what the data
+ * recorded afterwards, `estimate` is what was knowable on the origin day. Neither is derived from the other.
+ */
+export type QueueReferralResponse = {
+  /**
+   * Days Waited At Origin
+   */
+  days_waited_at_origin: number;
+  estimate: ReferralEstimateResponse | null;
+  /**
+   * Hospitalization Code
+   */
+  hospitalization_code: string;
+  /**
+   * Is Duplicate Code
+   */
+  is_duplicate_code: boolean;
+  observed_after_origin: ObservedAfterOrigin;
+  /**
+   * Org Code
+   */
+  org_code: string;
+  /**
+   * Origin
+   */
+  origin: string;
+  /**
+   * Patient Region Code
+   */
+  patient_region_code: string;
+  /**
+   * Profile Code
+   */
+  profile_code: string;
+  /**
+   * Profile Name
+   */
+  profile_name: string;
+  /**
+   * Publication Id
+   */
+  publication_id: string;
+  /**
+   * Publication Identity Sha256
+   */
+  publication_identity_sha256: string;
+  /**
+   * Referral Id
+   */
+  referral_id: number;
+  /**
+   * Region Code
+   */
+  region_code: string;
+  /**
+   * Registration Date
+   */
+  registration_date: string;
+};
+
+/**
+ * RankingRule
+ *
+ * How the worklist is ordered, as the ML side fixed it before any hindsight was looked at.
+ */
+export type RankingRule = {
+  definition: LocalisedText;
+  /**
+   * Keys
+   *
+   * the ordering keys, most significant first
+   */
+  keys: Array<string>;
+  /**
+   * Minimum Comparable At Risk Rows
+   */
+  minimum_comparable_at_risk_rows: number;
+  /**
+   * Score Formula
+   */
+  score_formula: string;
+  /**
+   * Score Name
+   */
+  score_name: string;
+  /**
+   * Training Only Justification
+   */
+  training_only_justification: string;
+  /**
+   * Wait Maturity Days
+   */
+  wait_maturity_days: number;
+};
+
+/**
  * RawQuantiles
  */
 export type RawQuantiles = {
@@ -3240,6 +3625,173 @@ export type RecommendationRuleConfig = {
    * Region Top Fraction
    */
   region_top_fraction: number;
+};
+
+/**
+ * ReferralEstimateResponse
+ *
+ * One referral's estimates, with the publication that produced them repeated on the row.
+ */
+export type ReferralEstimateResponse = {
+  /**
+   * Abstention Reason
+   */
+  abstention_reason: "NO_ADMISSION_IN_COMPARABLE_HISTORY" | null;
+  /**
+   * Admitted 14D
+   */
+  admitted_14d: number;
+  /**
+   * Admitted 30D
+   */
+  admitted_30d: number;
+  /**
+   * Admitted 7D
+   */
+  admitted_7d: number;
+  /**
+   * Degenerate 30D
+   *
+   * the whole 30-day mass sits on one outcome; the number is thin evidence, not a certainty
+   */
+  degenerate_30d: boolean;
+  /**
+   * Estimate Tier
+   */
+  estimate_tier: "hospital_profile" | "region_profile" | "profile" | "national";
+  /**
+   * Origin
+   */
+  origin: string;
+  /**
+   * Publication Id
+   */
+  publication_id: string;
+  /**
+   * Publication Identity Sha256
+   */
+  publication_identity_sha256: string;
+  /**
+   * Refusal Attention
+   */
+  refusal_attention: boolean;
+  /**
+   * Refused 30D
+   */
+  refused_30d: number;
+  /**
+   * Selected Model
+   */
+  selected_model: "aalen_johansen" | "xgboost_aft" | "discrete_competing_risk";
+  /**
+   * Similar Training Rows
+   */
+  similar_training_rows: number;
+  /**
+   * Still Waiting 30D
+   *
+   * 1 - admitted_30d - refused_30d, clamped at zero
+   */
+  still_waiting_30d: number;
+  /**
+   * Window Coverage
+   */
+  window_coverage: number;
+  /**
+   * Window Lower Days
+   */
+  window_lower_days: number | null;
+  /**
+   * Window Upper Days
+   */
+  window_upper_days: number | null;
+};
+
+/**
+ * ReferralEstimatesPublicationResponse
+ *
+ * The publication itself: what serves, why it was chosen, how well it turned out, and what it withholds.
+ */
+export type ReferralEstimatesPublicationResponse = {
+  /**
+   * Abstention Counts
+   */
+  abstention_counts: {
+    [key: string]: number;
+  };
+  /**
+   * Admission Window Coverage
+   */
+  admission_window_coverage: number;
+  attention: AttentionRule;
+  /**
+   * Bundle Sha256
+   */
+  bundle_sha256: string;
+  calibration: Calibration;
+  /**
+   * Contract Version
+   */
+  contract_version: string;
+  degeneracy: DegeneracyRule;
+  /**
+   * Estimate Tiers
+   */
+  estimate_tiers: {
+    [key: string]: number;
+  };
+  /**
+   * Generated At
+   */
+  generated_at: string | null;
+  /**
+   * Horizons
+   */
+  horizons: Array<number>;
+  /**
+   * Limitations
+   */
+  limitations: Array<string>;
+  /**
+   * Matches Waiting List
+   *
+   * true when the active waiting list stands at the same origin, so the two can be read on one row
+   */
+  matches_waiting_list: boolean;
+  /**
+   * Origin
+   */
+  origin: string;
+  /**
+   * Outcome Cutoff
+   */
+  outcome_cutoff: string;
+  /**
+   * Publication Id
+   */
+  publication_id: string;
+  /**
+   * Publication Identity Sha256
+   */
+  publication_identity_sha256: string;
+  /**
+   * Published At
+   */
+  published_at: string;
+  /**
+   * Referral Count
+   */
+  referral_count: number;
+  /**
+   * Schema Version
+   */
+  schema_version: string;
+  selection: ModelSelection;
+  /**
+   * Source Code Commit
+   */
+  source_code_commit: string;
+  source_run: SourceRun;
 };
 
 /**
@@ -3444,6 +3996,46 @@ export type RegionProfileStatus = {
    * Status Label
    */
   status_label: string;
+};
+
+/**
+ * ReliabilityBin
+ *
+ * One row of the reliability table: what the model said, against what the data later recorded.
+ */
+export type ReliabilityBin = {
+  /**
+   * Bin Index
+   */
+  bin_index: number;
+  /**
+   * Horizon Days
+   */
+  horizon_days: number;
+  /**
+   * Mean Predicted
+   */
+  mean_predicted: number;
+  /**
+   * N
+   */
+  n: number;
+  /**
+   * Observed Rate
+   */
+  observed_rate: number;
+  /**
+   * Outcome
+   */
+  outcome: "hospitalized" | "refused";
+  /**
+   * Probability Max
+   */
+  probability_max: number;
+  /**
+   * Probability Min
+   */
+  probability_min: number;
 };
 
 /**
@@ -3983,6 +4575,78 @@ export type SourceProvenance = {
 };
 
 /**
+ * SourcePublication
+ *
+ * The ML bundle this worklist was read from, by its own identity. Part of the publication identity.
+ */
+export type SourcePublication = {
+  /**
+   * File Sha256
+   *
+   * sha256 of the compressed artifact as produced
+   */
+  file_sha256: string;
+  /**
+   * Model
+   */
+  model: string;
+  /**
+   * Publication Id
+   */
+  publication_id: string;
+  /**
+   * Publication Identity Sha256
+   */
+  publication_identity_sha256: string;
+  /**
+   * Schema Version
+   */
+  schema_version: number;
+};
+
+/**
+ * SourceRun
+ *
+ * The ML run these estimates were read from, by its own identity hashes. Part of the publication identity.
+ */
+export type SourceRun = {
+  /**
+   * Artifact Identity Sha256
+   *
+   * every file of the run directory
+   */
+  artifact_identity_sha256: string;
+  /**
+   * Library Versions
+   */
+  library_versions: {
+    [key: string]: string;
+  };
+  /**
+   * Run Id
+   */
+  run_id: string;
+  /**
+   * Scientific Identity Sha256
+   *
+   * the run minus timing and memory
+   */
+  scientific_identity_sha256: string;
+  /**
+   * Scoring Sha256
+   */
+  scoring_sha256: string;
+  /**
+   * Seed
+   */
+  seed: number;
+  /**
+   * Training Sha256
+   */
+  training_sha256: string;
+};
+
+/**
  * SpecialistDecision
  */
 export type SpecialistDecision = {
@@ -4257,6 +4921,71 @@ export type ValidationError = {
 };
 
 /**
+ * VerificationWorklistPublicationResponse
+ *
+ * The publication itself: the order, what the marks mean, and what checking in this order would have found.
+ */
+export type VerificationWorklistPublicationResponse = {
+  /**
+   * Bundle Sha256
+   */
+  bundle_sha256: string;
+  /**
+   * Contract Version
+   */
+  contract_version: string;
+  counts: WorklistCounts;
+  /**
+   * Decision Owner
+   */
+  decision_owner: "SPECIALIST_DECIDES";
+  /**
+   * Estimands
+   */
+  estimands: {
+    [key: string]: string;
+  };
+  /**
+   * Generated At
+   */
+  generated_at: string | null;
+  history_quality: HistoryQuality;
+  legacy_rule: LegacyRule;
+  /**
+   * Limitations
+   */
+  limitations: Array<string>;
+  not_a_decision: LocalisedText;
+  /**
+   * Origin
+   */
+  origin: string;
+  /**
+   * Publication Id
+   */
+  publication_id: string;
+  /**
+   * Publication Identity Sha256
+   */
+  publication_identity_sha256: string;
+  /**
+   * Published At
+   */
+  published_at: string;
+  ranking: RankingRule;
+  /**
+   * Schema Version
+   */
+  schema_version: string;
+  /**
+   * Source Code Commit
+   */
+  source_code_commit: string;
+  source_publication: SourcePublication;
+  yield_curve: YieldCurve;
+};
+
+/**
  * WaitingDaysBucket
  *
  * One bar of the days-already-waited histogram; `to_days` is exclusive, null on the open-ended last bucket.
@@ -4480,6 +5209,303 @@ export type WaitingReferralResponse = {
    * Registration Date
    */
   registration_date: string;
+};
+
+/**
+ * WorklistAreaResponse
+ */
+export type WorklistAreaResponse = {
+  /**
+   * Code
+   */
+  code: string;
+  /**
+   * Formal Queue Count
+   */
+  formal_queue_count: number;
+  /**
+   * History Quality Warning Count
+   */
+  history_quality_warning_count: number;
+  /**
+   * History Quality Warning Share
+   */
+  history_quality_warning_share: number;
+  /**
+   * Level
+   */
+  level: "region" | "hospital";
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Region Code
+   */
+  region_code: string | null;
+};
+
+/**
+ * WorklistCounts
+ *
+ * The formal queue and the ranked list are the same referrals: the list reorders for checking, never subtracts.
+ */
+export type WorklistCounts = {
+  /**
+   * Formal Queue Count
+   *
+   * the measured queue at the origin; unchanged by this list
+   */
+  formal_queue_count: number;
+  /**
+   * Ranked Count
+   *
+   * referrals in the verification order; always the whole formal queue
+   */
+  ranked_count: number;
+};
+
+/**
+ * WorklistHospitalResponse
+ *
+ * One hospital's part of the verification order: its counts, its region's counts, and a ranked page.
+ */
+export type WorklistHospitalResponse = {
+  /**
+   * Decision Owner
+   */
+  decision_owner: "SPECIALIST_DECIDES";
+  /**
+   * Formal Queue Count
+   */
+  formal_queue_count: number;
+  /**
+   * History Quality Warning Count
+   */
+  history_quality_warning_count: number;
+  /**
+   * History Quality Warning Share
+   */
+  history_quality_warning_share: number;
+  /**
+   * Items
+   */
+  items: Array<WorklistItemResponse>;
+  /**
+   * Limit
+   */
+  limit: number;
+  not_a_decision: LocalisedText;
+  /**
+   * Offset
+   */
+  offset: number;
+  /**
+   * Org Code
+   */
+  org_code: string;
+  /**
+   * Org Name
+   */
+  org_name: string;
+  /**
+   * Origin
+   */
+  origin: string;
+  /**
+   * Publication Id
+   */
+  publication_id: string;
+  /**
+   * Publication Identity Sha256
+   */
+  publication_identity_sha256: string;
+  region: WorklistAreaResponse;
+  /**
+   * Region Code
+   */
+  region_code: string;
+  /**
+   * Region Name
+   */
+  region_name: string;
+  /**
+   * Total
+   */
+  total: number;
+};
+
+/**
+ * WorklistItemResponse
+ */
+export type WorklistItemResponse = {
+  /**
+   * Comparable Training At Risk Rows
+   */
+  comparable_training_at_risk_rows: number;
+  /**
+   * Days Waited At Origin
+   */
+  days_waited_at_origin: number;
+  /**
+   * Decision Owner
+   */
+  decision_owner: "SPECIALIST_DECIDES";
+  /**
+   * Estimate Tier
+   */
+  estimate_tier: "hospital_profile" | "region_profile" | "profile" | "global";
+  /**
+   * History Quality Reason Code
+   */
+  history_quality_reason_code:
+    | "insufficient_comparable_history"
+    | "insufficient_and_degenerate_comparable_history"
+    | "degenerate_conditional_distribution"
+    | null;
+  /**
+   * History Quality Warning
+   */
+  history_quality_warning: boolean;
+  /**
+   * Horizon Days
+   */
+  horizon_days: number;
+  /**
+   * Hospitalization Code
+   *
+   * the operational code, for the bureau to look the row up
+   */
+  hospitalization_code: string | null;
+  not_a_decision: LocalisedText;
+  /**
+   * Org Code
+   */
+  org_code: string;
+  /**
+   * Origin
+   */
+  origin: string;
+  /**
+   * Probability Admitted 30D
+   */
+  probability_admitted_30d: number;
+  /**
+   * Probability Admitted Horizon
+   */
+  probability_admitted_horizon: number;
+  /**
+   * Profile Code
+   */
+  profile_code: string;
+  /**
+   * Profile Name
+   */
+  profile_name: string;
+  /**
+   * Publication Id
+   */
+  publication_id: string;
+  /**
+   * Publication Identity Sha256
+   */
+  publication_identity_sha256: string;
+  /**
+   * Rank
+   */
+  rank: number;
+  /**
+   * Referral Id
+   */
+  referral_id: number;
+  /**
+   * Region Code
+   */
+  region_code: string;
+  /**
+   * Registration Date
+   *
+   * from the measured queue; null if it no longer stands
+   */
+  registration_date: string | null;
+  /**
+   * Verification Priority Score
+   */
+  verification_priority_score: number;
+};
+
+/**
+ * YieldBase
+ *
+ * The whole formal queue's share that turned out no longer current: what checking at random would find.
+ */
+export type YieldBase = {
+  /**
+   * Evaluated
+   */
+  evaluated: number;
+  /**
+   * No Longer Current
+   */
+  no_longer_current: number;
+  /**
+   * Share
+   */
+  share: number;
+};
+
+/**
+ * YieldCurve
+ *
+ * Hindsight, marked as such: what checking the first N of this order would have turned up, against the base.
+ */
+export type YieldCurve = {
+  base: YieldBase;
+  definition: LocalisedText;
+  /**
+   * Disclosure
+   */
+  disclosure: "HINDSIGHT_NOT_AVAILABLE_AT_ORIGIN";
+  /**
+   * Outcome Source
+   *
+   * publication the outcomes were read from
+   */
+  outcome_source: string;
+  /**
+   * Outcome Source Identity Sha256
+   */
+  outcome_source_identity_sha256: string;
+  /**
+   * Points
+   */
+  points: Array<YieldPoint>;
+};
+
+/**
+ * YieldPoint
+ *
+ * One point of the retrospective yield curve: check the first `checked`, find `no_longer_current`.
+ */
+export type YieldPoint = {
+  /**
+   * Checked
+   */
+  checked: number;
+  /**
+   * Lift
+   *
+   * share divided by the base share
+   */
+  lift: number;
+  /**
+   * No Longer Current
+   */
+  no_longer_current: number;
+  /**
+   * Share
+   */
+  share: number;
 };
 
 export type AdminAccessLogListData = {
@@ -5830,6 +6856,116 @@ export type OverviewGetResponses = {
 export type OverviewGetResponse =
   OverviewGetResponses[keyof OverviewGetResponses];
 
+export type ReferralEstimatesReferralsListData = {
+  body?: never;
+  path: {
+    /**
+     * Org Code
+     */
+    org_code: string;
+  };
+  query?: {
+    /**
+     * Profile
+     *
+     * profile code; all profiles if omitted
+     */
+    profile?: string | null;
+    /**
+     * Order
+     *
+     * by days waited at the origin, or by the estimated refusal risk
+     */
+    order?: "longest_wait" | "shortest_wait" | "highest_refusal_risk";
+    /**
+     * Attention
+     *
+     * keep only referrals over the published refusal-attention threshold
+     */
+    attention?: boolean;
+    /**
+     * Limit
+     *
+     * page size
+     */
+    limit?: number;
+    /**
+     * Offset
+     *
+     * rows to skip
+     */
+    offset?: number;
+  };
+  url: "/api/v1/referral-estimates/hospitals/{org_code}/referrals";
+};
+
+export type ReferralEstimatesReferralsListErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ReferralEstimatesReferralsListError =
+  ReferralEstimatesReferralsListErrors[keyof ReferralEstimatesReferralsListErrors];
+
+export type ReferralEstimatesReferralsListResponses = {
+  /**
+   * Successful Response
+   */
+  200: PageQueueReferralResponse;
+};
+
+export type ReferralEstimatesReferralsListResponse =
+  ReferralEstimatesReferralsListResponses[keyof ReferralEstimatesReferralsListResponses];
+
+export type ReferralEstimatesPublicationGetData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/referral-estimates/publication";
+};
+
+export type ReferralEstimatesPublicationGetErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+};
+
+export type ReferralEstimatesPublicationGetError =
+  ReferralEstimatesPublicationGetErrors[keyof ReferralEstimatesPublicationGetErrors];
+
+export type ReferralEstimatesPublicationGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: ReferralEstimatesPublicationResponse;
+};
+
+export type ReferralEstimatesPublicationGetResponse =
+  ReferralEstimatesPublicationGetResponses[keyof ReferralEstimatesPublicationGetResponses];
+
 export type RegionGetData = {
   body?: never;
   path: {
@@ -6298,6 +7434,147 @@ export type SpecialistDecisionCreateResponses = {
 
 export type SpecialistDecisionCreateResponse =
   SpecialistDecisionCreateResponses[keyof SpecialistDecisionCreateResponses];
+
+export type VerificationWorklistHospitalGetData = {
+  body?: never;
+  path: {
+    /**
+     * Org Code
+     */
+    org_code: string;
+  };
+  query?: {
+    /**
+     * Order
+     *
+     * the published ranking, or by days already waited
+     */
+    order?: "rank" | "longest_wait";
+    /**
+     * History Quality Warning
+     *
+     * keep only rows that rest on thin comparable history, or only the rest
+     */
+    history_quality_warning?: boolean | null;
+    /**
+     * Limit
+     *
+     * page size
+     */
+    limit?: number;
+    /**
+     * Offset
+     *
+     * rows to skip
+     */
+    offset?: number;
+  };
+  url: "/api/v1/verification-worklist/hospitals/{org_code}";
+};
+
+export type VerificationWorklistHospitalGetErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type VerificationWorklistHospitalGetError =
+  VerificationWorklistHospitalGetErrors[keyof VerificationWorklistHospitalGetErrors];
+
+export type VerificationWorklistHospitalGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: WorklistHospitalResponse;
+};
+
+export type VerificationWorklistHospitalGetResponse =
+  VerificationWorklistHospitalGetResponses[keyof VerificationWorklistHospitalGetResponses];
+
+export type VerificationWorklistPublicationGetData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/verification-worklist/publication";
+};
+
+export type VerificationWorklistPublicationGetErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+};
+
+export type VerificationWorklistPublicationGetError =
+  VerificationWorklistPublicationGetErrors[keyof VerificationWorklistPublicationGetErrors];
+
+export type VerificationWorklistPublicationGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: VerificationWorklistPublicationResponse;
+};
+
+export type VerificationWorklistPublicationGetResponse =
+  VerificationWorklistPublicationGetResponses[keyof VerificationWorklistPublicationGetResponses];
+
+export type VerificationWorklistRegionsListData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/verification-worklist/regions";
+};
+
+export type VerificationWorklistRegionsListErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+};
+
+export type VerificationWorklistRegionsListError =
+  VerificationWorklistRegionsListErrors[keyof VerificationWorklistRegionsListErrors];
+
+export type VerificationWorklistRegionsListResponses = {
+  /**
+   * Response Verification Worklist Regions List
+   *
+   * Successful Response
+   */
+  200: Array<WorklistAreaResponse>;
+};
+
+export type VerificationWorklistRegionsListResponse =
+  VerificationWorklistRegionsListResponses[keyof VerificationWorklistRegionsListResponses];
 
 export type WaitingListHospitalsListData = {
   body?: never;
