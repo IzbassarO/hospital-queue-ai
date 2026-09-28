@@ -2324,6 +2324,17 @@
             "title": "Profile Code",
             "type": "string"
           },
+          "receipt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerReceipt"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "transparency-ledger entry that records this decision (docs/transparency-ledger.md); an idempotent replay returns the original entry, never a second one"
+          },
           "recommendation_id": {
             "anyOf": [
               {
@@ -3727,6 +3738,304 @@
           "left_primary_inbox"
         ],
         "title": "InboxOutcome",
+        "type": "object"
+      },
+      "LedgerEntry": {
+        "description": "One public ledger entry, exactly as hashed and exported.",
+        "properties": {
+          "created_at": {
+            "description": "canonical UTC timestamp YYYY-MM-DDTHH:MM:SS.ffffffZ",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entry_hash": {
+            "title": "Entry Hash",
+            "type": "string"
+          },
+          "event_type": {
+            "description": "ledger.genesis | publication.published | publication.activated | publication.deactivated | decision.recorded",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "description": "public statement: identifiers, codes, hashes, salted commitments",
+            "title": "Payload",
+            "type": "object"
+          },
+          "prev_hash": {
+            "title": "Prev Hash",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "created_at",
+          "event_type",
+          "subject",
+          "payload",
+          "prev_hash",
+          "entry_hash"
+        ],
+        "title": "LedgerEntry",
+        "type": "object"
+      },
+      "LedgerHead": {
+        "properties": {
+          "canonicalization": {
+            "title": "Canonicalization",
+            "type": "string"
+          },
+          "chain_length": {
+            "title": "Chain Length",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "entry_hash": {
+            "title": "Entry Hash",
+            "type": "string"
+          },
+          "genesis_hash": {
+            "title": "Genesis Hash",
+            "type": "string"
+          },
+          "protocol": {
+            "title": "Protocol",
+            "type": "string"
+          },
+          "protocol_version": {
+            "title": "Protocol Version",
+            "type": "integer"
+          },
+          "seq": {
+            "description": "seq of the newest entry = chain length",
+            "title": "Seq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "seq",
+          "entry_hash",
+          "created_at",
+          "chain_length",
+          "genesis_hash",
+          "protocol",
+          "protocol_version",
+          "canonicalization"
+        ],
+        "title": "LedgerHead",
+        "type": "object"
+      },
+      "LedgerReceipt": {
+        "description": "Proof that an event was chained: the entry's number and hash, enough to find and check it later.",
+        "properties": {
+          "created_at": {
+            "description": "event time, canonical UTC form YYYY-MM-DDTHH:MM:SS.ffffffZ",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entry_hash": {
+            "description": "SHA-256 of the entry, lowercase hex",
+            "title": "Entry Hash",
+            "type": "string"
+          },
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "ledger_seq": {
+            "description": "position of the entry in the ledger (1 = genesis)",
+            "title": "Ledger Seq",
+            "type": "integer"
+          },
+          "subject": {
+            "description": "what the entry is about, e.g. specialist_decision:1427",
+            "title": "Subject",
+            "type": "string"
+          },
+          "verify_path": {
+            "description": "UI path that opens this entry on the verification page",
+            "title": "Verify Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ledger_seq",
+          "entry_hash",
+          "event_type",
+          "subject",
+          "created_at",
+          "verify_path"
+        ],
+        "title": "LedgerReceipt",
+        "type": "object"
+      },
+      "LedgerVerification": {
+        "description": "Server verification: the public chain plus every covered source row against its entry.",
+        "properties": {
+          "chain_length": {
+            "description": "entries read",
+            "title": "Chain Length",
+            "type": "integer"
+          },
+          "checks": {
+            "description": "what this verification covers",
+            "items": {
+              "type": "string"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "covered_decisions": {
+            "description": "decision rows compared with their entries",
+            "title": "Covered Decisions",
+            "type": "integer"
+          },
+          "covered_publications": {
+            "description": "publication snapshots compared with their entries",
+            "title": "Covered Publications",
+            "type": "integer"
+          },
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "failure_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Seq"
+          },
+          "head_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Hash"
+          },
+          "head_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Seq"
+          },
+          "issues": {
+            "description": "up to 20 problems, first by seq",
+            "items": {
+              "$ref": "#/components/schemas/VerificationIssue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "mode": {
+            "const": "server",
+            "default": "server",
+            "title": "Mode",
+            "type": "string"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "enum": [
+                  "EMPTY_LEDGER",
+                  "MALFORMED_ENTRY",
+                  "NONCANONICAL_VALUE",
+                  "NONCANONICAL_ENCODING",
+                  "GENESIS_INVALID",
+                  "DUPLICATE_SEQ",
+                  "SEQUENCE_GAP",
+                  "SEQUENCE_ORDER",
+                  "PREV_HASH_MISMATCH",
+                  "ENTRY_HASH_MISMATCH",
+                  "TRUSTED_HEAD_MISSING",
+                  "TRUSTED_HEAD_MISMATCH",
+                  "UNKNOWN_EVENT_TYPE",
+                  "SOURCE_ROW_MISSING",
+                  "SALT_MISSING",
+                  "COMMITMENT_MISMATCH",
+                  "SOURCE_FIELD_MISMATCH",
+                  "PUBLICATION_MISMATCH",
+                  "DUPLICATE_SUBJECT_EVENT",
+                  "UNCOVERED_SOURCE_ROW",
+                  "ACTIVE_STATE_MISMATCH"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "status": {
+            "enum": [
+              "OK",
+              "BROKEN"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          },
+          "verified_at": {
+            "format": "date-time",
+            "title": "Verified At",
+            "type": "string"
+          },
+          "verified_through_seq": {
+            "description": "every entry up to this seq passed every check",
+            "title": "Verified Through Seq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "status",
+          "verified_at",
+          "duration_ms",
+          "chain_length",
+          "verified_through_seq",
+          "head_seq",
+          "head_hash",
+          "issues",
+          "covered_decisions",
+          "covered_publications",
+          "checks"
+        ],
+        "title": "LedgerVerification",
         "type": "object"
       },
       "LegacyRule": {
@@ -5551,6 +5860,38 @@
           "offset"
         ],
         "title": "Page[HospitalProfileStatus]",
+        "type": "object"
+      },
+      "Page_LedgerEntry_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LedgerEntry"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "description": "rows matching the filters, before limit/offset",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[LedgerEntry]",
         "type": "object"
       },
       "Page_OperationalForecastResponse_": {
@@ -8077,6 +8418,17 @@
             "description": "identity of the operational-intelligence publication that was active when the decision was written (server-side, GET /operational-intelligence/overview -> snapshot.publication_identity_sha256); null when nothing was published",
             "title": "Publication Identity Sha256"
           },
+          "receipt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LedgerReceipt"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "transparency-ledger entry that records this decision (docs/transparency-ledger.md); an idempotent replay returns the original entry, never a second one"
+          },
           "region_code": {
             "anyOf": [
               {
@@ -8489,6 +8841,73 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VerificationIssue": {
+        "properties": {
+          "detail": {
+            "description": "what differs, by field name; never a protected value",
+            "title": "Detail",
+            "type": "string"
+          },
+          "reason_code": {
+            "enum": [
+              "EMPTY_LEDGER",
+              "MALFORMED_ENTRY",
+              "NONCANONICAL_VALUE",
+              "NONCANONICAL_ENCODING",
+              "GENESIS_INVALID",
+              "DUPLICATE_SEQ",
+              "SEQUENCE_GAP",
+              "SEQUENCE_ORDER",
+              "PREV_HASH_MISMATCH",
+              "ENTRY_HASH_MISMATCH",
+              "TRUSTED_HEAD_MISSING",
+              "TRUSTED_HEAD_MISMATCH",
+              "UNKNOWN_EVENT_TYPE",
+              "SOURCE_ROW_MISSING",
+              "SALT_MISSING",
+              "COMMITMENT_MISMATCH",
+              "SOURCE_FIELD_MISMATCH",
+              "PUBLICATION_MISMATCH",
+              "DUPLICATE_SUBJECT_EVENT",
+              "UNCOVERED_SOURCE_ROW",
+              "ACTIVE_STATE_MISMATCH"
+            ],
+            "title": "Reason Code",
+            "type": "string"
+          },
+          "seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "entry the problem was found at; null for a source row with no entry",
+            "title": "Seq"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          }
+        },
+        "required": [
+          "seq",
+          "reason_code",
+          "subject",
+          "detail"
+        ],
+        "title": "VerificationIssue",
         "type": "object"
       },
       "VerificationWorklistPublicationResponse": {
@@ -13138,6 +13557,460 @@
         "summary": "Post Specialist Decision",
         "tags": [
           "control-centre"
+        ]
+      }
+    },
+    "/api/v1/transparency/entries": {
+      "get": {
+        "description": "Ledger entries by seq, exactly as hashed.",
+        "operationId": "transparency_entries_list",
+        "parameters": [
+          {
+            "description": "by seq; desc = newest first",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "desc",
+              "description": "by seq; desc = newest first",
+              "enum": [
+                "desc",
+                "asc"
+              ],
+              "title": "Order",
+              "type": "string"
+            }
+          },
+          {
+            "description": "e.g. decision.recorded",
+            "in": "query",
+            "name": "event_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "e.g. decision.recorded",
+              "title": "Event Type"
+            }
+          },
+          {
+            "description": "page size",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "page size",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "rows to skip",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "rows to skip",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_LedgerEntry_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Transparency Entries",
+        "tags": [
+          "transparency"
+        ]
+      }
+    },
+    "/api/v1/transparency/entries/{seq}": {
+      "get": {
+        "description": "One entry by its number.",
+        "operationId": "transparency_entry_get",
+        "parameters": [
+          {
+            "description": "position in the ledger",
+            "in": "path",
+            "name": "seq",
+            "required": true,
+            "schema": {
+              "description": "position in the ledger",
+              "minimum": 1,
+              "title": "Seq",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerEntry"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Transparency Entry",
+        "tags": [
+          "transparency"
+        ]
+      }
+    },
+    "/api/v1/transparency/export": {
+      "get": {
+        "description": "The public ledger as JSONL, for tools/ledger_verify.py and the browser verification.",
+        "operationId": "transparency_export",
+        "responses": {
+          "200": {
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "one canonical JSON entry per line, in seq order; no salts, no free text"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Transparency Export",
+        "tags": [
+          "transparency"
+        ]
+      }
+    },
+    "/api/v1/transparency/head": {
+      "get": {
+        "description": "The newest entry: its seq (= chain length) and hash, plus the genesis hash and protocol identifiers.",
+        "operationId": "transparency_head_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerHead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "unknown code"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Transparency Head",
+        "tags": [
+          "transparency"
+        ]
+      }
+    },
+    "/api/v1/transparency/lookup": {
+      "get": {
+        "description": "Entries by hash or by subject (at most 50, by seq).",
+        "operationId": "transparency_lookup",
+        "parameters": [
+          {
+            "description": "a receipt's hash, or a prefix of at least 8 hex characters",
+            "in": "query",
+            "name": "entry_hash",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "a receipt's hash, or a prefix of at least 8 hex characters",
+              "title": "Entry Hash"
+            }
+          },
+          {
+            "description": "e.g. specialist_decision:1427 or publication:<kind>:<id>",
+            "in": "query",
+            "name": "subject",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "e.g. specialist_decision:1427 or publication:<kind>:<id>",
+              "title": "Subject"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LedgerEntry"
+                  },
+                  "title": "Response Transparency Lookup",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "give exactly one of entry_hash or subject"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Transparency Lookup",
+        "tags": [
+          "transparency"
+        ]
+      }
+    },
+    "/api/v1/transparency/verify": {
+      "get": {
+        "description": "Server verification: the whole chain, then every decision row and publication snapshot against its entry,\nincluding the private commitments. Reports the first problem by seq with a machine-readable reason code.",
+        "operationId": "transparency_verify",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerVerification"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "missing, invalid or revoked X-API-Key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "the key's role is not allowed to do this"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get Transparency Verify",
+        "tags": [
+          "transparency"
         ]
       }
     },

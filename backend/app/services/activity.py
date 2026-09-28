@@ -7,8 +7,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
 from app.db.models import DecisionLog, DimOrganization, MartHospitalProfileStatus
+from app.domain.transparency.events import HOSPITAL_DECISION
 from app.schemas.activity import AlertItem, Decision, DecisionCreate, ReferralItem
 from app.schemas.common import STATUS_LABELS, Page
+from app.services import transparency
 from app.services.common import (
     ConflictError,
     ValidationError,
@@ -82,7 +84,7 @@ _DECISION_FIELDS = (
 )  # fmt: skip
 
 
-def _decision(row: DecisionLog, alternative_name: str | None) -> Decision:
+def _decision(row: DecisionLog, alternative_name: str | None, receipt=None) -> Decision:
     return Decision(
         id=row.id,
         created_at=row.created_at,
@@ -97,12 +99,14 @@ def _decision(row: DecisionLog, alternative_name: str | None) -> Decision:
         actor=row.actor,
         idempotency_key=row.idempotency_key,
         api_key_label=row.api_key_label,
+        receipt=receipt,
     )
 
 
 def _with_name(session: Session, row: DecisionLog) -> Decision:
     org = session.get(DimOrganization, row.alternative_org_code) if row.alternative_org_code else None
-    return _decision(row, org.org_name if org else None)
+    receipt = transparency.decision_receipt(session, HOSPITAL_DECISION, row.id)
+    return _decision(row, org.org_name if org else None, receipt)
 
 
 def _alternative_from_recommendation(recommendation_id: str | None) -> str | None:
@@ -151,16 +155,19 @@ def create_decision(session: Session, payload: DecisionCreate, api_key_label: st
     row = DecisionLog(**{**payload.model_dump(), "alternative_org_code": alternative}, api_key_label=api_key_label)
     session.add(row)
     try:
+        # the decision and its transparency-ledger entry commit together (docs/transparency-ledger.md §5)
+        session.flush()
+        receipt = transparency.record_hospital_decision(session, row)
         session.commit()
     except IntegrityError:
-        # a concurrent request with the same idempotency_key won the race
+        # a concurrent request with the same idempotency_key won the race; our ledger entry went with our row
         session.rollback()
         existing = session.scalar(select(DecisionLog).where(DecisionLog.idempotency_key == payload.idempotency_key))
         if existing is None:
             raise
         return _replay(session, existing, payload), False
     session.refresh(row)
-    return _decision(row, alternative_name), True
+    return _decision(row, alternative_name, receipt), True
 
 
 def _replay(session: Session, existing: DecisionLog, payload: DecisionCreate) -> Decision:
@@ -194,7 +201,10 @@ def list_decisions(
         .limit(limit)
         .offset(offset)
     ).all()
-    return Page[Decision](items=[_decision(r, name) for r, name in rows], total=total, limit=limit, offset=offset)
+    receipts = transparency.decision_receipts(session, HOSPITAL_DECISION, [r.id for r, _ in rows])
+    return Page[Decision](
+        items=[_decision(r, name, receipts.get(r.id)) for r, name in rows], total=total, limit=limit, offset=offset
+    )
 
 
 # ------------------------------------------------------------------------------------------ alerts

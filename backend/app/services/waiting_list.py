@@ -38,6 +38,7 @@ from app.schemas.waiting_list import (
     WaitingReferralResponse,
     WaitingReferralRow,
 )
+from app.services import transparency
 from app.services.common import ConflictError, NotFoundError, ValidationError
 
 
@@ -138,7 +139,7 @@ def publish(session: Session, parsed: ParsedWaitingListBundle) -> PublicationRes
     """Atomically publish one validated waiting list and switch the current snapshot."""
     bundle = parsed.bundle
     with session.begin():
-        repository.current_snapshot(session, for_update=True)
+        previous = repository.current_snapshot(session, for_update=True)
         by_id = repository.snapshot_by_publication_id(session, bundle.publication_id)
         by_identity = repository.snapshot_by_identity(session, bundle.publication_identity_sha256)
         if by_id is not None:
@@ -150,6 +151,7 @@ def publish(session: Session, parsed: ParsedWaitingListBundle) -> PublicationRes
                 raise ConflictError("publication identity is already attached to a different publication_id")
             session.execute(update(WaitingListSnapshot).values(is_active=False))
             by_id.is_active = True
+            transparency.record_activation(session, "waiting_list", previous, by_id)
             return PublicationResult(
                 snapshot_id=by_id.id,
                 publication_id=by_id.publication_id,
@@ -182,6 +184,9 @@ def publish(session: Session, parsed: ParsedWaitingListBundle) -> PublicationRes
         session.flush()
         session.add_all(_hospital_row(snapshot.id, row) for row in bundle.hospitals)
         session.add_all(_referral_row(snapshot.id, row) for row in bundle.referrals)
+        session.flush()
+        # last, so the ledger lock is held only until this commit (docs/transparency-ledger.md §6)
+        transparency.record_publication(session, "waiting_list", previous, snapshot)
         snapshot_id = snapshot.id
     return PublicationResult(
         snapshot_id=snapshot_id,

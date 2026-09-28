@@ -30,6 +30,7 @@ from app.schemas.operational_intelligence import (
     OperationalSnapshotResponse,
     SignalPublicationRow,
 )
+from app.services import transparency
 from app.services.common import ConflictError, NotFoundError, ValidationError
 
 
@@ -237,7 +238,7 @@ def publish(session: Session, parsed: ParsedOperationalBundle) -> PublicationRes
     bundle = parsed.bundle
     with session.begin():
         _verify_assured_provenance(session, bundle)
-        repository.current_snapshot(session, for_update=True)
+        previous = repository.current_snapshot(session, for_update=True)
         by_id = repository.snapshot_by_publication_id(session, bundle.publication_id)
         by_identity = repository.snapshot_by_identity(session, bundle.publication_identity_sha256)
         if by_id is not None:
@@ -249,6 +250,7 @@ def publish(session: Session, parsed: ParsedOperationalBundle) -> PublicationRes
                 raise ConflictError("publication identity is already attached to a different publication_id")
             session.execute(update(OperationalIntelligenceSnapshot).values(is_active=False))
             by_id.is_active = True
+            transparency.record_activation(session, "operational_intelligence", previous, by_id)
             return PublicationResult(
                 snapshot_id=by_id.id,
                 publication_id=by_id.publication_id,
@@ -281,6 +283,9 @@ def publish(session: Session, parsed: ParsedOperationalBundle) -> PublicationRes
         session.flush()
         session.add_all(_forecast_row(snapshot.id, row) for row in bundle.forecasts)
         session.add_all(_signal_row(snapshot.id, row) for row in bundle.signals)
+        session.flush()
+        # last, so the ledger lock is held only until this commit (docs/transparency-ledger.md §6)
+        transparency.record_publication(session, "operational_intelligence", previous, snapshot)
         snapshot_id = snapshot.id
     return PublicationResult(
         snapshot_id=snapshot_id,

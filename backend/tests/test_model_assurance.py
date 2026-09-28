@@ -139,7 +139,7 @@ def test_assurance_api_adapter_uses_service_without_artifact_file_access() -> No
 
 
 @pytest.fixture(autouse=True)
-def preserve_current_snapshot() -> Iterator[None]:
+def preserve_current_snapshot(ledger_isolation) -> Iterator[None]:
     with SessionLocal() as session:
         previous = session.scalar(select(ModelAssuranceSnapshot.id).where(ModelAssuranceSnapshot.is_active.is_(True)))
     yield

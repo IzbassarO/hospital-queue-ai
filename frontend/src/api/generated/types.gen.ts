@@ -1341,6 +1341,10 @@ export type Decision = {
    */
   profile_code: string;
   /**
+   * transparency-ledger entry that records this decision (docs/transparency-ledger.md); an idempotent replay returns the original entry, never a second one
+   */
+  receipt?: LedgerReceipt | null;
+  /**
    * Recommendation Id
    */
   recommendation_id?: string | null;
@@ -2105,6 +2109,234 @@ export type InboxOutcome = {
    * Scenario Severity
    */
   scenario_severity: "HIGH" | "ELEVATED" | "WATCH" | "NORMAL" | "UNSUPPORTED";
+};
+
+/**
+ * LedgerEntry
+ *
+ * One public ledger entry, exactly as hashed and exported.
+ */
+export type LedgerEntry = {
+  /**
+   * Created At
+   *
+   * canonical UTC timestamp YYYY-MM-DDTHH:MM:SS.ffffffZ
+   */
+  created_at: string;
+  /**
+   * Entry Hash
+   */
+  entry_hash: string;
+  /**
+   * Event Type
+   *
+   * ledger.genesis | publication.published | publication.activated | publication.deactivated | decision.recorded
+   */
+  event_type: string;
+  /**
+   * Payload
+   *
+   * public statement: identifiers, codes, hashes, salted commitments
+   */
+  payload: {
+    [key: string]: unknown;
+  };
+  /**
+   * Prev Hash
+   */
+  prev_hash: string;
+  /**
+   * Seq
+   */
+  seq: number;
+  /**
+   * Subject
+   */
+  subject: string;
+};
+
+/**
+ * LedgerHead
+ */
+export type LedgerHead = {
+  /**
+   * Canonicalization
+   */
+  canonicalization: string;
+  /**
+   * Chain Length
+   */
+  chain_length: number;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Entry Hash
+   */
+  entry_hash: string;
+  /**
+   * Genesis Hash
+   */
+  genesis_hash: string;
+  /**
+   * Protocol
+   */
+  protocol: string;
+  /**
+   * Protocol Version
+   */
+  protocol_version: number;
+  /**
+   * Seq
+   *
+   * seq of the newest entry = chain length
+   */
+  seq: number;
+};
+
+/**
+ * LedgerReceipt
+ *
+ * Proof that an event was chained: the entry's number and hash, enough to find and check it later.
+ */
+export type LedgerReceipt = {
+  /**
+   * Created At
+   *
+   * event time, canonical UTC form YYYY-MM-DDTHH:MM:SS.ffffffZ
+   */
+  created_at: string;
+  /**
+   * Entry Hash
+   *
+   * SHA-256 of the entry, lowercase hex
+   */
+  entry_hash: string;
+  /**
+   * Event Type
+   */
+  event_type: string;
+  /**
+   * Ledger Seq
+   *
+   * position of the entry in the ledger (1 = genesis)
+   */
+  ledger_seq: number;
+  /**
+   * Subject
+   *
+   * what the entry is about, e.g. specialist_decision:1427
+   */
+  subject: string;
+  /**
+   * Verify Path
+   *
+   * UI path that opens this entry on the verification page
+   */
+  verify_path: string;
+};
+
+/**
+ * LedgerVerification
+ *
+ * Server verification: the public chain plus every covered source row against its entry.
+ */
+export type LedgerVerification = {
+  /**
+   * Chain Length
+   *
+   * entries read
+   */
+  chain_length: number;
+  /**
+   * Checks
+   *
+   * what this verification covers
+   */
+  checks: Array<string>;
+  /**
+   * Covered Decisions
+   *
+   * decision rows compared with their entries
+   */
+  covered_decisions: number;
+  /**
+   * Covered Publications
+   *
+   * publication snapshots compared with their entries
+   */
+  covered_publications: number;
+  /**
+   * Duration Ms
+   */
+  duration_ms: number;
+  /**
+   * Failure Seq
+   */
+  failure_seq?: number | null;
+  /**
+   * Head Hash
+   */
+  head_hash: string | null;
+  /**
+   * Head Seq
+   */
+  head_seq: number | null;
+  /**
+   * Issues
+   *
+   * up to 20 problems, first by seq
+   */
+  issues: Array<VerificationIssue>;
+  /**
+   * Mode
+   */
+  mode?: "server";
+  /**
+   * Reason Code
+   */
+  reason_code?:
+    | "EMPTY_LEDGER"
+    | "MALFORMED_ENTRY"
+    | "NONCANONICAL_VALUE"
+    | "NONCANONICAL_ENCODING"
+    | "GENESIS_INVALID"
+    | "DUPLICATE_SEQ"
+    | "SEQUENCE_GAP"
+    | "SEQUENCE_ORDER"
+    | "PREV_HASH_MISMATCH"
+    | "ENTRY_HASH_MISMATCH"
+    | "TRUSTED_HEAD_MISSING"
+    | "TRUSTED_HEAD_MISMATCH"
+    | "UNKNOWN_EVENT_TYPE"
+    | "SOURCE_ROW_MISSING"
+    | "SALT_MISSING"
+    | "COMMITMENT_MISMATCH"
+    | "SOURCE_FIELD_MISMATCH"
+    | "PUBLICATION_MISMATCH"
+    | "DUPLICATE_SUBJECT_EVENT"
+    | "UNCOVERED_SOURCE_ROW"
+    | "ACTIVE_STATE_MISMATCH"
+    | null;
+  /**
+   * Status
+   */
+  status: "OK" | "BROKEN";
+  /**
+   * Subject
+   */
+  subject?: string | null;
+  /**
+   * Verified At
+   */
+  verified_at: string;
+  /**
+   * Verified Through Seq
+   *
+   * every entry up to this seq passed every check
+   */
+  verified_through_seq: number;
 };
 
 /**
@@ -3173,6 +3405,30 @@ export type PageHospitalProfileStatus = {
    * Items
    */
   items: Array<HospitalProfileStatus>;
+  /**
+   * Limit
+   */
+  limit: number;
+  /**
+   * Offset
+   */
+  offset: number;
+  /**
+   * Total
+   *
+   * rows matching the filters, before limit/offset
+   */
+  total: number;
+};
+
+/**
+ * Page[LedgerEntry]
+ */
+export type PageLedgerEntry = {
+  /**
+   * Items
+   */
+  items: Array<LedgerEntry>;
   /**
    * Limit
    */
@@ -4705,6 +4961,10 @@ export type SpecialistDecision = {
    */
   publication_identity_sha256: string | null;
   /**
+   * transparency-ledger entry that records this decision (docs/transparency-ledger.md); an idempotent replay returns the original entry, never a second one
+   */
+  receipt?: LedgerReceipt | null;
+  /**
    * Region Code
    */
   region_code?: string | null;
@@ -4918,6 +5178,53 @@ export type ValidationError = {
    * Error Type
    */
   type: string;
+};
+
+/**
+ * VerificationIssue
+ */
+export type VerificationIssue = {
+  /**
+   * Detail
+   *
+   * what differs, by field name; never a protected value
+   */
+  detail: string;
+  /**
+   * Reason Code
+   */
+  reason_code:
+    | "EMPTY_LEDGER"
+    | "MALFORMED_ENTRY"
+    | "NONCANONICAL_VALUE"
+    | "NONCANONICAL_ENCODING"
+    | "GENESIS_INVALID"
+    | "DUPLICATE_SEQ"
+    | "SEQUENCE_GAP"
+    | "SEQUENCE_ORDER"
+    | "PREV_HASH_MISMATCH"
+    | "ENTRY_HASH_MISMATCH"
+    | "TRUSTED_HEAD_MISSING"
+    | "TRUSTED_HEAD_MISMATCH"
+    | "UNKNOWN_EVENT_TYPE"
+    | "SOURCE_ROW_MISSING"
+    | "SALT_MISSING"
+    | "COMMITMENT_MISMATCH"
+    | "SOURCE_FIELD_MISMATCH"
+    | "PUBLICATION_MISMATCH"
+    | "DUPLICATE_SUBJECT_EVENT"
+    | "UNCOVERED_SOURCE_ROW"
+    | "ACTIVE_STATE_MISMATCH";
+  /**
+   * Seq
+   *
+   * entry the problem was found at; null for a source row with no entry
+   */
+  seq: number | null;
+  /**
+   * Subject
+   */
+  subject: string | null;
 };
 
 /**
@@ -7434,6 +7741,259 @@ export type SpecialistDecisionCreateResponses = {
 
 export type SpecialistDecisionCreateResponse =
   SpecialistDecisionCreateResponses[keyof SpecialistDecisionCreateResponses];
+
+export type TransparencyEntriesListData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Order
+     *
+     * by seq; desc = newest first
+     */
+    order?: "desc" | "asc";
+    /**
+     * Event Type
+     *
+     * e.g. decision.recorded
+     */
+    event_type?: string | null;
+    /**
+     * Limit
+     *
+     * page size
+     */
+    limit?: number;
+    /**
+     * Offset
+     *
+     * rows to skip
+     */
+    offset?: number;
+  };
+  url: "/api/v1/transparency/entries";
+};
+
+export type TransparencyEntriesListErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type TransparencyEntriesListError =
+  TransparencyEntriesListErrors[keyof TransparencyEntriesListErrors];
+
+export type TransparencyEntriesListResponses = {
+  /**
+   * Successful Response
+   */
+  200: PageLedgerEntry;
+};
+
+export type TransparencyEntriesListResponse =
+  TransparencyEntriesListResponses[keyof TransparencyEntriesListResponses];
+
+export type TransparencyEntryGetData = {
+  body?: never;
+  path: {
+    /**
+     * Seq
+     *
+     * position in the ledger
+     */
+    seq: number;
+  };
+  query?: never;
+  url: "/api/v1/transparency/entries/{seq}";
+};
+
+export type TransparencyEntryGetErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type TransparencyEntryGetError =
+  TransparencyEntryGetErrors[keyof TransparencyEntryGetErrors];
+
+export type TransparencyEntryGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: LedgerEntry;
+};
+
+export type TransparencyEntryGetResponse =
+  TransparencyEntryGetResponses[keyof TransparencyEntryGetResponses];
+
+export type TransparencyExportData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/transparency/export";
+};
+
+export type TransparencyExportErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+};
+
+export type TransparencyExportError =
+  TransparencyExportErrors[keyof TransparencyExportErrors];
+
+export type TransparencyExportResponses = {
+  /**
+   * one canonical JSON entry per line, in seq order; no salts, no free text
+   */
+  200: string;
+};
+
+export type TransparencyExportResponse =
+  TransparencyExportResponses[keyof TransparencyExportResponses];
+
+export type TransparencyHeadGetData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/transparency/head";
+};
+
+export type TransparencyHeadGetErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * unknown code
+   */
+  404: Message;
+};
+
+export type TransparencyHeadGetError =
+  TransparencyHeadGetErrors[keyof TransparencyHeadGetErrors];
+
+export type TransparencyHeadGetResponses = {
+  /**
+   * Successful Response
+   */
+  200: LedgerHead;
+};
+
+export type TransparencyHeadGetResponse =
+  TransparencyHeadGetResponses[keyof TransparencyHeadGetResponses];
+
+export type TransparencyLookupData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * Entry Hash
+     *
+     * a receipt's hash, or a prefix of at least 8 hex characters
+     */
+    entry_hash?: string | null;
+    /**
+     * Subject
+     *
+     * e.g. specialist_decision:1427 or publication:<kind>:<id>
+     */
+    subject?: string | null;
+  };
+  url: "/api/v1/transparency/lookup";
+};
+
+export type TransparencyLookupErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+  /**
+   * give exactly one of entry_hash or subject
+   */
+  422: Message;
+};
+
+export type TransparencyLookupError =
+  TransparencyLookupErrors[keyof TransparencyLookupErrors];
+
+export type TransparencyLookupResponses = {
+  /**
+   * Response Transparency Lookup
+   *
+   * Successful Response
+   */
+  200: Array<LedgerEntry>;
+};
+
+export type TransparencyLookupResponse =
+  TransparencyLookupResponses[keyof TransparencyLookupResponses];
+
+export type TransparencyVerifyData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/v1/transparency/verify";
+};
+
+export type TransparencyVerifyErrors = {
+  /**
+   * missing, invalid or revoked X-API-Key
+   */
+  401: Message;
+  /**
+   * the key's role is not allowed to do this
+   */
+  403: Message;
+};
+
+export type TransparencyVerifyError =
+  TransparencyVerifyErrors[keyof TransparencyVerifyErrors];
+
+export type TransparencyVerifyResponses = {
+  /**
+   * Successful Response
+   */
+  200: LedgerVerification;
+};
+
+export type TransparencyVerifyResponse =
+  TransparencyVerifyResponses[keyof TransparencyVerifyResponses];
 
 export type VerificationWorklistHospitalGetData = {
   body?: never;

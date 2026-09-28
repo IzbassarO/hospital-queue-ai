@@ -58,7 +58,7 @@ def decision_payload(high_load: dict, **extra) -> dict:
     }
 
 
-async def test_role_matrix(anon_client, api_keys, high_load, created_decision_ids):
+async def test_role_matrix(anon_client, api_keys, high_load, created_decision_ids, ledger_isolation):
     """viewer: every GET; specialist: + POST /decisions; admin: + key management and the access log."""
     expectations = {
         # (method, path): minimum role
@@ -150,7 +150,7 @@ async def test_access_log_records_requests(anon_client, api_keys, high_load):
 
 
 # ------------------------------------------------------------------------------------------ decisions
-async def test_decision_idempotency_key(client, high_load, created_decision_ids):
+async def test_decision_idempotency_key(client, high_load, created_decision_ids, ledger_isolation):
     key = f"pytest-{uuid.uuid4()}"
     payload = decision_payload(high_load, idempotency_key=key, comment="первая отправка")
     first = await client.post(f"{API}/decisions", json=payload)
@@ -172,7 +172,7 @@ async def test_decision_idempotency_key(client, high_load, created_decision_ids)
     assert short.status_code == 422
 
 
-async def test_decision_records_the_alternative(client, created_decision_ids):
+async def test_decision_records_the_alternative(client, created_decision_ids, ledger_isolation):
     """alternative_org_code is derived from recommendation_id and returned with the alternative's name."""
     alerts = (await client.get(f"{API}/alerts", params={"limit": 60})).json()["items"]
     for alert in alerts:
@@ -239,7 +239,7 @@ async def test_export_pdf(client, high_load):
 HOSTILE_COMMENT = '=HYPERLINK("http://evil.example/x";"открыть") <para><b>незакрытый тег & амперсанд'
 
 
-async def test_export_neutralises_hostile_text(client, high_load, created_decision_ids):
+async def test_export_neutralises_hostile_text(client, high_load, created_decision_ids, ledger_isolation):
     """A comment that a spreadsheet would run as a formula or reportlab would parse as markup is exported as text."""
     org, profile = high_load["org_code"], high_load["profile_code"]
     actor = f"{TEST_ACTOR_PREFIX}hostile <b>{uuid.uuid4().hex[:6]}"

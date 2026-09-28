@@ -63,6 +63,12 @@ EXPECTED_OPERATIONS = {
     ("GET", "/api/v1/review-evidence/decision-alternatives"): "review_decision_alternatives_list",
     ("GET", "/api/v1/review-evidence/decision-alternatives/{set_id}"): "review_decision_alternative_set_get",
     ("GET", "/api/v1/review-evidence/overview"): "review_evidence_overview_get",
+    ("GET", "/api/v1/transparency/head"): "transparency_head_get",
+    ("GET", "/api/v1/transparency/entries"): "transparency_entries_list",
+    ("GET", "/api/v1/transparency/entries/{seq}"): "transparency_entry_get",
+    ("GET", "/api/v1/transparency/lookup"): "transparency_lookup",
+    ("GET", "/api/v1/transparency/verify"): "transparency_verify",
+    ("GET", "/api/v1/transparency/export"): "transparency_export",
     ("GET", "/api/v1/review-evidence/signals/{signal_id}/decision-alternatives"): (
         "review_signal_decision_alternatives_get"
     ),

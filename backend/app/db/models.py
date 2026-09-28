@@ -1152,3 +1152,49 @@ class AccessLog(Base):
         Index("ix_access_log_key_label_ts", "key_label", "ts"),
         Index("ix_access_log_status_ts", "status", "ts"),
     )
+
+
+# ------------------------------------------------------------------ transparency ledger
+class TransparencyCommitmentSalt(Base):
+    """Private 32-byte salt per ledger subject whose public payload carries salted commitments (decision comment,
+    actor, API-key label, idempotency key). Never exposed by an endpoint or an export; append-only by trigger
+    (migration 0016). docs/transparency-ledger.md §4."""
+
+    __tablename__ = "transparency_commitment_salt"
+    __table_args__ = (CheckConstraint("salt ~ '^[0-9a-f]{64}$'", name="ck_transparency_commitment_salt_hex"),)
+
+    subject: Mapped[str] = mapped_column(String(256), primary_key=True)
+    salt: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class TransparencyLedger(Base):
+    """Append-only hash chain of publication and decision events (protocol v1, app/domain/transparency). UPDATE,
+    DELETE and TRUNCATE are rejected by triggers (migration 0017); seq is assigned under a transaction-scoped
+    advisory lock by app/repositories/transparency.py. docs/transparency-ledger.md."""
+
+    __tablename__ = "transparency_ledger"
+    __table_args__ = (
+        CheckConstraint("seq >= 1", name="ck_transparency_ledger_seq"),
+        CheckConstraint("prev_hash ~ '^[0-9a-f]{64}$'", name="ck_transparency_ledger_prev_hash"),
+        CheckConstraint("entry_hash ~ '^[0-9a-f]{64}$'", name="ck_transparency_ledger_entry_hash"),
+        UniqueConstraint("entry_hash", name="uq_transparency_ledger_entry_hash"),
+        # one child per parent: a second entry claiming the same predecessor would be a fork
+        UniqueConstraint("prev_hash", name="uq_transparency_ledger_prev_hash"),
+        Index("ix_transparency_ledger_subject", "subject"),
+        # a decision is recorded once: an idempotent retry finds this entry instead of appending another
+        Index(
+            "ux_transparency_ledger_decision_subject",
+            "subject",
+            unique=True,
+            postgresql_where=text("event_type = 'decision.recorded'"),
+        ),
+    )
+
+    seq: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True))
+    event_type: Mapped[str] = mapped_column(String(64))
+    subject: Mapped[str] = mapped_column(String(256))
+    payload: Mapped[dict] = mapped_column(JSONB)
+    prev_hash: Mapped[str] = mapped_column(String(64))
+    entry_hash: Mapped[str] = mapped_column(String(64))
