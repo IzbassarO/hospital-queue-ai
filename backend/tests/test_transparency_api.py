@@ -6,12 +6,14 @@ entries they append, are rolled back, so the database the suite runs against kee
 
 from __future__ import annotations
 
+import os
 import sys
 import uuid
 from pathlib import Path
 
 import httpx
 import pytest
+from sqlalchemy import text
 
 from conftest import API, auth
 
@@ -73,8 +75,48 @@ async def test_lookup_by_hash_prefix_or_subject(viewer):
     assert [e["seq"] for e in by_prefix.json()] == [1]
     by_subject = await viewer.get(f"{API}/transparency/lookup", params={"subject": "ledger:aqyl-kezek"})
     assert by_subject.json()[0]["entry_hash"] == genesis["entry_hash"]
-    for params in ({}, {"entry_hash": "abc"}, {"entry_hash": "zzzzzzzz"}, {"entry_hash": "a" * 8, "subject": "x"}):
-        assert (await viewer.get(f"{API}/transparency/lookup", params=params)).status_code == 422, params
+    for params in (
+        {},
+        {"entry_hash": "abc"},
+        {"entry_hash": "zzzzzzzz"},
+        {"entry_hash": "a" * 8, "subject": "x"},
+        {"entry_hash": "a" * 65},
+        {"subject": "s" * 257},
+    ):
+        response = await viewer.get(f"{API}/transparency/lookup", params=params)
+        assert response.status_code == 422, params
+        assert "SELECT" not in response.text and "transparency_ledger" not in response.text
+    assert (await viewer.get(f"{API}/transparency/entries", params={"event_type": "e" * 65})).status_code == 422
+
+
+async def test_one_full_ledger_read_at_a_time(viewer, monkeypatch):
+    """Verification and export read the whole ledger: while one runs (here: its lock is held by another
+    connection), the next waits for it and, past the wait limit, gets 503 with Retry-After instead of a second
+    full read, learning nothing internal."""
+    if os.environ.get("HQAI_API_BASE_URL"):
+        pytest.skip("holds the lock through the in-process database connection")
+    from app.db.session import engine
+    from app.repositories.transparency import FULL_READ_LOCK_KEY
+    from app.services import transparency
+
+    monkeypatch.setattr(transparency, "FULL_READ_WAIT_MS", 300)
+    with engine.connect() as conn, conn.begin():
+        conn.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": FULL_READ_LOCK_KEY})
+        for path in ("/transparency/verify", "/transparency/export"):
+            busy = await viewer.get(f"{API}{path}")
+            assert busy.status_code == 503 and busy.headers["retry-after"] == "5"
+            assert "advisory" not in busy.text and "SELECT" not in busy.text and "lock" not in busy.text
+    assert (await viewer.get(f"{API}/transparency/verify")).status_code == 200
+
+
+async def test_the_page_loads_verification_and_export_together(viewer):
+    """/verify asks for both at once: the second waits for the first instead of failing."""
+    import asyncio
+
+    responses = await asyncio.gather(
+        *(viewer.get(f"{API}{path}") for path in ("/transparency/verify", "/transparency/export") * 2)
+    )
+    assert [r.status_code for r in responses] == [200, 200, 200, 200]
 
 
 async def _decision(client, **extra) -> httpx.Response:
@@ -151,7 +193,9 @@ async def test_export_is_public_canonical_and_verifies_offline(client, viewer, l
     assert export.headers["content-type"].startswith("application/x-ndjson")
     assert "attachment" in export.headers["content-disposition"]
     text = export.text
-    assert payload["comment"] not in text and payload["idempotency_key"] not in text and '"salt"' not in text
+    for private in ("comment", "idempotency_key", "subject_id", "run_id"):
+        assert payload[private] not in text, private
+    assert '"salt"' not in text
     summary = ledger_verify.verify_lines(text.splitlines(keepends=True))
     assert summary["head_seq"] == created.json()["receipt"]["ledger_seq"]
     assert summary["head_hash"] == created.json()["receipt"]["entry_hash"]

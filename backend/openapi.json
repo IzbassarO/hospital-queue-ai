@@ -13796,6 +13796,16 @@
               }
             },
             "description": "the key's role is not allowed to do this"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "another full-ledger verification or export is running"
           }
         },
         "security": [
@@ -14001,6 +14011,16 @@
               }
             },
             "description": "the key's role is not allowed to do this"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            },
+            "description": "another full-ledger verification or export is running"
           }
         },
         "security": [

@@ -11,17 +11,20 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from app.db.models import (
     DecisionLog,
     ModelAssuranceSnapshot,
     OperationalIntelligenceSnapshot,
+    ReferralEstimateSnapshot,
     ReviewEvidenceSnapshot,
     SpecialistDecision,
     TransparencyCommitmentSalt,
     TransparencyLedger,
+    VerificationWorklistSnapshot,
     WaitingListSnapshot,
 )
 
@@ -34,11 +37,33 @@ SNAPSHOT_MODELS = {
     "operational_intelligence": OperationalIntelligenceSnapshot,
     "review_evidence": ReviewEvidenceSnapshot,
     "waiting_list": WaitingListSnapshot,
+    "referral_estimates": ReferralEstimateSnapshot,
+    "verification_worklist": VerificationWorklistSnapshot,
 }
+
+
+# Key of the lock that lets one full-ledger read (server verification or export) run at a time: "hqaiTLrd".
+FULL_READ_LOCK_KEY = int.from_bytes(b"hqaiTLrd", "big", signed=True)
 
 
 def lock_for_append(session: Session) -> None:
     session.execute(select(func.pg_advisory_xact_lock(LEDGER_LOCK_KEY)))
+
+
+def lock_full_read(session: Session, wait_ms: int) -> bool:
+    """Wait up to `wait_ms` for the full-read lock; True once held (until the caller's transaction ends), False when
+    another full read kept it that long. Independent of the append lock, so writers are never blocked by it."""
+    session.execute(text(f"SET LOCAL lock_timeout = {int(wait_ms)}"))
+    try:
+        with session.begin_nested():  # a timed-out wait rolls back to here, the request's transaction stays usable
+            session.execute(select(func.pg_advisory_xact_lock(FULL_READ_LOCK_KEY)))
+    except OperationalError as exc:
+        if getattr(exc.orig, "sqlstate", None) != "55P03":  # lock_not_available
+            raise
+        return False
+    finally:
+        session.execute(text("SET LOCAL lock_timeout = DEFAULT"))
+    return True
 
 
 def head(session: Session) -> TransparencyLedger | None:

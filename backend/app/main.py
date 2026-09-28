@@ -17,6 +17,7 @@ from app.core.security import API_KEY_HEADER
 from app.services.assistant import AssistantNotConfiguredError, AssistantUpstreamError
 from app.services.common import ConflictError, MartsNotBuiltError, NotFoundError, ValidationError
 from app.services.export import ExportUnavailableError
+from app.services.transparency import LedgerBusyError
 
 settings = get_settings()
 configure_logging(settings.log_level)
@@ -75,6 +76,13 @@ def _conflict(_: Request, exc: ConflictError) -> JSONResponse:
 @app.exception_handler(ExportUnavailableError)
 def _export_unavailable(_: Request, exc: ExportUnavailableError) -> JSONResponse:
     return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content={"detail": str(exc)})
+
+
+@app.exception_handler(LedgerBusyError)
+def _ledger_busy(_: Request, exc: LedgerBusyError) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content={"detail": str(exc)}, headers={"Retry-After": "5"}
+    )
 
 
 @app.exception_handler(MartsNotBuiltError)

@@ -1238,7 +1238,8 @@ clients treat it as an empty list.
 
 An append-only, hash-chained record of publications and decisions: what information existed when a person decided
 ([transparency-ledger.md](transparency-ledger.md)). **role: viewer** for every endpoint below — they return public
-data only: identifiers, codes, hashes and salted commitments; no salt and no free text a person typed. Entries are
+data only: institution codes, server-assigned ids, hashes and salted commitments; no salt, no free text and no
+identifier a client supplied (subject, run and recommendation ids are committed, not copied). Entries are
 exactly the bytes that are hashed; `created_at` is the canonical UTC form `YYYY-MM-DDTHH:MM:SS.ffffffZ`.
 
 ### `GET /transparency/head`
@@ -1256,7 +1257,7 @@ Entries by `seq`, newest first by default (`order=asc` from the genesis). `event
 `publication.published`, `publication.activated`, `publication.deactivated`, `decision.recorded`.
 
 ```json
-{"items": [{"seq": 2, "created_at": "2026-09-28T15:02:37.273896Z", "event_type": "decision.recorded", "subject": "specialist_decision:35", "payload": {"action": "accept", "commitments": {"actor": "5d2c…", "api_key_label": "9a41…", "comment": "e0b7…", "idempotency_key": "71fe…"}, "decision_id": 35, "decision_kind": "specialist_decision", "evidence": {"operational_publication_identity_sha256": "43da33ece7231a70348043c2bb8ec4b63161f94ed67dfe96e3c36de69c425cfd", "operational_publication_ledger_seq": 1}, "org_code": "000V", "origin": "2025-03-17", "profile_code": "391", "region_code": "39", "run_id": "smoke", "sim_day": 1, "subject_id": "sig-1", "subject_kind": "alert"}, "prev_hash": "e7be5330076067f7dd9a0e83868fabb9821fce2238689f525483589724b0eb50", "entry_hash": "c22cbf3d98df884bf54753b4a8cc56ccf161709339b3b7eeadee6374943c1ab0"}], "total": 2, "limit": 1, "offset": 0}
+{"items": [{"seq": 2, "created_at": "2026-09-28T15:02:37.273896Z", "event_type": "decision.recorded", "subject": "specialist_decision:35", "payload": {"action": "accept", "commitments": {"actor": "5d2c…", "api_key_label": "9a41…", "comment": "e0b7…", "idempotency_key": "71fe…", "run_id": "0c3a…", "subject_id": "b18e…"}, "decision_id": 35, "decision_kind": "specialist_decision", "evidence": {"operational_publication_identity_sha256": "43da33ece7231a70348043c2bb8ec4b63161f94ed67dfe96e3c36de69c425cfd", "operational_publication_ledger_seq": 1}, "org_code": "000V", "origin": "2025-03-17", "profile_code": "391", "region_code": "39", "sim_day": 1, "subject_kind": "alert"}, "prev_hash": "e7be5330076067f7dd9a0e83868fabb9821fce2238689f525483589724b0eb50", "entry_hash": "c22cbf3d98df884bf54753b4a8cc56ccf161709339b3b7eeadee6374943c1ab0"}], "total": 2, "limit": 1, "offset": 0}
 ```
 
 (Commitment hashes shortened here; they are 64 hex characters.)
@@ -1268,8 +1269,10 @@ One entry; `404` when there is none.
 ### `GET /transparency/lookup?entry_hash=&subject=`
 
 Exactly one of: `entry_hash` — a full receipt hash or a prefix of at least 8 hex characters; `subject` — e.g.
-`specialist_decision:35`, `hospital_decision:12`, `publication:operational_intelligence:<publication_id>`. Returns up
-to 50 entries by `seq`; `422` for neither, both, or a malformed hash.
+`specialist_decision:35`, `hospital_decision:12`, `publication:<kind>:<publication_id>` with `<kind>` one of
+`model_assurance`, `operational_intelligence`, `review_evidence`, `waiting_list`, `referral_estimates`,
+`verification_worklist`. Returns up to 50 entries by `seq`; `422` for neither, both, a malformed hash (8–64 hex
+characters) or a subject longer than 256 characters.
 
 ### `GET /transparency/verify`
 
@@ -1277,7 +1280,9 @@ Server verification: the public chain (canonical JSON, protocol genesis, contigu
 recomputed SHA-256) and then every covered source row against its entry — each decision's fields and the salted
 commitments of its private text, each publication snapshot's identity and hashes, rows without an entry, and the
 latest recorded activation against the active publications. The first problem by `seq` is `failure_seq` /
-`reason_code` / `subject`; `issues` lists up to 20. Details name fields, never values.
+`reason_code` / `subject`; `issues` lists up to 20. Details name fields, never values. It reads the whole ledger,
+so only one verification or export runs at a time: a concurrent request waits for it (up to 15 s), then gets
+`503` with `Retry-After: 5`.
 
 ```json
 {"status": "BROKEN", "mode": "server", "verified_at": "2026-09-28T15:20:11.402Z", "duration_ms": 31, "chain_length": 4, "verified_through_seq": 2, "head_seq": 4, "head_hash": "b7c816357eb7a1f2e3d4c5b6a7980f1e2d3c4b5a69788796a5b4c3d2e1f0a9b8", "failure_seq": 3, "reason_code": "COMMITMENT_MISMATCH", "subject": "specialist_decision:2", "issues": [{"seq": 3, "reason_code": "COMMITMENT_MISMATCH", "subject": "specialist_decision:2", "detail": "current value of comment does not match the committed value"}], "covered_decisions": 3, "covered_publications": 0, "checks": ["canonical JSON of every entry (hqai-canonical-json-v1)", "…"]}
@@ -1293,7 +1298,7 @@ Reason codes: `EMPTY_LEDGER`, `MALFORMED_ENTRY`, `NONCANONICAL_VALUE`, `NONCANON
 
 The whole public ledger as `application/x-ndjson`: one canonical JSON entry per line, in `seq` order, ending with
 `\n`, as an attachment. It is what `tools/ledger_verify.py` and the browser verify; it contains no salts and no free
-text.
+text. Like verification, one at a time (waits up to 15 s for another full read, then `503` with `Retry-After: 5`).
 
 ### `GET /admin/keys`
 

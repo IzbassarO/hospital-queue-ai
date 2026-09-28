@@ -199,7 +199,7 @@ GRANT USAGE ON SCHEMA public TO hqai_app;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO hqai_app;
 REVOKE ALL ON TABLE alembic_version FROM hqai_app;
 GRANT INSERT ON TABLE access_log, decision_log, specialist_decision TO hqai_app;
--- transparency ledger (migrations 0016/0017 grant these themselves when hqai.app_role is set)
+-- transparency ledger (migrations 0018/0019 grant these themselves when hqai.app_role is set)
 GRANT INSERT ON TABLE transparency_ledger, transparency_commitment_salt TO hqai_app;
 GRANT INSERT, UPDATE ON TABLE api_keys TO hqai_app;
 GRANT USAGE, SELECT ON SEQUENCE
@@ -215,9 +215,12 @@ succeed, and `DROP TABLE`, `DELETE` and `TRUNCATE` must all be refused.
 ### Transparency ledger
 
 Decisions and publications are chained in an append-only ledger ([transparency-ledger.md](transparency-ledger.md)).
-Its public entries carry no free text: a decision's comment, actor, API-key label and idempotency key appear only as
-salted SHA-256 commitments. The salts are in `transparency_commitment_salt`, readable by the API role (the server
+Its public entries carry no free text and no client-supplied identifier: a decision's comment, actor, API-key label,
+idempotency key, subject id (signal or referral), run id and recommendation id appear only as salted SHA-256
+commitments. The salts are in `transparency_commitment_salt`, readable by the API role (the server
 verification needs them) and returned by no endpoint; treat them like the rest of the database. Triggers refuse
 `UPDATE`, `DELETE` and `TRUNCATE` on both tables for every role, but the schema owner or a superuser can still
 disable them: a full rewrite is detectable only against a head recorded outside the database (a receipt, a browser
-that visited `/verify` before, `make ledger-verify HEAD=seq:hash`).
+that visited `/verify` before, `make ledger-verify HEAD=seq:hash`). The migrations refuse a downgrade that would
+destroy ledger history or salts (transparency-ledger.md §10): rolling back across them is an explicit restore,
+never an automatic step.

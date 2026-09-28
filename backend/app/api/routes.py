@@ -881,6 +881,9 @@ def get_dictionaries(session: SessionDep, _: ViewerDep) -> DictionariesResponse:
 
 
 # ------------------------------------------------------------------------------------------ transparency ledger
+LEDGER_BUSY = {503: {"model": Message, "description": "another full-ledger verification or export is running"}}
+
+
 # Public, append-only record of publications and decisions (docs/transparency-ledger.md). Every endpoint returns
 # public data only — identifiers, hashes, salted commitments — so the viewer role is enough.
 @router.get(
@@ -953,7 +956,7 @@ def get_transparency_lookup(
 @router.get(
     "/transparency/verify",
     response_model=LedgerVerification,
-    responses=AUTH,
+    responses={**AUTH, **LEDGER_BUSY},
     operation_id="transparency_verify",
     tags=["transparency"],
 )
@@ -968,6 +971,7 @@ def get_transparency_verify(session: SessionDep, _: ViewerDep) -> LedgerVerifica
     response_class=StreamingResponse,
     responses={
         **AUTH,
+        **LEDGER_BUSY,
         200: {
             "content": {"application/x-ndjson": {"schema": {"type": "string"}}},
             "description": "one canonical JSON entry per line, in seq order; no salts, no free text",
@@ -978,8 +982,9 @@ def get_transparency_verify(session: SessionDep, _: ViewerDep) -> LedgerVerifica
 )
 def get_transparency_export(session: SessionDep, _: ViewerDep) -> StreamingResponse:
     """The public ledger as JSONL, for tools/ledger_verify.py and the browser verification."""
-    # read completely while the request's session is open; the ledger is small (docs/transparency-ledger.md §11)
-    lines = list(transparency.export_lines(session))
+    # read completely while the request's session is open, one export or verification at a time
+    # (docs/transparency-ledger.md §11)
+    lines = transparency.export(session)
     return StreamingResponse(
         iter(lines),
         media_type="application/x-ndjson; charset=utf-8",

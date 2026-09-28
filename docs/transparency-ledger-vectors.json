@@ -358,6 +358,88 @@
     "seq": 1,
     "subject": "ledger:aqyl-kezek"
   },
+  "chain_source": [
+    {
+      "kind": "operational_intelligence",
+      "row": {
+        "id": 3,
+        "publication_id": "operational-intelligence-demo-v1",
+        "identity_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bundle_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "contract_version": "1.0.0",
+        "schema_version": "oi-v1",
+        "source_code_commit": "cccccccccccccccccccccccccccccccccccccccc",
+        "published_at": "2025-03-17T03:00:00.123456Z"
+      }
+    },
+    {
+      "kind": "hospital_decision",
+      "salt": "2222222222222222222222222222222222222222222222222222222222222222",
+      "row": {
+        "id": 5,
+        "created_at": "2025-03-17T09:30:00.000000Z",
+        "region_code": "39",
+        "org_code": "000V",
+        "profile_code": "391",
+        "recommendation_id": null,
+        "action": "defer",
+        "comment": "",
+        "actor": "Дежурный врач",
+        "alternative_org_code": null,
+        "idempotency_key": null,
+        "api_key_label": "demo"
+      }
+    },
+    {
+      "kind": "specialist_decision",
+      "salt": "1111111111111111111111111111111111111111111111111111111111111111",
+      "operational_publication_ledger_seq": 2,
+      "row": {
+        "id": 41,
+        "created_at": "2025-03-17T09:30:00.000000Z",
+        "origin": "2025-03-17",
+        "run_id": "run-1",
+        "sim_day": 2,
+        "subject_kind": "alert",
+        "subject_id": "signal-7",
+        "region_code": "39",
+        "org_code": "000V",
+        "profile_code": "391",
+        "action": "accept",
+        "comment": "Согласовано с приёмным отделением",
+        "actor": "Иванова А.",
+        "api_key_label": "demo",
+        "idempotency_key": "demo-key-000041",
+        "publication_identity_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "kind": "referral_estimates",
+      "row": {
+        "id": 1,
+        "publication_id": "referral-estimates-demo-v1",
+        "identity_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "bundle_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "contract_version": "1.0.0",
+        "schema_version": "referral_estimates_v1",
+        "source_code_commit": "cccccccccccccccccccccccccccccccccccccccc",
+        "published_at": "2025-03-17T10:00:00.000000Z"
+      }
+    },
+    {
+      "kind": "verification_worklist",
+      "row": {
+        "id": 1,
+        "publication_id": "verification-worklist-demo-v2",
+        "identity_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "bundle_sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+        "contract_version": "2.0.0",
+        "schema_version": "verification_worklist_v2",
+        "source_code_commit": "cccccccccccccccccccccccccccccccccccccccc",
+        "published_at": "2025-03-17T10:00:00.000001Z"
+      }
+    }
+  ],
   "chain": [
     {
       "created_at": "2026-09-28T00:00:00.000000Z",
@@ -395,22 +477,22 @@
     },
     {
       "created_at": "2025-03-17T09:30:00.000000Z",
-      "entry_hash": "c3993d5f8f56e294f9c6901601ab18576b29a86227ee89b6e571bd2637d55830",
+      "entry_hash": "3beb0f1ba44e59b1b97f250fc80594e95acd53d9905333ad11e700831f27541f",
       "event_type": "decision.recorded",
       "payload": {
         "action": "defer",
         "alternative_org_code": null,
         "commitments": {
-          "actor": "e84d8acf521fe2d93aba9ea17231ced4c0435a61556055cfcc944ee1d28b9870",
-          "api_key_label": "2fb135b09fd0f68ef5fcaf2e58cb7e57e971856b3d465e7a8f69fd492ebcbb99",
+          "actor": "a80c13c1b848928014fe2a693cd5392c43af30d79f34ef112e341dd4d9483f32",
+          "api_key_label": "db93c9c316d2366661ba1b7260b1186cee8e2d4bb7a100c9ef6eae306bfb57b3",
           "comment": "5488797d94d2305783dfed2413e58fc9487c99c13e21e138c46f15d7e53c3d0f",
-          "idempotency_key": "a774d53f01fca31b1bc47b3b7207c2012cb44d202c1dc5e653af12ca3357b44a"
+          "idempotency_key": "a774d53f01fca31b1bc47b3b7207c2012cb44d202c1dc5e653af12ca3357b44a",
+          "recommendation_id": "85745d8add3e52d98b5617f6ed223f1bc5dc53b79a3654d867f6022d98f02af7"
         },
         "decision_id": 5,
         "decision_kind": "hospital_decision",
         "org_code": "000V",
         "profile_code": "391",
-        "recommendation_id": null,
         "region_code": "39"
       },
       "prev_hash": "4bcaf81cd7eb51e12481ddda9abcc6258db4443a2635c6bfc9711a5ff5078427",
@@ -419,15 +501,17 @@
     },
     {
       "created_at": "2025-03-17T09:30:00.000000Z",
-      "entry_hash": "a926c80971702fd77f8b7ddfefeceefb9d2030169156f85ae644b37c7ad28545",
+      "entry_hash": "c19e58d6ccbb52f8fd0ac916d87fba80eab3a4c227ee70b30d8d664192d4c75b",
       "event_type": "decision.recorded",
       "payload": {
         "action": "accept",
         "commitments": {
           "actor": "e6a456dcb8860b986e5548cfea8e2142024bf64d1ecf886f2ac353c1342f0330",
-          "api_key_label": "ac9867b07e0284e9a847d6fcfe9b3dc59d880934109be62916d0a5cb569e2a06",
+          "api_key_label": "482c9237be0d43f5a26a6b7feb0aaf0c678bc17381a0ec7b1d868a4cb145162f",
           "comment": "b216edf9665ab96cff4638c8e8e9c904a10d4d210eb8b042a42baaac323ad3ac",
-          "idempotency_key": "9ff233cea6e62d16647e2e850e3c68f5e7239b6aa0d8ce67c23ee690e4e87991"
+          "idempotency_key": "1c4cb607da31517add54e92c5c0a91607c101c30238e943a8e866cd81ac31950",
+          "run_id": "ec62bb7231babe48886025f27b14734cb8c68d97699e00e009c824cf7ca99e87",
+          "subject_id": "635aa8fddb5800ef387be32654df2f5bea61d5f2c7a3572e80ce716209486512"
         },
         "decision_id": 41,
         "decision_kind": "specialist_decision",
@@ -439,14 +523,50 @@
         "origin": "2025-03-17",
         "profile_code": "391",
         "region_code": "39",
-        "run_id": "run-1",
         "sim_day": 2,
-        "subject_id": "signal-7",
         "subject_kind": "alert"
       },
-      "prev_hash": "c3993d5f8f56e294f9c6901601ab18576b29a86227ee89b6e571bd2637d55830",
+      "prev_hash": "3beb0f1ba44e59b1b97f250fc80594e95acd53d9905333ad11e700831f27541f",
       "seq": 4,
       "subject": "specialist_decision:41"
+    },
+    {
+      "created_at": "2025-03-17T10:00:00.000000Z",
+      "entry_hash": "8f598f0cade32baa251c5145c67112c1e612460b6273aae2f7a30429fb4ea771",
+      "event_type": "publication.published",
+      "payload": {
+        "bundle_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "contract_version": "1.0.0",
+        "identity_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "publication_id": "referral-estimates-demo-v1",
+        "publication_kind": "referral_estimates",
+        "published_at": "2025-03-17T10:00:00.000000Z",
+        "schema_version": "referral_estimates_v1",
+        "snapshot_id": 1,
+        "source_code_commit": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "prev_hash": "c19e58d6ccbb52f8fd0ac916d87fba80eab3a4c227ee70b30d8d664192d4c75b",
+      "seq": 5,
+      "subject": "publication:referral_estimates:referral-estimates-demo-v1"
+    },
+    {
+      "created_at": "2025-03-17T10:00:00.000001Z",
+      "entry_hash": "23818ae120625811847bbc3678a1dbd9e20cf9ff07f2dc480b28a3a625cfe30e",
+      "event_type": "publication.published",
+      "payload": {
+        "bundle_sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+        "contract_version": "2.0.0",
+        "identity_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "publication_id": "verification-worklist-demo-v2",
+        "publication_kind": "verification_worklist",
+        "published_at": "2025-03-17T10:00:00.000001Z",
+        "schema_version": "verification_worklist_v2",
+        "snapshot_id": 1,
+        "source_code_commit": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "prev_hash": "8f598f0cade32baa251c5145c67112c1e612460b6273aae2f7a30429fb4ea771",
+      "seq": 6,
+      "subject": "publication:verification_worklist:verification-worklist-demo-v2"
     }
   ]
 }

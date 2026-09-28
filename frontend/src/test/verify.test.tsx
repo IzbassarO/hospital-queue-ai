@@ -258,9 +258,10 @@ describe("/verify", () => {
 
   it("opens a receipt's entry from the link and re-hashes it in the browser", async () => {
     mockLedger();
-    renderAt(`/verify?seq=${head.seq}`);
+    const decision = chain.find((e) => e.event_type === "decision.recorded")!;
+    renderAt(`/verify?seq=${decision.seq}`);
     const entry = await screen.findByTestId("ledger-entry");
-    expect(entry).toHaveTextContent(head.subject);
+    expect(entry).toHaveTextContent(decision.subject);
     await waitFor(() =>
       expect(within(entry).getByText(t.verify.lookup.recomputed)).toBeVisible(),
     );
@@ -369,5 +370,21 @@ describe("Kazakh and Russian copy", () => {
     // translated, not copied: at least nine in ten Kazakh strings differ from the Russian ones
     const same = ruStrings.filter((s, i) => s === kkStrings[i]).length;
     expect(same / ruStrings.length).toBeLessThan(0.1);
+  });
+});
+
+describe("publication kinds", () => {
+  it("names every first-class publication in both languages", () => {
+    for (const kind of [
+      "model_assurance",
+      "operational_intelligence",
+      "review_evidence",
+      "waiting_list",
+      "referral_estimates",
+      "verification_worklist",
+    ]) {
+      expect(ru.verify.kinds[kind], kind).toBeTruthy();
+      expect(kk.verify.kinds[kind], kind).toBeTruthy();
+    }
   });
 });

@@ -1156,9 +1156,9 @@ class AccessLog(Base):
 
 # ------------------------------------------------------------------ transparency ledger
 class TransparencyCommitmentSalt(Base):
-    """Private 32-byte salt per ledger subject whose public payload carries salted commitments (decision comment,
-    actor, API-key label, idempotency key). Never exposed by an endpoint or an export; append-only by trigger
-    (migration 0016). docs/transparency-ledger.md §4."""
+    """Private 32-byte salt per ledger subject whose public payload carries salted commitments (every client-supplied
+    field of a decision). Never exposed by an endpoint or an export; append-only by trigger
+    (migration 0018). docs/transparency-ledger.md §4."""
 
     __tablename__ = "transparency_commitment_salt"
     __table_args__ = (CheckConstraint("salt ~ '^[0-9a-f]{64}$'", name="ck_transparency_commitment_salt_hex"),)
@@ -1170,7 +1170,7 @@ class TransparencyCommitmentSalt(Base):
 
 class TransparencyLedger(Base):
     """Append-only hash chain of publication and decision events (protocol v1, app/domain/transparency). UPDATE,
-    DELETE and TRUNCATE are rejected by triggers (migration 0017); seq is assigned under a transaction-scoped
+    DELETE and TRUNCATE are rejected by triggers (migration 0019); seq is assigned under a transaction-scoped
     advisory lock by app/repositories/transparency.py. docs/transparency-ledger.md."""
 
     __tablename__ = "transparency_ledger"

@@ -35,8 +35,8 @@ Details and the threat model: [transparency-ledger.md](../transparency-ledger.md
 ## Dependency rules
 
 - `app/domain/transparency` imports only the standard library. Canonical JSON and payload builders are frozen per
-  protocol version: a change of meaning is a new event type or protocol version.
-- Writers of covered tables go through the services that append (`specialist_decisions`, `activity`, the four
+  protocol version: a change of meaning is a new event type or protocol version. Migrations never import it.
+- Writers of covered tables go through the services that append (`specialist_decisions`, `activity`, the six
   `publish` functions). Writing a covered table any other way is detected as `UNCOVERED_SOURCE_ROW`.
 - No endpoint and no export returns a salt or committed free text.
 - Tests that write covered rows against the shared database use a rolled-back transaction (`ledger_isolation`).
@@ -69,12 +69,16 @@ Details and the threat model: [transparency-ledger.md](../transparency-ledger.md
   isolation fixture.
 - Publishing and deciding take one more short serialized step (single-digit milliseconds).
 - A privileged database owner can still rewrite everything; only external heads reveal it.
-- Downgrading migration 0017 loses live-only history (activations, concurrent append order).
+- Live-only history (activations, concurrent append order) cannot be rebuilt, so migrations 0018/0019 refuse a
+  downgrade that would destroy it or the salts; abandoning a release means rolling forward or an explicit restore
+  of a pre-upgrade backup after archiving the ledger (transparency-ledger.md §10).
 
 ## Migration
 
-Migrations 0016 (salts) and 0017 (ledger, triggers, backfill). The API role gets `SELECT, INSERT` on both tables
-when `hqai.app_role` is set. Operators record the head after deployment (`make ledger-verify`).
+Migrations 0018 (salts) and 0019 (ledger, triggers, backfill), on top of 0017. The API role gets `SELECT, INSERT`
+on both tables when `hqai.app_role` is set. The migrations import nothing from `app/`: 0019 carries a frozen copy
+of protocol v1, held byte-for-byte to the application's builders by `test_transparency_migration.py`, so a clean
+database migrated later gets exactly today's bytes. Operators record the head after deployment (`make ledger-verify`).
 
 ## Verification
 

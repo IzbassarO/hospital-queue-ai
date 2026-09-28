@@ -7864,6 +7864,10 @@ export type TransparencyExportErrors = {
    * the key's role is not allowed to do this
    */
   403: Message;
+  /**
+   * another full-ledger verification or export is running
+   */
+  503: Message;
 };
 
 export type TransparencyExportError =
@@ -7980,6 +7984,10 @@ export type TransparencyVerifyErrors = {
    * the key's role is not allowed to do this
    */
   403: Message;
+  /**
+   * another full-ledger verification or export is running
+   */
+  503: Message;
 };
 
 export type TransparencyVerifyError =

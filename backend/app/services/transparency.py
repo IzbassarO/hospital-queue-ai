@@ -2,7 +2,7 @@
 
 Every write function here runs inside the caller's transaction and never commits: a decision or a publication and
 its ledger entry are committed together or not at all (docs/transparency-ledger.md §5). Event content comes from
-app/domain/transparency, the same builders the backfill migration and the verifier use.
+app/domain/transparency, the same builders the server verifier uses (migration 0019 carries a frozen copy).
 """
 
 from __future__ import annotations
@@ -35,8 +35,25 @@ MAX_ISSUES = 20
 LOOKUP_LIMIT = 50
 
 
+class LedgerBusyError(RuntimeError):
+    """Another full-ledger read (verification or export) is running; mapped to HTTP 503 with Retry-After."""
+
+
+# How long a full-ledger read waits for the one running before it answers 503 (a page loads verification and the
+# export together, so they must queue, not fail).
+FULL_READ_WAIT_MS = 15_000
+
+
+def _single_full_read(session: Session) -> None:
+    """Full-ledger reads cost memory and time proportional to the ledger: one at a time across every API worker,
+    decided by PostgreSQL, so repeated requests queue instead of multiplying that cost (docs/transparency-ledger.md
+    §11)."""
+    if not repository.lock_full_read(session, FULL_READ_WAIT_MS):
+        raise LedgerBusyError("another transparency verification or export is running; retry in a few seconds")
+
+
 class LedgerNotInitializedError(RuntimeError):
-    """The ledger has no genesis: migrations 0016/0017 have not run."""
+    """The ledger has no genesis: migrations 0018/0019 have not run."""
 
 
 # ------------------------------------------------------------------------------------------------ mapping
@@ -222,6 +239,13 @@ def lookup(session: Session, *, entry_hash: str | None, subject: str | None) -> 
     return [_response(r) for r in rows]
 
 
+def export(session: Session) -> list[str]:
+    """The whole public export, read under the single full-read lock (the caller streams it after the session
+    closes)."""
+    _single_full_read(session)
+    return list(export_lines(session))
+
+
 def export_lines(session: Session) -> Iterator[str]:
     """The public export: one canonical JSON entry per line, in seq order. No salts, no free text."""
     for row in repository.iterate(session):
@@ -233,7 +257,8 @@ CHECKS = [
     "canonical JSON of every entry (hqai-canonical-json-v1)",
     "protocol v1 genesis, contiguous seq, prev_hash links, recomputed SHA-256 entry hashes",
     "every decision row and publication snapshot has its entry, and each entry still matches its row",
-    "salted commitments of comment, actor, API-key label and idempotency key match the current row",
+    "salted commitments of every client-supplied field (comment, actor, API-key label, idempotency key, subject, run "
+    "and recommendation ids) match the current row",
     "the latest recorded activation state matches the active publications",
 ]
 
@@ -379,6 +404,7 @@ class _SourceCheck:
 
 def verify(session: Session) -> LedgerVerification:
     """Server verification (docs/transparency-ledger.md §7): the public chain, then every covered source row."""
+    _single_full_read(session)
     started = time.perf_counter()
     verifier = chain.ChainVerifier()
     sources = _SourceCheck(session)

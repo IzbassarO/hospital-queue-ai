@@ -205,3 +205,18 @@ async def test_verification_worklist_rows_are_origin_time_and_leave_the_queue_wh
         assert not [key for key in item if any(token in key for token in HINDSIGHT_TOKENS)]
     # reading the worklist did not touch the measured queue
     assert (await busiest_hospital(client))["waiting_count"] == hospital["waiting_count"]
+
+
+async def test_every_seed_publication_is_in_the_transparency_ledger(client, manifest):
+    """Loading the seed publishes all six bundles through the ordinary publish path, so each one is chained
+    (published, then activated) with the manifest's identity, and the whole ledger verifies against the rows."""
+    for entry in manifest["bundles"]:
+        subject = f"publication:{entry['kind']}:{entry['publication_id']}"
+        found = await get_json(client, "/transparency/lookup", subject=subject)
+        published = [e for e in found if e["event_type"] == "publication.published"]
+        assert len(published) == 1, subject
+        assert published[0]["payload"]["identity_sha256"] == entry["identity_sha256"]
+        assert "publication.activated" in {e["event_type"] for e in found}, subject
+    report = await get_json(client, "/transparency/verify")
+    assert report["status"] == "OK", report["issues"]
+    assert report["covered_publications"] >= len(manifest["bundles"])

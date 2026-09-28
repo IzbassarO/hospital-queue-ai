@@ -1,21 +1,26 @@
 """private commitment salts for the transparency ledger
 
-Revision ID: 0016
-Revises: 0015
+Revision ID: 0018
+Revises: 0017
 Create Date: 2026-09-28 15:00:00
 
 Stage one of the transparency ledger (docs/transparency-ledger.md §4, §5). The public ledger never copies free text
-a person typed or that names a person; it carries a salted SHA-256 commitment instead, and the salt lives here,
+or client-supplied identifiers; it carries a salted SHA-256 commitment instead, and the salt lives here,
 separately, never exposed by an endpoint or an export.
 
 Every decision that already exists gets its salt now, once, from the operating system's CSPRNG (`secrets`). The
-ledger itself is built by the next migration (0017) from these stored salts, which is what makes that backfill
-deterministic: downgrading only 0017 keeps this table, and upgrading again reproduces the same ledger bytes. Salts
+ledger itself is built by the next migration (0019) from these stored salts, which is what makes that backfill
+deterministic: downgrading only 0019 keeps this table, and upgrading again reproduces the same ledger bytes. Salts
 are deliberately not derived from ids or timestamps: a predictable salt would let anyone test guesses of a comment
 against its public commitment.
 
 The table is append-only: a trigger rejects UPDATE and DELETE per row and TRUNCATE per statement (a row trigger
-does not fire on TRUNCATE). The same trigger function guards the ledger in 0017.
+does not fire on TRUNCATE). The same trigger function guards the ledger in 0019.
+
+Downgrade is audit-preserving (docs/transparency-ledger.md §10): the salts are random, so once dropped every
+commitment made with them can never be checked again. Downgrade therefore refuses while the table holds a salt,
+unless the operator passes the explicit `alembic -x transparency_audit=discard downgrade ...` after taking and
+verifying a backup. No deployment tool passes that argument. The migration imports nothing from app/.
 """
 
 import secrets
@@ -23,10 +28,10 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 
-from alembic import op
+from alembic import context, op
 
-revision: str = "0016"
-down_revision: str | None = "0015"
+revision: str = "0018"
+down_revision: str | None = "0017"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -92,6 +97,26 @@ def upgrade() -> None:
     grant_to_app_role(TABLE)
 
 
+AUDIT_REFUSAL = """refusing to downgrade {revision}: {what}.
+The transparency ledger and its commitment salts are audit evidence, and a downgrade would destroy it
+(docs/transparency-ledger.md §10). Nothing was changed. Instead:
+  1. keep this schema: roll forward with a fix, or roll back application code that knows this revision;
+  2. to return to an older schema anyway, first archive the evidence: GET /api/v1/transparency/export and the head
+     (GET /api/v1/transparency/head) to a file outside the server, plus a fresh backup (make backup);
+  3. then either restore a verified backup taken before the upgrade (make restore FILE=...), knowing that every
+     ledger entry and salt written since then survives only in the archive, or rerun the downgrade with the
+     explicit `alembic -x transparency_audit=discard downgrade <revision>`."""
+
+
+def discard_confirmed() -> bool:
+    """The operator's explicit consent to destroy audit evidence: an Alembic -x argument, never an environment
+    default, so no deploy script or DEPLOY_ALLOW_* switch can pass it on the operator's behalf."""
+    return context.get_x_argument(as_dictionary=True).get("transparency_audit") == "discard"
+
+
 def downgrade() -> None:
+    salts = op.get_bind().execute(sa.text(f"SELECT count(*) FROM {TABLE}")).scalar_one()
+    if salts and not discard_confirmed():
+        raise RuntimeError(AUDIT_REFUSAL.format(revision=revision, what=f"{TABLE} holds {salts} private salt(s)"))
     op.drop_table(TABLE)
     op.execute("DROP FUNCTION transparency_reject_mutation()")

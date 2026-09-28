@@ -44,6 +44,7 @@ from app.schemas.verification_worklist import (
     WorklistItemResponse,
     YieldCurve,
 )
+from app.services import transparency
 from app.services.common import ConflictError, NotFoundError, ValidationError
 
 
@@ -145,7 +146,7 @@ def publish(session: Session, parsed: ParsedVerificationWorklistBundle) -> Publi
     """Atomically publish one validated worklist and switch the current snapshot."""
     bundle = parsed.bundle
     with session.begin():
-        repository.current_snapshot(session, for_update=True)
+        previous = repository.current_snapshot(session, for_update=True)
         by_id = repository.snapshot_by_publication_id(session, bundle.publication_id)
         by_identity = repository.snapshot_by_identity(session, bundle.publication_identity_sha256)
         if by_id is not None:
@@ -157,6 +158,7 @@ def publish(session: Session, parsed: ParsedVerificationWorklistBundle) -> Publi
                 raise ConflictError("publication identity is already attached to a different publication_id")
             session.execute(update(VerificationWorklistSnapshot).values(is_active=False))
             by_id.is_active = True
+            transparency.record_activation(session, "verification_worklist", previous, by_id)
             return PublicationResult(
                 snapshot_id=by_id.id,
                 publication_id=by_id.publication_id,
@@ -192,6 +194,9 @@ def publish(session: Session, parsed: ParsedVerificationWorklistBundle) -> Publi
         session.flush()
         session.add_all(_area_row(snapshot.id, row) for row in bundle.areas)
         session.add_all(_item_row(snapshot.id, row) for row in bundle.items)
+        session.flush()
+        # last, so the ledger lock is held only until this commit (docs/transparency-ledger.md §6)
+        transparency.record_publication(session, "verification_worklist", previous, snapshot)
         snapshot_id = snapshot.id
     return PublicationResult(
         snapshot_id=snapshot_id,
