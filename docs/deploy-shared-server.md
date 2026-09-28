@@ -11,12 +11,21 @@ in [`tools/deploy.sh`](../tools/deploy.sh):
 | Command | What it does | Changes anything |
 |---|---|---|
 | `make deploy-check` (`tools/deploy.sh check`) | prerequisites, `.env` settings, free ports, file permissions | no |
-| `tools/deploy.sh update` | check → `git pull --ff-only` → `chmod -R o+rX db seed` → `make up` → health | yes |
+| `tools/deploy.sh update` | check → fast-forward → backup if migrations come → `chmod -R o+rX db seed` → `make up` → health | yes |
 | `tools/deploy.sh health` | health checks of the running stack | no |
 | `tools/deploy.sh rollback [COMMIT]` | back to the commit before the last update (§10) | yes |
 
 The script stops at the first failing step and prints what to do next. It reads single values from `.env` (ports,
-`UI_BIND`, whether a secret is set) without sourcing the file and never prints the file or any secret.
+`UI_BIND`, whether a secret is set) without sourcing the file and never prints the file or any secret. It never uses
+`sudo`, never removes a volume, never resets, merges or force-pushes in git, and talks only to your own Docker
+daemon. CI runs `tools/deploy_test.sh` on every push (job `deploy-tooling`, §11).
+
+Two overrides exist for a deliberate operator decision and are never needed routinely:
+
+| Variable | Effect |
+|---|---|
+| `DEPLOY_ALLOW_NO_BACKUP=1` | apply incoming migrations although PostgreSQL is not up, so no backup can be taken first |
+| `DEPLOY_ALLOW_LOW_MEMORY=1` | build and start with less than 1 GB of memory available |
 
 This deployment uses the base `docker-compose.yml` (the same one as `make up`), not the production overlay: the
 overlay drops the host ports of PostgreSQL and the API, and the SSH-tunnel load in §6 needs the PostgreSQL port on
@@ -66,7 +75,10 @@ POSTGRES_PORT=<free port>      # always bound to 127.0.0.1; also the end of the 
 ```
 
 `make deploy-check` fails when `UI_BIND` is not `127.0.0.1`, a port is missing, below 1024, used twice, or already
-taken by another process; a port held by this stack's own containers (`hqai-*`) counts as fine.
+taken by another process (a port held by this stack's own containers, `hqai-*`, counts as fine). It also fails when
+`.env` is readable by anyone but you (mode other than `600`), when it runs as root, when the Docker daemon is not a
+rootless one — the system daemon is shared, and this stack's fixed container names would replace another team's
+`hqai-*` containers — and when less than 1 GB of memory is available (a warning below 2 GB).
 
 Loopback is not private on a shared host: any local user can open `127.0.0.1:<FRONTEND_PORT>`, and the UI's nginx
 adds `DEMO_API_KEY` to every request (security.md §3). On a server shared with people who must not see the data,
@@ -122,16 +134,19 @@ What it does, in order, stopping at the first failure:
 
 1. `check` — the same checks as `make deploy-check`; any FAIL stops the update.
 2. Refuses to go on with local changes to tracked files, a detached HEAD (after a rollback, §10) or a diverged branch.
-3. `git fetch`; if there is something new it prints the incoming commits and records the current commit and the
-   database's Alembic revision in `.git/hqai-deploy-state` (inside `.git`, never committed) for the rollback.
-4. If the incoming commits change `backend/alembic/versions/`, runs `make backup` first
-   (`backups/hqai_<timestamp>.dump`).
-5. `git pull --ff-only`.
-6. `chmod -R o+rX db seed` (§3).
-7. `make up` — `docker compose up -d --build --wait`. The backend applies Alembic migrations on start
+3. `git fetch`. If PostgreSQL is running but not accepting connections (crash recovery, §9) it stops here, before
+   anything changes.
+4. If there is something new it prints the incoming commits and records the current commit and the database's
+   Alembic revision in `.git/hqai-deploy-state` (inside `.git`, never committed) for the rollback.
+5. If the incoming commits change `backend/alembic/versions/`, it takes a full `pg_dump` first
+   (`backups/hqai_<timestamp>.dump`, mode 600 in a 700 directory: the dump holds every table, including API-key
+   hashes). If PostgreSQL is not up, no backup is possible and it stops, unless `DEPLOY_ALLOW_NO_BACKUP=1`.
+6. `git merge --ff-only <the commit inspected in 4>` — exactly the commits it showed you, never a merge commit.
+7. `chmod -R o+rX db seed` (§3).
+8. `make up` — `docker compose up -d --build --wait`. The backend applies Alembic migrations on start
    (`alembic upgrade head` in its command), so there is no separate migration step. The `pgdata` volume is kept:
-   `make up` never removes volumes.
-8. Health checks (§7).
+   `make up` never removes volumes. If it fails, the message points at `tools/deploy.sh rollback`.
+9. Health checks of the running application (§7); a failure makes `update` exit non-zero.
 
 Running it again when nothing changed is safe: no pull, the same chmod, and `make up` finds the images cached and
 the containers up to date. By hand, the same procedure is:
@@ -187,7 +202,7 @@ publication active. Then, on the server, `tools/deploy.sh health` and `make smok
 
 ```bash
 tools/deploy.sh health       # what update runs at the end
-make smoke                   # additionally: the three publications and the active publication identity
+make smoke                   # additionally: every published bundle and the active publication identity
 docker compose ps            # container state and healthcheck status
 ```
 
@@ -195,8 +210,10 @@ docker compose ps            # container state and healthcheck status
 |---|---|---|
 | PostgreSQL | `pg_isready` in the container | accepts connections (not starting up or in recovery) |
 | API liveness | `http://127.0.0.1:<API_PORT>/health` | the process runs; does not touch the database |
-| API readiness | `http://127.0.0.1:<API_PORT>/api/v1/health` | database reachable, serving marts fresh |
-| UI | `http://127.0.0.1:<FRONTEND_PORT>/healthz` | nginx serves; this is also what the reverse proxy reaches |
+| API readiness | body of `http://127.0.0.1:<API_PORT>/api/v1/health` | `"database":"ok"` is required; `"status":"degraded"` (no serving marts yet, e.g. before the first seed) is a warning — the endpoint answers HTTP 200 in both cases, so the body is read |
+| Schema | `alembic current` in the backend container | the database is at the running code's migration head |
+| UI | `http://127.0.0.1:<FRONTEND_PORT>/healthz` | nginx serves |
+| UI → API | body of `http://127.0.0.1:<FRONTEND_PORT>/api/v1/health` | the path the reverse proxy uses: nginx reaches the backend and the backend its database |
 
 A green `health` with a 502 from the public address means the reverse proxy points at the wrong port or host:
 it must forward to `127.0.0.1:<FRONTEND_PORT>` of this server.
@@ -259,8 +276,10 @@ tools/deploy.sh rollback <commit>    # or an explicit one
 ```
 
 1. Refuses with local changes to tracked files.
-2. If `backend/alembic/versions/` differs between the current and the target commit, it downgrades the database
-   first, **with the currently running backend** — only the newer code knows how to undo its own migrations:
+2. If `backend/alembic/versions/` differs between the current and the target commit, it takes a backup (as in §5)
+   and then downgrades the database, **with the currently running backend** — only the newer code knows how to undo
+   its own migrations. A downgrade can drop what the newer version stored (its tables and their rows), which is
+   why the backup comes first:
    `docker compose exec -T backend alembic downgrade <revision recorded before the update>`. When no revision was
    recorded (an explicit commit, or the stack was down during the update) it stops and asks you to restore the
    backup that `update` took (`make restore FILE=backups/hqai_<timestamp>.dump`) or to downgrade by hand.
@@ -284,11 +303,16 @@ bundle (§6) makes it active again (operations.md §8).
 
 ## 11. What is and is not verified
 
-- `tools/deploy.sh` passes `shellcheck`. `bash tools/deploy_test.sh` runs shellcheck and then the script against a
-  throwaway checkout with a local bare "origin" and stubbed `docker`/`make`/`curl`/`loginctl`/`systemctl`:
-  `check` catches the umask problem, `UI_BIND`, missing, low, duplicate and taken ports and changes nothing on disk;
-  `update` pulls, backs up before a new migration, makes pulled files world-readable under `umask 0007` and is a
-  no-op the second time; `rollback` downgrades to the recorded revision before the checkout; `update` refuses on
-  the detached HEAD a rollback leaves; and no command prints a value from `.env`.
+- CI job `deploy-tooling` runs `bash tools/deploy_test.sh` on every push and pull request: `shellcheck` of the
+  script and the test, a scan of the script's code for destructive or privileged commands (`sudo`, `down -v`,
+  `volume rm`/`prune`, `reset --hard`, forced pushes, `rm -rf`, `set -x`, sourcing `.env`), and the script itself
+  against a throwaway checkout with a local bare "origin" and stubbed `docker`/`make`/`curl`/`loginctl`/`systemctl`/
+  `id`/`free`. `check`: the umask problem, `UI_BIND`, missing, low, duplicate and taken ports, a group-readable
+  `.env`, root, a rootful daemon, low memory, and that it changes nothing on disk. `update`: refuses during
+  PostgreSQL recovery and when incoming migrations cannot be backed up; backs up (mode 600) before the new code
+  starts; fast-forwards; makes pulled files world-readable under `umask 0007`; is a no-op the second time; warns on
+  a degraded API but fails when the backend cannot reach its database, when the schema is behind the code, or when
+  `make up` fails; refuses a diverged branch and a detached HEAD. `rollback`: backup, then downgrade, then checkout.
+  No command prints a value from `.env`. No daemon, no credentials, nothing deployed.
 - `update`, `rollback` and `health` against a real rootless daemon on the target server have not been rehearsed from
   this repository; run `make deploy-check` and a first `tools/deploy.sh update` there and note anything that differs.

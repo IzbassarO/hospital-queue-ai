@@ -8,7 +8,12 @@
 #
 # Every step is idempotent: running `update` twice leaves the same state as running it once. The script stops at the
 # first failed step and says what to do. It reads single settings from .env (ports, UI_BIND, whether a secret is set)
-# and never prints the file or a secret value.
+# and never prints the file or a secret value. It never uses sudo, never removes a volume, never resets or
+# force-updates git, and talks only to the caller's own (rootless) Docker daemon.
+#
+# Two overrides, for a deliberate operator decision only:
+#   DEPLOY_ALLOW_NO_BACKUP=1    apply incoming migrations although no backup could be taken first
+#   DEPLOY_ALLOW_LOW_MEMORY=1   build and start with less than 1 GB of memory available
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -115,7 +120,7 @@ check_docker() {
   step "rootless docker"
   have docker || return 0
   if [ "$(id -u)" = "0" ]; then
-    warn "running as root: this procedure is written for an ordinary user with rootless Docker"
+    fail "running as root: on a shared server deploy as your own user with rootless Docker, never as root"
   fi
   local info
   if ! info=$(docker info --format '{{json .SecurityOptions}}' 2> /dev/null); then
@@ -126,7 +131,9 @@ check_docker() {
   if printf '%s' "$info" | grep -q rootless; then
     ok "daemon is rootless (DOCKER_HOST=${DOCKER_HOST:-docker context})"
   else
-    warn "daemon is not rootless: on a shared server use your own rootless daemon, not the system one"
+    # the system daemon is shared: fixed container names (hqai-*) could replace another team's containers
+    fail "daemon is not rootless: on a shared server use your own rootless daemon, not the system one"
+    hint "export DOCKER_HOST=unix://\$XDG_RUNTIME_DIR/docker.sock (docs/deploy-shared-server.md §1)"
   fi
   if have systemctl; then
     if [ "$(systemctl --user is-enabled docker 2> /dev/null || true)" = "enabled" ]; then
@@ -165,7 +172,7 @@ check_env() {
   local mode
   mode=$(stat -c '%a' "$ENV_FILE")
   if [ $((8#$mode & 8#077)) -ne 0 ]; then
-    warn ".env mode $mode: readable beyond your user on a shared server"
+    fail ".env mode $mode: its secrets are readable beyond your user on a shared server"
     hint "chmod 600 .env"
   else
     ok ".env mode $mode"
@@ -266,7 +273,11 @@ check_files() {
   if have free; then
     local avail
     avail=$(free -m | awk '/^Mem:/ {print $7}')
-    if [ -n "$avail" ] && [ "$avail" -lt 2048 ]; then
+    if [ -n "$avail" ] && [ "$avail" -lt 1024 ] && [ "${DEPLOY_ALLOW_LOW_MEMORY:-}" != 1 ]; then
+      # building images next to a running database invites the OOM killer, and PostgreSQL into recovery (§9)
+      fail "only ${avail} MB of memory available: building and starting the stack may OOM-kill PostgreSQL"
+      hint "free memory first, or DEPLOY_ALLOW_LOW_MEMORY=1 to proceed deliberately; load data via §6"
+    elif [ -n "$avail" ] && [ "$avail" -lt 2048 ]; then
       warn "only ${avail} MB of memory available: load publications from a workstation (§6)"
     else
       ok "${avail:-?} MB of memory available"
@@ -293,14 +304,17 @@ run_check() {
 # health
 # ---------------------------------------------------------------------------------------------------------------------
 
+# The body of GET /api/v1/health, or empty. It is open (no API key) and says whether the database answers and
+# whether serving marts exist; HTTP 200 alone does not, so the body is read.
+health_body() { curl -fsS -m 10 "$1/api/v1/health" 2> /dev/null || true; }
+
 run_health() {
   step "health"
   FAILS=0
-  local api ui status
+  local api ui body proxied revision
   api="http://127.0.0.1:$(env_get API_PORT)"
   ui="http://127.0.0.1:$(env_get FRONTEND_PORT)"
-  # shellcheck disable=SC2016 # expanded inside the container, where POSTGRES_USER/POSTGRES_DB are set
-  if compose exec -T postgres sh -c 'pg_isready -q -U "$POSTGRES_USER" -d "$POSTGRES_DB"' 2> /dev/null; then
+  if postgres_ready; then
     ok "postgres accepts connections"
   else
     fail "postgres does not accept connections (in recovery? see docs/deploy-shared-server.md §9)"
@@ -312,16 +326,36 @@ run_health() {
     fail "API liveness $api/health"
     hint "docker compose logs --tail=100 backend"
   fi
-  status=$(curl -sS -m 10 -o /dev/null -w '%{http_code}' "$api/api/v1/health" || true)
-  if [ "$status" = "200" ]; then
-    ok "API readiness $api/api/v1/health (database and marts)"
+  body=$(health_body "$api")
+  if printf '%s' "$body" | grep -q '"database":"ok"'; then
+    ok "API readiness: the backend reaches its database"
+    if printf '%s' "$body" | grep -q '"status":"ok"'; then
+      ok "serving marts are built"
+    else
+      warn "API is degraded: no serving marts or publications yet (load the seed, §4)"
+    fi
   else
-    fail "API readiness $api/api/v1/health: HTTP ${status:-none}"
+    fail "API readiness $api/api/v1/health: database not reachable from the backend"
+  fi
+  revision=$(compose exec -T backend alembic current 2> /dev/null || true)
+  if printf '%s' "$revision" | grep -q '(head)'; then
+    ok "database schema at the code's migration head ($(printf '%s' "$revision" | awk 'NR==1 {print $1}'))"
+  else
+    fail "database schema is not at the code's migration head"
+    hint "docker compose logs --tail=100 backend   (migrations run when the backend starts)"
   fi
   if curl -fsS -m 5 -o /dev/null "$ui/healthz"; then
     ok "UI $ui/healthz"
   else
     fail "UI $ui/healthz"
+    hint "docker compose logs --tail=50 frontend"
+  fi
+  # the path the reverse proxy uses: nginx in the UI container -> backend
+  proxied=$(health_body "$ui")
+  if printf '%s' "$proxied" | grep -q '"database":"ok"'; then
+    ok "UI proxies /api to the backend"
+  else
+    fail "UI does not reach the backend through /api (nginx -> backend)"
     hint "docker compose logs --tail=50 frontend"
   fi
   [ "$FAILS" -eq 0 ]
@@ -330,6 +364,43 @@ run_health() {
 # ---------------------------------------------------------------------------------------------------------------------
 # update / rollback
 # ---------------------------------------------------------------------------------------------------------------------
+
+# PostgreSQL of this stack accepts connections (false while stopped, starting or in crash recovery).
+postgres_ready() {
+  # shellcheck disable=SC2016 # expanded inside the container, where POSTGRES_USER/POSTGRES_DB are set
+  compose exec -T postgres sh -c 'pg_isready -q -U "$POSTGRES_USER" -d "$POSTGRES_DB"' > /dev/null 2>&1
+}
+
+# The postgres container of this stack exists and runs (it may still be unready).
+postgres_running() {
+  [ -n "$(compose ps --status running -q postgres 2> /dev/null || true)" ]
+}
+
+count_dumps() { (find "$ROOT/backups" -maxdepth 1 -name 'hqai_*.dump' 2> /dev/null || true) | wc -l; }
+
+# pg_dump of the whole database into backups/, readable by this user only (the dump holds every table, including
+# API-key hashes and the ledger's private salts). Fails unless a non-empty dump was written.
+backup_database() {
+  local reason=$1 before after newest
+  step "backup ($reason)"
+  if ! postgres_ready; then
+    if [ "${DEPLOY_ALLOW_NO_BACKUP:-}" = 1 ]; then
+      warn "PostgreSQL is not ready, so no backup was taken (DEPLOY_ALLOW_NO_BACKUP=1)"
+      return 0
+    fi
+    die "PostgreSQL is not accepting connections, so no backup can be taken before $reason;
+  start it (make up) or restore it first (§9); DEPLOY_ALLOW_NO_BACKUP=1 proceeds without a backup"
+  fi
+  before=$(count_dumps)
+  (umask 077 && cd "$ROOT" && make --no-print-directory backup) || die "make backup failed; nothing was changed"
+  after=$(count_dumps)
+  newest=$( (find "$ROOT/backups" -maxdepth 1 -name 'hqai_*.dump' -newer "$STATE_FILE" 2> /dev/null || true) \
+    | sort | tail -n1)
+  [ "$after" -gt "$before" ] && [ -n "$newest" ] && [ -s "$newest" ] || die "no new, non-empty backup in backups/"
+  chmod 700 "$ROOT/backups"
+  chmod 600 "$newest"
+  ok "backup $(basename "$newest") ($(du -h "$newest" | cut -f1)), mode 600"
+}
 
 # Alembic revision the database is at, via the running backend container; empty when it is not running.
 db_revision() {
@@ -353,7 +424,9 @@ fix_permissions() {
 
 start_stack() {
   step "build and start (make up; the backend applies migrations on start)"
-  (cd "$ROOT" && make --no-print-directory up) || die "make up failed: docker compose ps; docker compose logs --tail=100 backend"
+  (cd "$ROOT" && make --no-print-directory up) \
+    || die "make up failed: docker compose ps; docker compose logs --tail=100 backend;
+  to return to the previous version: tools/deploy.sh rollback (§10)"
   ok "containers are up and healthy"
 }
 
@@ -373,26 +446,28 @@ run_update() {
   local head upstream
   head=$(git rev-parse HEAD)
   upstream=$(git rev-parse '@{u}')
+  if postgres_running && ! postgres_ready; then
+    die "PostgreSQL is running but not accepting connections (crash recovery?): nothing was changed;
+  wait for 'ready to accept connections' in docker compose logs postgres (§9)"
+  fi
   if [ "$head" = "$upstream" ]; then
     ok "already at $(git rev-parse --short HEAD); no pull needed"
   else
-    git merge-base --is-ancestor HEAD '@{u}' || die "local branch has diverged from $(git rev-parse --abbrev-ref '@{u}'); resolve by hand"
-    git log --oneline "HEAD..@{u}" | sed 's/^/        /'
+    git merge-base --is-ancestor HEAD "$upstream" \
+      || die "local branch has diverged from $(git rev-parse --abbrev-ref '@{u}'); resolve by hand"
+    git log --oneline "HEAD..$upstream" | sed 's/^/        /'
     save_state
-    if ! git diff --quiet HEAD '@{u}' -- backend/alembic/versions; then
-      if [ -n "$(state_get revision)" ]; then
-        step "backup (the update brings new migrations)"
-        (cd "$ROOT" && make --no-print-directory backup) || die "make backup failed; not updating"
-      else
-        warn "the update brings new migrations but the stack is not running, so no backup was taken"
-      fi
+    if ! git diff --quiet HEAD "$upstream" -- backend/alembic/versions; then
+      backup_database "the update brings new migrations"
     fi
-    git pull --ff-only --quiet || die "git pull --ff-only failed"
+    # exactly the commits inspected above, fast-forward only: never a merge, a reset or a rewrite
+    git merge --ff-only --quiet "$upstream" || die "fast-forward to $(git rev-parse --short "$upstream") failed"
     ok "updated $(git rev-parse --short "$head") -> $(git rev-parse --short HEAD)"
   fi
   fix_permissions
   start_stack
-  run_health || die "the stack is up but a health check failed (see above)"
+  run_health || die "the stack is up but a health check failed (see above); tools/deploy.sh rollback returns to $(
+    git rev-parse --short "$head")"
   printf '\n%supdate complete%s at %s\n' "$C_OK" "$C_OFF" "$(git rev-parse --short HEAD)"
 }
 
@@ -419,6 +494,7 @@ run_rollback() {
     [ -n "$current" ] || die "the backend is not running, so the database cannot be downgraded with the new code;
   start it (make up) and run the rollback again"
     if [ "$current" != "$want" ]; then
+      backup_database "the database downgrade"
       step "downgrade database $current -> $want (with the code that knows both revisions)"
       compose exec -T backend alembic downgrade "$want" || die "alembic downgrade failed; restore the backup (docs §9-10)"
       ok "database at revision $want"
