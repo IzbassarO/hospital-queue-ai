@@ -396,7 +396,9 @@ backup_database() {
   after=$(count_dumps)
   newest=$( (find "$ROOT/backups" -maxdepth 1 -name 'hqai_*.dump' -newer "$STATE_FILE" 2> /dev/null || true) \
     | sort | tail -n1)
-  [ "$after" -gt "$before" ] && [ -n "$newest" ] && [ -s "$newest" ] || die "no new, non-empty backup in backups/"
+  if [ "$after" -le "$before" ] || [ -z "$newest" ] || [ ! -s "$newest" ]; then
+    die "no new, non-empty backup in backups/"
+  fi
   chmod 700 "$ROOT/backups"
   chmod 600 "$newest"
   ok "backup $(basename "$newest") ($(du -h "$newest" | cut -f1)), mode 600"
