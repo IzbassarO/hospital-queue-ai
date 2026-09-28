@@ -4,12 +4,14 @@ import { demoKk } from "./demo.kk";
 import { hospitalKk } from "./hospital.kk";
 import type { Messages } from "./ru";
 import { towerKk } from "./tower.kk";
+import { verifyKk } from "./verify.kk";
 
 export const kk: Messages = {
   tower: towerKk,
   demo: demoKk,
   control: controlKk,
   hospital: hospitalKk,
+  verify: verifyKk,
   app: {
     title: "Жоспарлы госпитализацияға кезек",
     subtitle: "Стационарлар жүктемесінің мониторингі",

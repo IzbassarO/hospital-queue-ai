@@ -1,6 +1,7 @@
 import "./index.css";
 import "./demo/demo.css";
 import "./tower/tower.css";
+import "./verify/verify.css";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";

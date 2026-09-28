@@ -1,0 +1,478 @@
+/*
+ * "Проверяемый ИИ" — verification page and decision receipt. Same tokens as the control centre (demo.css): paper
+ * cards on the ivory canvas, one emerald for "confirmed", the published red only for a broken chain. Hashes are
+ * monospace at reading size, shortened on screen and always copyable in full. Narrow screens stack everything.
+ */
+.verify-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  min-width: 0;
+}
+.verify-kicker {
+  font-size: 0.74rem !important;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-accent-ink) !important;
+  margin-bottom: 0.35rem;
+}
+.verify-lead-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  max-width: 24rem;
+}
+.verify-hint {
+  font-size: 0.8rem;
+  color: var(--c-muted);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.verify-error {
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-sm);
+  background: var(--c-red-soft);
+  color: #7a2419;
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------ the two verifications */
+.verify-cards {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+@media (min-width: 900px) {
+  .verify-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.verify-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  min-width: 0;
+  padding: 1.15rem 1.2rem 1.1rem;
+  border-radius: var(--radius);
+  background: var(--c-paper);
+  border: 1px solid var(--c-line);
+  border-top: 4px solid var(--c-line-2);
+  box-shadow: var(--shadow-1);
+}
+.verify-card.is-ok {
+  border-top-color: var(--c-accent);
+}
+.verify-card.is-broken {
+  border-top-color: var(--c-red);
+}
+.verify-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+.verify-card-head h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.verify-card-lead {
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--c-ink-2);
+}
+.verify-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+.verify-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: var(--c-bg-2);
+  color: var(--c-ink-2);
+}
+.verify-badge-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--c-dim);
+  flex: none;
+}
+.verify-badge.is-ok {
+  background: var(--c-accent-soft);
+  color: var(--c-accent-ink);
+}
+.verify-badge.is-ok .verify-badge-dot {
+  background: var(--c-accent);
+}
+.verify-badge.is-broken {
+  background: var(--c-red-soft);
+  color: #7a2419;
+}
+.verify-badge.is-broken .verify-badge-dot {
+  background: var(--c-red);
+}
+.verify-badge.is-running .verify-badge-dot {
+  background: var(--c-amber);
+}
+
+.verify-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.55rem 1.2rem;
+  margin: 0;
+}
+@media (min-width: 560px) {
+  .verify-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.verify-fact {
+  min-width: 0;
+}
+.verify-fact dt {
+  font-size: 0.74rem;
+  color: var(--c-muted);
+  margin-bottom: 0.15rem;
+}
+.verify-fact dd {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.verify-failure {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--radius-sm);
+  background: var(--c-red-soft);
+  border: 1px solid rgba(214, 75, 58, 0.25);
+}
+.verify-note {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--c-ink-2);
+}
+.verify-note.is-ok {
+  color: var(--c-accent-ink);
+}
+.verify-note.is-warn {
+  color: #7a2419;
+}
+.verify-code {
+  font-family:
+    ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, monospace;
+  font-size: 0.82rem;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------ hashes */
+.hash-value {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  max-width: 100%;
+}
+.hash-code {
+  font-family:
+    ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, monospace;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.12rem 0.4rem;
+  border-radius: 6px;
+  background: var(--c-bg);
+  border: 1px solid var(--c-line);
+}
+.hash-value.is-large .hash-code {
+  font-size: 1rem;
+}
+.hash-copy {
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--c-line-2);
+  background: var(--c-paper);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--c-ink-2);
+  cursor: pointer;
+}
+.hash-copy:hover {
+  border-color: var(--c-ink);
+}
+
+/* ------------------------------------------------------------------ recent entries and lookup */
+.verify-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+@media (min-width: 1100px) {
+  .verify-columns {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+.verify-section {
+  min-width: 0;
+  padding: 1.1rem 1.2rem;
+  border-radius: var(--radius);
+  background: var(--c-paper);
+  border: 1px solid var(--c-line);
+}
+.verify-section-title {
+  font-size: 1.02rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  scroll-margin-top: 5rem;
+}
+.verify-recent {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.verify-recent li + li {
+  border-top: 1px solid var(--c-line);
+}
+.verify-recent-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 3.4rem minmax(0, 1fr) auto;
+  grid-template-areas:
+    "seq event time"
+    "seq subject hash";
+  gap: 0.15rem 0.7rem;
+  align-items: baseline;
+  padding: 0.6rem 0.2rem;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.verify-recent-row:hover {
+  background: var(--c-bg);
+}
+.verify-seq {
+  grid-area: seq;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-accent-ink);
+}
+.verify-recent-event {
+  grid-area: event;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.verify-recent-time {
+  grid-area: time;
+  font-size: 0.78rem;
+  color: var(--c-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.verify-recent-subject {
+  grid-area: subject;
+  font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+  font-size: 0.78rem;
+  color: var(--c-ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.verify-recent-hash {
+  grid-area: hash;
+  font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+  font-size: 0.78rem;
+  color: var(--c-muted);
+}
+@media (max-width: 520px) {
+  .verify-recent-row {
+    grid-template-columns: 3rem minmax(0, 1fr);
+    grid-template-areas:
+      "seq event"
+      "seq time"
+      "seq subject"
+      "seq hash";
+  }
+}
+
+.verify-lookup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+}
+.verify-lookup label {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.verify-lookup-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.verify-lookup input {
+  flex: 1 1 14rem;
+  min-width: 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--c-line-2);
+  background: var(--c-paper);
+  font: inherit;
+  font-size: 0.92rem;
+}
+.verify-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.verify-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--c-line-2);
+  background: var(--c-bg);
+}
+.verify-entry-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.7rem;
+}
+.verify-entry-time {
+  font-size: 0.8rem;
+  color: var(--c-muted);
+}
+.verify-payload summary {
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+.verify-payload pre {
+  margin-top: 0.5rem;
+  padding: 0.7rem;
+  border-radius: 8px;
+  background: var(--c-paper);
+  border: 1px solid var(--c-line);
+  font-size: 0.76rem;
+  line-height: 1.45;
+  overflow-x: auto;
+  max-height: 22rem;
+}
+
+/* ------------------------------------------------------------------ what is and is not claimed */
+.verify-explain {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  padding: 1.2rem;
+  border-radius: var(--radius);
+  background: var(--c-dark-2);
+  color: var(--c-on-dark);
+}
+@media (min-width: 960px) {
+  .verify-explain {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.verify-explain h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+.verify-explain ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.verify-explain li,
+.verify-explain p {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--c-on-dark-muted);
+}
+.verify-motto {
+  margin-top: 0.7rem;
+  color: var(--c-lime) !important;
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------ decision receipt */
+.subject-recorded-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+}
+.decision-receipt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(22, 166, 110, 0.35);
+  background: var(--c-accent-soft);
+  color: var(--c-accent-ink);
+}
+.decision-receipt-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+}
+.decision-receipt-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 50%;
+  background: var(--c-accent);
+  color: #fff;
+  font-size: 0.75rem;
+}
+.decision-receipt-hash {
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+.decision-receipt-hash code {
+  font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.decision-receipt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+}
+.decision-receipt-note {
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--c-ink-2);
+}

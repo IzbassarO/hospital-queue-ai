@@ -9,6 +9,8 @@ import { getLang, t } from "../../i18n";
 import { flowDecimals, fmtDate, fmtNumber } from "../../lib/format";
 import { Facts, SeverityPill } from "../../demo/primitives";
 import { useAssistantStatus } from "../../api/specialist";
+import type { LedgerReceipt } from "../../api/transparency";
+import { DecisionReceipt } from "../../verify/DecisionReceipt";
 import { askAssistant } from "../ai/assistant";
 import { plainExplanation, urgencyText } from "../sim/explain";
 import type {
@@ -42,12 +44,12 @@ export function SubjectContent({
     id: string,
     action: DecisionAction,
     comment: string,
-  ) => Promise<void>;
+  ) => Promise<LedgerReceipt | null>;
   onDecidePatient: (
     id: string,
     action: PatientAction,
     comment: string,
-  ) => Promise<void>;
+  ) => Promise<LedgerReceipt | null>;
   onClose?: () => void;
   compact?: boolean;
 }) {
@@ -72,6 +74,7 @@ export function SubjectContent({
       : false;
   const [comment, setComment] = useState("");
   const [save, setSave] = useState<SaveState>("idle");
+  const [receipt, setReceipt] = useState<LedgerReceipt | null>(null);
   const [lastAction, setLastAction] = useState<
     DecisionAction | PatientAction | null
   >(null);
@@ -220,14 +223,20 @@ export function SubjectContent({
     setLastAction(action);
     setSave("pending");
     try {
+      let stored: LedgerReceipt | null = null;
       if (patient)
-        await onDecidePatient(
+        stored = await onDecidePatient(
           patient.id,
           action as PatientAction,
           comment.trim(),
         );
       else if (alert)
-        await onDecideAlert(alert.id, action as DecisionAction, comment.trim());
+        stored = await onDecideAlert(
+          alert.id,
+          action as DecisionAction,
+          comment.trim(),
+        );
+      setReceipt(stored);
       setSave("saved");
     } catch {
       setSave("error");
@@ -370,10 +379,15 @@ export function SubjectContent({
             </button>
           </div>
         ) : save === "saved" || decided ? (
-          <p className="subject-recorded" role="status">
-            {t.control.decision.recorded}
-            {decidedLabel ? `: ${decidedLabel}` : ""}
-          </p>
+          <div className="subject-recorded-block">
+            <p className="subject-recorded" role="status">
+              {t.control.decision.recorded}
+              {decidedLabel ? `: ${decidedLabel}` : ""}
+            </p>
+            {receipt ? (
+              <DecisionReceipt receipt={receipt} onOpen={onClose} />
+            ) : null}
+          </div>
         ) : canDecide ? (
           <>
             <label className="decision-comment">

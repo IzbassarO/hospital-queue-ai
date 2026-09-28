@@ -1,6 +1,7 @@
 /** One hook for every page: the data model plus the running simulation (shared store) and the name helpers. */
 import { useCallback, useEffect } from "react";
 import { specialistApi, useSpecialistDecisions } from "../api/specialist";
+import type { LedgerReceipt } from "../api/transparency";
 import type { DecisionAction, PatientAction } from "./sim/simulation";
 import { dispatchSim, useSimulation } from "./sim/useSimulation";
 import { useTowerData, type TowerModel } from "./useTowerData";
@@ -15,7 +16,8 @@ const decisionKey = (
 
 /**
  * Store a decision on the server. The simulation already holds it; the returned promise tells the view whether
- * the row was written, so "recorded" is only shown after the server confirmed.
+ * the row was written, so "recorded" is only shown after the server confirmed. It resolves to the decision's
+ * transparency-ledger receipt (the original one on an idempotent retry).
  */
 export function persistDecision(
   model: TowerModel,
@@ -25,7 +27,7 @@ export function persistDecision(
   action: DecisionAction | PatientAction,
   comment: string,
   simDay: number,
-): Promise<void> {
+): Promise<LedgerReceipt | null> {
   const alert = model.alerts.find((a) =>
     kind === "alert" ? a.id === id : false,
   );
@@ -47,7 +49,7 @@ export function persistDecision(
       actor: null,
       idempotency_key: decisionKey(runId, kind, id, action),
     })
-    .then(() => undefined);
+    .then((stored) => stored.receipt);
 }
 
 /** Replay the decisions of the current run stored on the server into the simulation (once per load / run). */
