@@ -4,7 +4,8 @@
 # open data never leaves the developer machine. A third job rehearses `make demo` without Docker: the committed seed/
 # is loaded into a fresh database with the backend's own loader and the published identities are checked through the
 # API. A fourth job builds the three docker images (no push) so a broken Dockerfile or lockfile is caught before
-# someone runs `make demo`, and checks that the production override still composes (docs/operations.md).
+# someone runs `make demo`, and checks that the production override still composes (docs/operations.md). A fifth
+# job lints and tests the shared-server deploy tooling against stubs: no daemon, no credentials, nothing deployed.
 name: CI
 
 on:
@@ -136,7 +137,7 @@ jobs:
       - name: Migrate
         run: alembic upgrade head
 
-      - name: Load the demo seed (tables, then the three publications)
+      - name: Load the demo seed (tables, then the publication bundles listed in seed/manifest.json)
         run: python -m app.cli load-seed --dir ../seed
 
       - name: Seed smoke test (row counts, identities, key endpoints)
@@ -203,3 +204,17 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.prod.yml \
             --profile demo --profile pipelines config > /dev/null
           rm -f .env
+
+  # tools/deploy.sh (docs/deploy-shared-server.md): shellcheck, a scan for destructive commands, and the update /
+  # rollback / check paths against stub docker, make and curl in a throwaway git checkout. Nothing is deployed and no
+  # secret is used; the .env values it writes are random markers the test asserts never reach the output.
+  deploy-tooling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Deploy tooling (shellcheck + stubbed tests)
+        run: |
+          shellcheck --version | head -n2
+          bash tools/deploy_test.sh

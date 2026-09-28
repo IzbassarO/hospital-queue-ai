@@ -61,6 +61,10 @@ prod-config:   ## check the production overlay (docker-compose.prod.yml) without
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile demo --profile pipelines config > /dev/null
 	@echo "docker-compose.yml + docker-compose.prod.yml: valid (docs/operations.md)"
 
+.PHONY: deploy-check
+deploy-check:  ## shared server: verify rootless docker, linger, .env ports/UI_BIND, free ports, permissions; changes nothing
+	@bash tools/deploy.sh check
+
 pipe-build:    ## build the ML pipelines image (ml/Dockerfile) used by `make pipe`
 	docker compose --profile pipelines build pipelines
 
