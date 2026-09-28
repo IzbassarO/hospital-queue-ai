@@ -20,6 +20,8 @@ predictions, serving marts and explicitly published assurance/operational-intell
 - **Errors**: `401` / `403` (above), `404 {"detail": "unknown region '00'"}` for unknown codes, `422` for invalid input,
   `409` for an `idempotency_key` reused with a different decision,
   `503 {"detail": "serving marts are not built yet: run `make marts`"}` before the first mart build.
+  A burst that exhausts the connection pool also answers `503`, with a `Retry-After` header holding the seconds the
+  request already waited (`DB_POOL_TIMEOUT`, 5 by default): the service is busy, not broken, so the caller may retry.
 - **CORS**: origins `http(s)://localhost:<any port>` and `127.0.0.1:<any port>` (setting `CORS_ALLOW_ORIGIN_REGEX`);
   the `X-API-Key` header is allowed, `Content-Disposition` and `X-Request-ID` are exposed.
 - **Request correlation**: every `/api` response carries `X-Request-ID`. Send your own (`[A-Za-z0-9._:-]{1,128}`)

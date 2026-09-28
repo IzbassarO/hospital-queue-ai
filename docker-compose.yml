@@ -10,6 +10,10 @@ services:
     image: ${POSTGRES_IMAGE:-postgres:16-bookworm@sha256:efedf3595f1d6f415c08568ba171029bf54052e754cc9f030e3f2412b21f3d67}
     container_name: hqai-postgres
     restart: unless-stopped
+    # Docker's default /dev/shm is 64 MB. A parallel query that needs more of it does not fall back to a serial
+    # plan — it fails outright with `could not resize shared memory segment ... No space left on device`, which
+    # reaches the caller as a 500. 256 MB is far more than any plan here asks for and costs nothing until used.
+    shm_size: 256mb
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}

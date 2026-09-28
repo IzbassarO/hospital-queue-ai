@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import TimeoutError as PoolTimeoutError
 
 from app.api.routes import router
 from app.core import access_log
@@ -79,6 +80,22 @@ def _export_unavailable(_: Request, exc: ExportUnavailableError) -> JSONResponse
 @app.exception_handler(MartsNotBuiltError)
 def _not_built(_: Request, exc: MartsNotBuiltError) -> JSONResponse:
     return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content={"detail": str(exc)})
+
+
+@app.exception_handler(PoolTimeoutError)
+def _pool_exhausted(_: Request, __: PoolTimeoutError) -> JSONResponse:
+    """Every connection is busy: answer 503 with Retry-After, not 500.
+
+    `DB_POOL_TIMEOUT` (5 s) makes a burst fail fast rather than hang, which is the right call — but SQLAlchemy
+    raises it as an unhandled error, so the caller saw a 500 and could not tell "the server is broken" from
+    "the server is busy, come back". The wait it advises is the same one the pool just spent. The message never
+    names the pool, its size or the driver: that is operator detail, and it is in the log line already.
+    """
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"detail": "Сервис перегружен: все соединения с базой заняты. Повторите запрос."},
+        headers={"Retry-After": str(settings.db_pool_timeout)},
+    )
 
 
 @app.get("/health", include_in_schema=False, operation_id="liveness_get")

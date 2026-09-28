@@ -15,8 +15,15 @@ from tests.conftest import API, auth
 ENDPOINT = f"{API}/waiting-list/hospitals"
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module", autouse=True)
 async def publication(client: httpx.AsyncClient) -> dict:
+    """The active publication, or the whole module skips.
+
+    Autouse on purpose: the CI backend job loads only the two-region fixture (`make fixture-load`), which
+    publishes nothing, so every endpoint here answers 404. A test that reaches the endpoint without this guard
+    indexes into an error body and fails with KeyError instead of skipping — which is exactly how four of them
+    broke CI. Making the guard automatic means a test added later cannot forget it.
+    """
     response = await client.get(ENDPOINT, params={"limit": 1})
     if response.status_code == 404:
         pytest.skip("no waiting-list publication is active (run `make waiting-list-publish` or `make seed-load`)")

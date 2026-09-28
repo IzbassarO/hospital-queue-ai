@@ -581,3 +581,43 @@ def test_api_adapter_has_no_artifact_or_ml_runtime_dependency() -> None:
     assert "open(" not in source
     assert ".read_bytes(" not in source
     assert ".read_text(" not in source
+
+
+# ------------------------------------------------------------------ region list (migration 0015)
+def test_forecast_regions_matches_a_plain_distinct() -> None:
+    """The index walk must return exactly what `SELECT DISTINCT region_code` returned before 0015.
+
+    `forecast_regions` trades a full scan for one index probe per region (docs: the function's own docstring).
+    That is only safe while the two agree, so this compares the walk against the query it replaced, on whatever
+    publication the database currently holds.
+    """
+    from app.db.models import OperationalForecast
+    from app.db.session import SessionLocal
+    from app.repositories import operational_intelligence as repository
+
+    with SessionLocal() as session:
+        snapshot = repository.current_snapshot(session)
+        if snapshot is None:
+            pytest.skip("no operational-intelligence publication is active")
+        walked = repository.forecast_regions(session, snapshot.id)
+        row = OperationalForecast
+        plain = list(
+            session.scalars(
+                select(row.region_code)
+                .where(row.snapshot_id == snapshot.id, row.region_code.is_not(None))
+                .distinct()
+                .order_by(row.region_code)
+            ).all()
+        )
+    assert walked == plain
+    assert walked == sorted(set(walked)), "the walk must be sorted and free of duplicates"
+    assert None not in walked
+
+
+def test_forecast_regions_is_empty_for_an_unknown_snapshot() -> None:
+    """The recursion must terminate on a snapshot with no rows instead of returning a NULL row."""
+    from app.db.session import SessionLocal
+    from app.repositories import operational_intelligence as repository
+
+    with SessionLocal() as session:
+        assert repository.forecast_regions(session, -1) == []

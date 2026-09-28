@@ -395,6 +395,8 @@ class OperationalForecast(Base):
             "target_date",
             name="uq_operational_forecast_point",
         ),
+        # the overview's region list and the region card's facets: without it both scan the whole table (0015)
+        Index("ix_operational_forecast_region_facets", "snapshot_id", "region_code", "origin", "target"),
         Index(
             "ix_operational_forecast_scope",
             "snapshot_id",

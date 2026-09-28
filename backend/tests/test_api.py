@@ -3,6 +3,7 @@ latency budget for the live demo."""
 
 import datetime as dt
 import re
+import statistics
 import time
 import uuid
 
@@ -430,6 +431,66 @@ def largest_hospital_profile() -> tuple[str, str]:
         )
 
 
+def _published_paths(region: str, org: str, profile: str) -> list[str]:
+    """Read models that exist only once something is published.
+
+    The CI backend job loads the two-region fixture and publishes nothing, so these endpoints answer 404 there.
+    Probing the snapshot tables keeps the budget enforced wherever a publication *is* loaded (the demo stack, a
+    developer machine) without turning an empty fixture database into a failure.
+    """
+    paths: list[str] = []
+    with SessionLocal() as session:
+        active = lambda table: session.execute(  # noqa: E731 - three identical one-line probes
+            text(f"SELECT count(*) FROM {table} WHERE is_active")
+        ).scalar()
+        if active("operational_intelligence_snapshot"):
+            paths += [
+                # the overview's region list used to scan the whole forecast table (migration 0015)
+                "/operational-intelligence/overview",
+                f"/operational-intelligence/regions/{region}",
+                "/operational-intelligence/signals?limit=500",
+                f"/operational-intelligence/forecasts?org={org}&profile={profile}&limit=14",
+            ]
+        if active("model_assurance_snapshot"):
+            paths.append("/model-assurance")
+        if active("review_evidence_snapshot"):
+            paths.append("/review-evidence/overview")
+        waiting_org = session.execute(
+            text(
+                "SELECT h.org_code FROM waiting_list_hospital h JOIN waiting_list_snapshot s ON s.id = h.snapshot_id "
+                "WHERE s.is_active ORDER BY h.waiting_count DESC, h.org_code LIMIT 1"
+            )
+        ).scalar()
+    if waiting_org is not None:
+        paths += [
+            "/waiting-list/hospitals?limit=500",
+            f"/waiting-list/hospitals/{waiting_org}",
+            f"/waiting-list/hospitals/{waiting_org}/referrals?limit=50",
+        ]
+    return paths
+
+
+SAMPLES = 3
+BUDGET_MS = 500
+
+
+async def _median_ms(client: httpx.AsyncClient, path: str) -> tuple[float, list[int]]:
+    """Median of SAMPLES timed calls after a warm-up.
+
+    One sample made this test flaky: any single transient — an autovacuum pass, another suite's query, a cold
+    page — reads as a regression. The median tolerates one outlier and still fails when an endpoint is genuinely
+    over budget, which is what the gate is for.
+    """
+    await client.get(f"{API}{path}")  # warm-up, not measured
+    samples = []
+    for _ in range(SAMPLES):
+        start = time.perf_counter()
+        response = await client.get(f"{API}{path}")
+        samples.append((time.perf_counter() - start) * 1000)
+        assert response.status_code == 200, (path, response.status_code, response.text[:200])
+    return statistics.median(samples), [round(value) for value in samples]
+
+
 async def test_every_endpoint_under_500_ms(client, high_load, created_decision_ids):
     org, profile, region = high_load["org_code"], high_load["profile_code"], high_load["region_code"]
     big_org, big_profile = largest_hospital_profile()
@@ -455,15 +516,12 @@ async def test_every_endpoint_under_500_ms(client, high_load, created_decision_i
         f"/hospitals/{big_org}/profiles/{big_profile}",
         f"/hospitals/{big_org}/profiles/{big_profile}/referrals?limit=100",
     ]
+    paths += _published_paths(region, org, profile)
     slow = {}
     for path in paths:
-        await client.get(f"{API}{path}")  # warm-up
-        start = time.perf_counter()
-        response = await client.get(f"{API}{path}")
-        elapsed_ms = (time.perf_counter() - start) * 1000
-        assert response.status_code == 200, (path, response.text)
-        if elapsed_ms >= 500:
-            slow[path] = round(elapsed_ms)
+        median_ms, samples = await _median_ms(client, path)
+        if median_ms >= BUDGET_MS:
+            slow[path] = {"median_ms": round(median_ms), "samples_ms": samples}
 
     payload = {
         "region_code": region,
@@ -477,6 +535,6 @@ async def test_every_endpoint_under_500_ms(client, high_load, created_decision_i
     elapsed_ms = (time.perf_counter() - start) * 1000
     assert response.status_code == 201
     created_decision_ids.append(response.json()["id"])
-    if elapsed_ms >= 500:
-        slow["POST /decisions"] = round(elapsed_ms)
-    assert not slow, f"endpoints over 500 ms: {slow}"
+    if elapsed_ms >= BUDGET_MS:
+        slow["POST /decisions"] = {"median_ms": round(elapsed_ms), "samples_ms": [round(elapsed_ms)]}
+    assert not slow, f"endpoints over {BUDGET_MS} ms (median of {SAMPLES}): {slow}"

@@ -192,3 +192,51 @@ def test_the_proxy_waits_longer_for_the_assistant_than_the_backend_does():
     proxy_read_timeout = int(re.search(r"proxy_read_timeout (\d+)s", block).group(1))
     backend_timeout = inspect.signature(assistant.ask).parameters["timeout"].default
     assert proxy_read_timeout > backend_timeout, "nginx must not 504 while the backend is still waiting"
+
+
+# ---------------------------------------------------------------- pool exhaustion answers 503, not 500
+@pytest.mark.anyio
+async def test_pool_exhaustion_answers_503_with_retry_after(api_keys: dict[str, str]) -> None:
+    """A busy pool must read as "come back", not as "the server is broken".
+
+    DB_POOL_TIMEOUT makes a burst fail fast on purpose; SQLAlchemy raises that as an unhandled TimeoutError, so
+    before this handler the caller got a 500. The dependency is overridden here rather than opening 30 real
+    connections: the behaviour under test is the mapping from that exception to the response, and a real burst
+    would be timing-dependent and slow.
+    """
+    import httpx
+    from sqlalchemy.exc import TimeoutError as PoolTimeoutError
+
+    from app.core.security import API_KEY_HEADER
+    from app.db.session import get_session
+    from app.main import app
+
+    def exhausted():
+        raise PoolTimeoutError("QueuePool limit of size 10 overflow 20 reached, connection timed out")
+
+    app.dependency_overrides[get_session] = exhausted
+    try:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://testserver",
+            headers={API_KEY_HEADER: api_keys["viewer"]},
+            timeout=30,
+        ) as client:
+            response = await client.get(f"{API}/overview")
+    finally:
+        app.dependency_overrides.pop(get_session, None)
+
+    assert response.status_code == 503
+    assert response.headers["Retry-After"] == str(get_settings().db_pool_timeout)
+    detail = response.json()["detail"]
+    assert detail
+    # the reply says the service is busy without leaking pool size, driver or SQL
+    for leaked in ("QueuePool", "overflow", "sqlalchemy", "psycopg", "SELECT"):
+        assert leaked.lower() not in detail.lower()
+
+
+def test_pool_timeout_is_short_enough_to_fail_fast() -> None:
+    """A request must not sit waiting for a connection longer than a caller will wait for the response."""
+    settings = get_settings()
+    assert 1 <= settings.db_pool_timeout <= 10
+    assert settings.db_pool_size + settings.db_max_overflow >= 10

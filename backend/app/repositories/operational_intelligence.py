@@ -3,7 +3,7 @@
 import datetime as dt
 
 from sqlalchemy import Select, case, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.db.models import OperationalForecast, OperationalIntelligenceSnapshot, OperationalSignal
 
@@ -195,12 +195,37 @@ def region_forecast_facets(
 
 
 def forecast_regions(session: Session, snapshot_id: int) -> list[str]:
+    """The distinct region codes of one publication's forecasts, in order.
+
+    A plain `SELECT DISTINCT` reads every row of the snapshot to find twenty values: on the released publication
+    that was a parallel sequential scan over 305 MB, ~250 MB of buffers per request, which exhausts the page cache
+    of a small server and trips `statement_timeout` as soon as a few requests overlap.
+
+    This walks the index instead — smallest code, then repeatedly the smallest code above the last one — so it
+    costs one index probe per region (21 probes, ~70 buffers) rather than one pass per row. PostgreSQL 16 has no
+    loose index scan of its own, so the walk is written out as a recursive CTE. The result is the same set in the
+    same order; only the way it is reached changes. Needs ix_operational_forecast_region_facets (migration 0015).
+    """
     row = OperationalForecast
+    smallest = (
+        select(row.region_code)
+        .where(row.snapshot_id == snapshot_id, row.region_code.is_not(None))
+        .order_by(row.region_code)
+        .limit(1)
+    )
+    walk = smallest.cte("region_walk", recursive=True)
+    nxt = aliased(OperationalForecast)
+    after = (
+        select(nxt.region_code)
+        .where(nxt.snapshot_id == snapshot_id, nxt.region_code > walk.c.region_code)
+        .order_by(nxt.region_code)
+        .limit(1)
+        .scalar_subquery()
+    )
+    # the walk ends when no code is left above the last one, which appends one NULL row and stops the recursion
+    walk = walk.union_all(select(after).select_from(walk).where(walk.c.region_code.is_not(None)))
     return list(
         session.scalars(
-            select(row.region_code)
-            .where(row.snapshot_id == snapshot_id, row.region_code.is_not(None))
-            .distinct()
-            .order_by(row.region_code)
+            select(walk.c.region_code).where(walk.c.region_code.is_not(None)).order_by(walk.c.region_code)
         ).all()
     )

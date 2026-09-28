@@ -107,14 +107,26 @@ async def test_overview_and_dictionaries(client, manifest):
     assert len(dictionaries["profiles"]) == rows(manifest, "dim_profile")
 
 
+async def all_hospitals(client: httpx.AsyncClient) -> list[dict]:
+    """Every hospital of the publication. The page cap is 500 and the seed holds 640, so this must page."""
+    items: list[dict] = []
+    while True:
+        page = await get_json(client, "/waiting-list/hospitals", limit=500, offset=len(items))
+        items += page["items"]
+        if not page["items"] or len(items) >= page["total"]:
+            return items
+
+
 async def test_waiting_list_is_national_in_the_seed(client, manifest):
     """The referral tables are a two-region slice, but the waiting list answers for the whole country."""
     counts = bundle(manifest, "waiting_list")["counts"]
-    hospitals = await get_json(client, "/waiting-list/hospitals", limit=500)
-    assert hospitals["total"] == counts["hospital_count"]
-    assert {row["publication_identity_sha256"] for row in hospitals["items"]} == {WAITING_IDENTITY}
-    assert len({row["region_code"] for row in hospitals["items"]}) == rows(manifest, "dim_region")
-    assert sum(row["waiting_count"] for row in hospitals["items"]) == counts["waiting_count"]
+    first = await get_json(client, "/waiting-list/hospitals", limit=500)
+    assert first["total"] == counts["hospital_count"]
+    items = await all_hospitals(client)
+    assert len(items) == counts["hospital_count"]
+    assert {row["publication_identity_sha256"] for row in items} == {WAITING_IDENTITY}
+    assert len({row["region_code"] for row in items}) == rows(manifest, "dim_region")
+    assert sum(row["waiting_count"] for row in items) == counts["waiting_count"]
 
 
 async def test_waiting_list_referrals_carry_no_model_value(client):
