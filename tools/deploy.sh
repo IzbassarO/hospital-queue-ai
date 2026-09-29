@@ -14,6 +14,8 @@
 # Two overrides, for a deliberate operator decision only:
 #   DEPLOY_ALLOW_NO_BACKUP=1    apply incoming migrations although no backup could be taken first
 #   DEPLOY_ALLOW_LOW_MEMORY=1   build and start with less than 1 GB of memory available
+# Neither applies to audit-sensitive migrations (the transparency ledger): `rollback` never downgrades across one and
+# has no switch to do so (docs/deploy-shared-server.md §10).
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -473,6 +475,35 @@ run_update() {
   printf '\n%supdate complete%s at %s\n' "$C_OK" "$C_OFF" "$(git rev-parse --short HEAD)"
 }
 
+# Migrations in HEAD but not in the target commit whose downgrade destroys audit evidence: the transparency ledger
+# and its commitment salts (docs/transparency-ledger.md §10). Such a migration marks itself with a module-level
+# `AUDIT_SENSITIVE = True`; one file name per line, empty when the rollback does not cross one.
+audit_migrations_crossed() {
+  local f
+  git diff --no-renames --name-only --diff-filter=A "$1" HEAD -- backend/alembic/versions | while read -r f; do
+    if git grep -q '^AUDIT_SENSITIVE = True' HEAD -- "$f"; then basename "$f"; fi
+  done
+}
+
+# Stop before anything changes: no backup, no downgrade, no checkout. There is deliberately no override.
+refuse_audit_rollback() { # target, crossed migration files (one per line), database revision (may be empty)
+  local target=$1 crossed=$2 current=$3 files keep
+  files=$(printf '%s' "$crossed" | paste -sd ' ' -)
+  keep=$(printf '%s\n' "$crossed" | sed 's|^|backend/alembic/versions/|' | xargs git log -1 --format=%h --diff-filter=A HEAD --)
+  fail "audit-sensitive migration: rolling back to $(git rev-parse --short "$target") crosses $files"
+  die "rollback refused; nothing was changed (no backup, no downgrade, no checkout; database at ${current:-an unknown revision}).
+  These migrations hold the transparency ledger and its commitment salts. They are audit evidence: downgrading
+  across them would destroy entries and salts that cannot be recreated (docs/transparency-ledger.md §10).
+  DEPLOY_ALLOW_NO_BACKUP and DEPLOY_ALLOW_LOW_MEMORY do not apply, and there is no override. Safe choices:
+    a) roll back the application only, keeping the schema: choose a target that already contains these migrations,
+       i.e. $keep or a later commit (git log --oneline $keep^..HEAD), then: tools/deploy.sh rollback <commit>.
+       Code older than $keep cannot start against this schema (the backend runs alembic upgrade head on start).
+    b) roll forward: fix the problem upstream, then git checkout <branch> && tools/deploy.sh update.
+    c) reviewed recovery, as a recorded incident: archive GET /api/v1/transparency/export and
+       GET /api/v1/transparency/head outside this server, take make backup, then restore a verified backup from
+       before the upgrade (make restore FILE=backups/...) and re-verify the ledger (docs/deploy-shared-server.md §10)."
+}
+
 run_rollback() {
   local target=${1:-}
   cd "$ROOT"
@@ -487,9 +518,18 @@ run_rollback() {
   ok "target $(git log -1 --format='%h %s' "$target")"
 
   if ! git diff --quiet "$target" HEAD -- backend/alembic/versions; then
-    local want current
+    local want current crossed
     want=""
     [ "$target" = "$(state_get commit)" ] && want=$(state_get revision)
+    crossed=$(audit_migrations_crossed "$target")
+    if [ -n "$crossed" ]; then
+      # Only a database that never reached them (the update stopped before migrating) may go back without a downgrade.
+      current=$(db_revision)
+      if [ -z "$want" ] || [ "$current" != "$want" ]; then
+        refuse_audit_rollback "$target" "$crossed" "$current"
+      fi
+      ok "the database is still at $want, before the audit-sensitive migrations ($(printf '%s' "$crossed" | paste -sd ' ' -)): no downgrade needed"
+    fi
     [ -n "$want" ] || die "migrations differ between the commits and the target's database revision is unknown;
   restore the backup taken before the update (make restore FILE=backups/...) or downgrade by hand (docs §10)"
     current=$(db_revision)

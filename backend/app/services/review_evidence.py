@@ -47,6 +47,7 @@ from app.schemas.review_evidence import (
     SignalDecisionAlternativesResponse,
     SignalStressTestResponse,
 )
+from app.services import transparency
 from app.services.common import ConflictError, NotFoundError, ValidationError
 
 BASELINE_TOLERANCE = 1e-9
@@ -269,7 +270,7 @@ def publish(session: Session, parsed: ParsedReviewBundle) -> PublicationResult:
     bundle = parsed.bundle
     with session.begin():
         _verify_assured_provenance(session, bundle)
-        repository.current_snapshot(session, for_update=True)
+        previous = repository.current_snapshot(session, for_update=True)
         by_id = repository.snapshot_by_publication_id(session, bundle.publication_id)
         by_identity = repository.snapshot_by_identity(session, bundle.publication_identity_sha256)
         if by_id is not None:
@@ -281,6 +282,7 @@ def publish(session: Session, parsed: ParsedReviewBundle) -> PublicationResult:
                 raise ConflictError("publication identity is already attached to a different publication_id")
             session.execute(update(ReviewEvidenceSnapshot).values(is_active=False))
             by_id.is_active = True
+            transparency.record_activation(session, "review_evidence", previous, by_id)
             return PublicationResult(
                 snapshot_id=by_id.id,
                 publication_id=by_id.publication_id,
@@ -342,6 +344,9 @@ def publish(session: Session, parsed: ParsedReviewBundle) -> PublicationResult:
                     f"identity scenario {scenario.scenario_id!r} does not reproduce the referenced operational "
                     f"publication: {mismatches} cell(s) differ or are unpublished"
                 )
+        session.flush()
+        # last, so the ledger lock is held only until this commit (docs/transparency-ledger.md §6)
+        transparency.record_publication(session, "review_evidence", previous, snapshot)
         snapshot_id = snapshot.id
     return PublicationResult(
         snapshot_id=snapshot_id,

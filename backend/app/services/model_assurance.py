@@ -21,6 +21,7 @@ from app.schemas.model_assurance import (
     ModelAssuranceCapabilityResponse,
     ModelAssuranceSnapshotResponse,
 )
+from app.services import transparency
 from app.services.common import ConflictError, NotFoundError, ValidationError
 
 
@@ -138,7 +139,7 @@ def publish(session: Session, parsed: ParsedAssuranceBundle) -> PublicationResul
     """Atomically insert and activate a validated snapshot, or return an idempotent replay."""
     bundle = parsed.bundle
     with session.begin():
-        repository.current_snapshot(session, for_update=True)
+        previous = repository.current_snapshot(session, for_update=True)
         by_id = repository.snapshot_by_assurance_id(session, bundle.assurance_id)
         by_identity = repository.snapshot_by_identity(session, bundle.assurance_identity_sha256)
         if by_id is not None:
@@ -150,6 +151,7 @@ def publish(session: Session, parsed: ParsedAssuranceBundle) -> PublicationResul
                 raise ConflictError("assurance identity is already attached to a different assurance_id")
             session.execute(update(ModelAssuranceSnapshot).values(is_active=False))
             by_id.is_active = True
+            transparency.record_activation(session, "model_assurance", previous, by_id)
             return PublicationResult(
                 snapshot_id=by_id.id,
                 assurance_id=by_id.assurance_id,
@@ -180,6 +182,9 @@ def publish(session: Session, parsed: ParsedAssuranceBundle) -> PublicationResul
         session.add(snapshot)
         session.flush()
         session.add_all(_capability_row(snapshot.id, capability) for capability in bundle.capabilities)
+        session.flush()
+        # last, so the ledger lock is held only until this commit (docs/transparency-ledger.md §6)
+        transparency.record_publication(session, "model_assurance", previous, snapshot)
         snapshot_id = snapshot.id
     return PublicationResult(
         snapshot_id=snapshot_id,

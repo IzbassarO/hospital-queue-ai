@@ -12,6 +12,7 @@ import {
   object,
   str,
 } from "./schema";
+import { ledgerReceiptSchema } from "./transparency";
 import { pageSchema } from "./types";
 
 export const specialistDecisionSchema = object({
@@ -30,6 +31,8 @@ export const specialistDecisionSchema = object({
   actor: nullable(str),
   idempotency_key: nullable(str),
   api_key_label: nullable(str),
+  /** transparency-ledger entry written with the decision; a replay returns the original one */
+  receipt: nullable(ledgerReceiptSchema),
 });
 export const assistantStatusSchema = object({
   configured: bool,

@@ -351,7 +351,7 @@ async def test_recommendation_not_triggered_outside_region_top(client, high_load
 
 
 # ------------------------------------------------------------------------------------------ decisions
-async def test_decision_is_persisted_and_listed(client, high_load, created_decision_ids):
+async def test_decision_is_persisted_and_listed(client, high_load, created_decision_ids, ledger_isolation):
     recs = await get_json(
         client, f"/hospitals/{high_load['org_code']}/profiles/{high_load['profile_code']}/recommendations"
     )
@@ -491,7 +491,7 @@ async def _median_ms(client: httpx.AsyncClient, path: str) -> tuple[float, list[
     return statistics.median(samples), [round(value) for value in samples]
 
 
-async def test_every_endpoint_under_500_ms(client, high_load, created_decision_ids):
+async def test_every_endpoint_under_500_ms(client, high_load, created_decision_ids, ledger_isolation):
     org, profile, region = high_load["org_code"], high_load["profile_code"], high_load["region_code"]
     big_org, big_profile = largest_hospital_profile()
     paths = [

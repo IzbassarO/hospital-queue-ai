@@ -6,6 +6,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.common import Status
+from app.schemas.transparency import LedgerReceipt
 
 
 class ReferralItem(BaseModel):
@@ -112,6 +113,11 @@ class Decision(DecisionCreate):
     created_at: dt.datetime
     alternative_org_name: str | None
     api_key_label: str | None = Field(description="label of the API key that submitted the decision")
+    receipt: LedgerReceipt | None = Field(
+        default=None,
+        description="transparency-ledger entry that records this decision (docs/transparency-ledger.md); an "
+        "idempotent replay returns the original entry, never a second one",
+    )
 
 
 class AlertItem(BaseModel):

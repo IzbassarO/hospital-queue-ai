@@ -7,20 +7,31 @@ such as the docker `backend` service.
 The suite creates one API key per role (labels `pytest-<run>-<role>`) directly in the database and at the end
 removes those keys, the access-log rows made with them and the decisions it created. Requests the tests send
 without a key (401 checks) stay in access_log: anonymous rows cannot be told apart from anyone else's.
+
+Tests that publish bundles or record decisions request `ledger_isolation`: those writes append to the append-only
+transparency ledger, which no cleanup can undo, so the whole test — its own sessions and the in-process API's —
+runs in one transaction that is rolled back at the end. Nothing it wrote, ledger entries included, reaches the
+database, and the ledger of the database the suite runs against keeps verifying (docs/transparency-ledger.md).
 """
 
 import os
+import sys
 import uuid
 from collections.abc import AsyncIterator, Iterator
+from pathlib import Path
 
 import httpx
 import pytest
 from sqlalchemy import delete
+from sqlalchemy.orm import sessionmaker
 
 from app.core.security import API_KEY_HEADER, ROLES
+from app.db import session as db_session
 from app.db.models import AccessLog, ApiKey, DecisionLog
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, engine
 from app.services import admin
+
+TESTS_DIR = Path(__file__).resolve().parent
 
 API = "/api/v1"
 TEST_ACTOR_PREFIX = "pytest-"
@@ -44,6 +55,44 @@ def api_keys() -> Iterator[dict[str, str]]:
         session.execute(delete(AccessLog).where(AccessLog.key_label.startswith(KEY_LABEL_PREFIX)))
         session.execute(delete(ApiKey).where(ApiKey.label.startswith(KEY_LABEL_PREFIX)))
         session.commit()
+
+
+@pytest.fixture
+def ledger_isolation(monkeypatch: pytest.MonkeyPatch) -> Iterator[sessionmaker]:
+    """One outer transaction for the whole test, rolled back at the end.
+
+    Every `SessionLocal` the test modules imported and the in-process API's request session are bound to one
+    connection whose transaction is never committed: their own commits and `session.begin()` blocks become
+    savepoints. Against an external server (HQAI_API_BASE_URL) the API cannot join the transaction, so the fixture
+    yields the ordinary factory and the test's writes are real.
+    """
+    original = db_session.SessionLocal
+    if os.environ.get("HQAI_API_BASE_URL"):
+        yield original
+        return
+    from app.main import app
+
+    connection = engine.connect()
+    outer = connection.begin()
+    factory = sessionmaker(
+        bind=connection, join_transaction_mode="create_savepoint", autoflush=False, expire_on_commit=False
+    )
+    for module in list(sys.modules.values()):
+        module_file = getattr(module, "__file__", None) or ""
+        if Path(module_file).parent == TESTS_DIR and getattr(module, "SessionLocal", None) is original:
+            monkeypatch.setattr(module, "SessionLocal", factory)
+
+    def request_session() -> Iterator:
+        with factory() as session:
+            yield session
+
+    app.dependency_overrides[db_session.get_session] = request_session
+    try:
+        yield factory
+    finally:
+        app.dependency_overrides.pop(db_session.get_session, None)
+        outer.rollback()
+        connection.close()
 
 
 def auth(key: str) -> dict[str, str]:

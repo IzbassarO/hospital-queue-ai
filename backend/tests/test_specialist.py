@@ -28,7 +28,7 @@ def created_ids():
         session.commit()
 
 
-async def test_specialist_decision_persists_and_replays(client, created_ids):
+async def test_specialist_decision_persists_and_replays(client, created_ids, ledger_isolation):
     key = f"pytest-{uuid.uuid4()}"
     run = f"run-pytest-{uuid.uuid4().hex[:6]}"
     payload = {

@@ -7,10 +7,12 @@ import { NotificationsPage } from "./tower/NotificationsPage";
 import { QueuePage } from "./tower/QueuePage";
 import { TowerLayout } from "./tower/TowerLayout";
 import { TowerPage } from "./tower/TowerPage";
+import { VerifyPage } from "./verify/VerifyPage";
 
 /**
  * Screen map: the control centre at "/" (map, feed, waiting counts, top tasks), the notifications inbox at
- * "/notifications", the full queue at "/queue", and the six-scene story under /demo/:scene. Anything else goes home.
+ * "/notifications", the full queue at "/queue", the transparency-ledger verification at "/verify", and the six-scene
+ * story under /demo/:scene. Anything else goes home.
  */
 export const routes: RouteObject[] = [
   {
@@ -21,6 +23,7 @@ export const routes: RouteObject[] = [
       { path: "queue", element: <QueuePage /> },
       { path: "hospital", element: <HospitalPage /> },
       { path: "hospital/:orgCode", element: <HospitalPage /> },
+      { path: "verify", element: <VerifyPage /> },
     ],
   },
   {

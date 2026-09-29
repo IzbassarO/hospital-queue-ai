@@ -218,6 +218,15 @@ fmt:           ## ruff: apply safe lint fixes, then format
 audit:         ## repository audit: architecture, OpenAPI/generated types, database, tests, docs/auth, frontend and secrets
 	PYTHONPATH=$(ML_PATH) $(PY) tools/audit.py
 
+.PHONY: ledger-verify ledger-demo
+ledger-verify: ## verify the transparency ledger offline: FILE=export.jsonl [HEAD=seq:hash]; no FILE = the running API's export
+	@if [ -n "$(FILE)" ]; then $(PYTHON3) tools/ledger_verify.py "$(FILE)" $(if $(HEAD),--trusted-head $(HEAD),); \
+	else HQAI_API_KEY="$$DEMO_API_KEY" $(PYTHON3) tools/ledger_verify.py --url http://localhost:$${API_PORT:-8000} \
+	  $(if $(HEAD),--trusted-head $(HEAD),); fi
+
+ledger-demo:   ## 30-second tamper demo on a throwaway database it creates and drops (KEEP=1 keeps it for the UI)
+	$(PY) tools/ledger_tamper_demo.py $(if $(KEEP),--keep,)
+
 fixture:       ## rebuild the 2-region CI test fixture from the current database -> backend/tests/fixtures
 	PYTHONPATH=$(ML_PATH) $(PY) tools/test_fixture.py build
 

@@ -39,6 +39,7 @@ from app.schemas.referral_estimates import (
     SourceRun,
 )
 from app.schemas.waiting_list import ObservedAfterOrigin
+from app.services import transparency
 from app.services.common import ConflictError, NotFoundError, ValidationError
 
 
@@ -127,7 +128,7 @@ def publish(session: Session, parsed: ParsedReferralEstimatesBundle) -> Publicat
     """Atomically publish one validated estimate set and switch the current snapshot."""
     bundle = parsed.bundle
     with session.begin():
-        repository.current_snapshot(session, for_update=True)
+        previous = repository.current_snapshot(session, for_update=True)
         by_id = repository.snapshot_by_publication_id(session, bundle.publication_id)
         by_identity = repository.snapshot_by_identity(session, bundle.publication_identity_sha256)
         if by_id is not None:
@@ -139,6 +140,7 @@ def publish(session: Session, parsed: ParsedReferralEstimatesBundle) -> Publicat
                 raise ConflictError("publication identity is already attached to a different publication_id")
             session.execute(update(ReferralEstimateSnapshot).values(is_active=False))
             by_id.is_active = True
+            transparency.record_activation(session, "referral_estimates", previous, by_id)
             return PublicationResult(
                 snapshot_id=by_id.id,
                 publication_id=by_id.publication_id,
@@ -175,6 +177,9 @@ def publish(session: Session, parsed: ParsedReferralEstimatesBundle) -> Publicat
         session.add(snapshot)
         session.flush()
         session.add_all(_estimate_row(snapshot.id, row) for row in bundle.referrals)
+        session.flush()
+        # last, so the ledger lock is held only until this commit (docs/transparency-ledger.md §6)
+        transparency.record_publication(session, "referral_estimates", previous, snapshot)
         snapshot_id = snapshot.id
     return PublicationResult(
         snapshot_id=snapshot_id,

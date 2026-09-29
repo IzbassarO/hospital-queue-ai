@@ -1,0 +1,572 @@
+{
+  "contract": "hqai-canonical-json-v1",
+  "description": "Shared test vectors of the transparency ledger (docs/transparency-ledger.md). Python (backend/app/domain/transparency, tools/ledger_verify.py) and the browser (frontend/src/verify) must reproduce every canonical text, SHA-256, error code and chain hash.",
+  "valid": [
+    {
+      "name": "ascii_object",
+      "value": {
+        "b": 1,
+        "a": "hello"
+      },
+      "canonical": "{\"a\":\"hello\",\"b\":1}",
+      "sha256": "6a3598197725135098bf9a34cac41f76010823521079ba0678b887f9b6786436"
+    },
+    {
+      "name": "russian",
+      "value": "Решение принято специалистом",
+      "canonical": "\"Решение принято специалистом\"",
+      "sha256": "68f3c591be0e565adc41990381b6b28b2551c49c9a59b4efc4f9d25c1f6260d0"
+    },
+    {
+      "name": "kazakh",
+      "value": "Шешімді маман қабылдады: ә ғ қ ң ө ұ ү һ і",
+      "canonical": "\"Шешімді маман қабылдады: ә ғ қ ң ө ұ ү һ і\"",
+      "sha256": "06b18abd0dc847be279e3153ff51ea8ab1d0fdd27df5ea72e00d686af13524ba"
+    },
+    {
+      "name": "quotes",
+      "value": "он сказал \"да\"",
+      "canonical": "\"он сказал \\\"да\\\"\"",
+      "sha256": "51d0b9911facea637c75858343456c065b48b6ec4da7269eaa536b9dba5c83da"
+    },
+    {
+      "name": "slash_backslash",
+      "value": "a/b\\c\\\\d",
+      "canonical": "\"a/b\\\\c\\\\\\\\d\"",
+      "sha256": "3148b28c084890a203f04ffaf96a6d9d0752b73e5925478168558f170a5376b8"
+    },
+    {
+      "name": "newline_and_controls",
+      "value": "line1\nline2\t\r\b\f\u0001\u001f",
+      "canonical": "\"line1\\nline2\\t\\r\\b\\f\\u0001\\u001f\"",
+      "sha256": "ea30104ff50f7b0cc206368ce35c90749621216d0424bf00b24dd6e308e296d3"
+    },
+    {
+      "name": "unicode_bmp",
+      "value": "€ ₸ — “кавычки” «ёлочки»   ",
+      "canonical": "\"€ ₸ — “кавычки” «ёлочки»   \"",
+      "sha256": "3fe85491cc52b3d0af834ddb04b59818fcb2ffa7fef4a0cdd6bdd03142ca7863"
+    },
+    {
+      "name": "astral_non_bmp",
+      "value": "😀 𝕏 𠀀",
+      "canonical": "\"😀 𝕏 𠀀\"",
+      "sha256": "4dee4310454b1ce3d0230bb4cfb000df1e74840d2a0eb8dfab01d8d9c6a3deed"
+    },
+    {
+      "name": "combining_not_normalised",
+      "value": [
+        "é",
+        "é"
+      ],
+      "canonical": "[\"é\",\"é\"]",
+      "sha256": "d056a09c651dab55ceb8f30b349ec21de471bdf5ce4a94db7f29dc9594f54ec3"
+    },
+    {
+      "name": "nested_objects",
+      "value": {
+        "z": {
+          "b": [
+            1,
+            {
+              "d": null,
+              "c": true
+            }
+          ],
+          "a": false
+        },
+        "a": []
+      },
+      "canonical": "{\"a\":[],\"z\":{\"a\":false,\"b\":[1,{\"c\":true,\"d\":null}]}}",
+      "sha256": "537bbf6d42f5087ebaa64ae356e1887a3e50d8a256bf51803fc793d4e18a2357"
+    },
+    {
+      "name": "arrays",
+      "value": [
+        1,
+        -2,
+        0,
+        "x",
+        null,
+        true,
+        false,
+        [],
+        {}
+      ],
+      "canonical": "[1,-2,0,\"x\",null,true,false,[],{}]",
+      "sha256": "1bc9730243320d91e5d56ef12db7f0b750ca2f3626627040693b6b4720d9a413"
+    },
+    {
+      "name": "integers",
+      "value": [
+        0,
+        9007199254740991,
+        -9007199254740991,
+        42,
+        -1
+      ],
+      "canonical": "[0,9007199254740991,-9007199254740991,42,-1]",
+      "sha256": "bdbeced58f64084c2717b5c4690b74f2dc85a8e86d1c4e11bc9712b7176d9ef5"
+    },
+    {
+      "name": "null",
+      "value": null,
+      "canonical": "null",
+      "sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+    },
+    {
+      "name": "true",
+      "value": true,
+      "canonical": "true",
+      "sha256": "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b"
+    },
+    {
+      "name": "false",
+      "value": false,
+      "canonical": "false",
+      "sha256": "fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa"
+    },
+    {
+      "name": "empty_string",
+      "value": "",
+      "canonical": "\"\"",
+      "sha256": "12ae32cb1ec02d01eda3581b127c1fee3b0dc53572ed6baf239721a03d82e126"
+    },
+    {
+      "name": "empty_object",
+      "value": {},
+      "canonical": "{}",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "name": "key_order_ascii",
+      "value": {
+        "a_b": 1,
+        "a": 2,
+        "ab": 3,
+        "a1": 4,
+        "b": 5,
+        "a10": 6,
+        "a9": 7
+      },
+      "canonical": "{\"a\":2,\"a1\":4,\"a10\":6,\"a9\":7,\"a_b\":1,\"ab\":3,\"b\":5}",
+      "sha256": "c985c1c1ca40efdbe0f1e43424e995c24913205bcbe45abb6dd9b81d05de86c8"
+    },
+    {
+      "name": "timestamp_string",
+      "value": {
+        "created_at": "2025-03-17T09:05:00.000000Z"
+      },
+      "canonical": "{\"created_at\":\"2025-03-17T09:05:00.000000Z\"}",
+      "sha256": "f4a6072d2b77db6f4b63646721a78887ddc1ace6440d945edba6530f81f5df13"
+    },
+    {
+      "name": "mixed_payload",
+      "value": {
+        "comment_commitment": "0000000000000000000000000000000000000000000000000000000000000000",
+        "text": "Қабылдау бөлімімен келісілді / согласовано",
+        "n": 7
+      },
+      "canonical": "{\"comment_commitment\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"n\":7,\"text\":\"Қабылдау бөлімімен келісілді / согласовано\"}",
+      "sha256": "68826f983c5d44a0d7458ec2a01f8bb79441d32c23b6d84c4e96797cd3b9c327"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "float_fraction",
+      "json": "1.5",
+      "error": "FLOAT_NOT_ALLOWED"
+    },
+    {
+      "name": "float_integral",
+      "json": "1.0",
+      "error": "FLOAT_NOT_ALLOWED"
+    },
+    {
+      "name": "float_exponent",
+      "json": "1e3",
+      "error": "FLOAT_NOT_ALLOWED"
+    },
+    {
+      "name": "float_in_object",
+      "json": "{\"a\":0.1}",
+      "error": "FLOAT_NOT_ALLOWED"
+    },
+    {
+      "name": "negative_zero_float",
+      "json": "-0.0",
+      "error": "FLOAT_NOT_ALLOWED"
+    },
+    {
+      "name": "integer_above_safe",
+      "json": "9007199254740992",
+      "error": "INTEGER_OUT_OF_RANGE"
+    },
+    {
+      "name": "integer_below_safe",
+      "json": "-9007199254740992",
+      "error": "INTEGER_OUT_OF_RANGE"
+    },
+    {
+      "name": "duplicate_key",
+      "json": "{\"a\":1,\"a\":2}",
+      "error": "DUPLICATE_KEY"
+    },
+    {
+      "name": "uppercase_key",
+      "json": "{\"A\":1}",
+      "error": "INVALID_KEY"
+    },
+    {
+      "name": "cyrillic_key",
+      "json": "{\"ключ\":1}",
+      "error": "INVALID_KEY"
+    },
+    {
+      "name": "empty_key",
+      "json": "{\"\":1}",
+      "error": "INVALID_KEY"
+    },
+    {
+      "name": "dash_key",
+      "json": "{\"a-b\":1}",
+      "error": "INVALID_KEY"
+    },
+    {
+      "name": "nul_character",
+      "json": "\"a\\u0000b\"",
+      "error": "NUL_IN_STRING"
+    },
+    {
+      "name": "lone_high_surrogate",
+      "json": "\"\\ud800\"",
+      "error": "LONE_SURROGATE"
+    },
+    {
+      "name": "lone_low_surrogate",
+      "json": "\"x\\udc00\"",
+      "error": "LONE_SURROGATE"
+    },
+    {
+      "name": "nan",
+      "json": "NaN",
+      "error": "MALFORMED_JSON"
+    },
+    {
+      "name": "infinity",
+      "json": "Infinity",
+      "error": "MALFORMED_JSON"
+    },
+    {
+      "name": "truncated",
+      "json": "{\"a\":1",
+      "error": "MALFORMED_JSON"
+    },
+    {
+      "name": "trailing_comma",
+      "json": "[1,]",
+      "error": "MALFORMED_JSON"
+    },
+    {
+      "name": "single_quotes",
+      "json": "'a'",
+      "error": "MALFORMED_JSON"
+    },
+    {
+      "name": "too_deep",
+      "json": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+      "error": "TOO_DEEP"
+    }
+  ],
+  "noncanonical": [
+    {
+      "name": "unsorted_keys",
+      "json": "{\"b\":1,\"a\":2}",
+      "canonical": "{\"a\":2,\"b\":1}"
+    },
+    {
+      "name": "whitespace",
+      "json": "{ \"a\" : 1 }",
+      "canonical": "{\"a\":1}"
+    },
+    {
+      "name": "escaped_ascii",
+      "json": "\"\\u0041\"",
+      "canonical": "\"A\""
+    },
+    {
+      "name": "escaped_slash",
+      "json": "\"\\/\"",
+      "canonical": "\"/\""
+    },
+    {
+      "name": "uppercase_unicode_escape",
+      "json": "\"\\u001F\"",
+      "canonical": "\"\\u001f\""
+    },
+    {
+      "name": "escaped_cyrillic",
+      "json": "\"\\u0436\"",
+      "canonical": "\"ж\""
+    },
+    {
+      "name": "negative_zero",
+      "json": "-0",
+      "canonical": "0"
+    },
+    {
+      "name": "escaped_astral_pair",
+      "json": "\"\\ud83d\\ude00\"",
+      "canonical": "\"😀\""
+    }
+  ],
+  "commitments": [
+    {
+      "salt": "1111111111111111111111111111111111111111111111111111111111111111",
+      "subject": "specialist_decision:41",
+      "field": "comment",
+      "value": "Согласовано с приёмным отделением",
+      "commitment": "b216edf9665ab96cff4638c8e8e9c904a10d4d210eb8b042a42baaac323ad3ac"
+    },
+    {
+      "salt": "1111111111111111111111111111111111111111111111111111111111111111",
+      "subject": "specialist_decision:41",
+      "field": "comment",
+      "value": "",
+      "commitment": "afd95022aa5d9b4a640accf091c17d6e4262d4cd8d1fd7991f79e9476a2b3de8"
+    },
+    {
+      "salt": "1111111111111111111111111111111111111111111111111111111111111111",
+      "subject": "specialist_decision:41",
+      "field": "comment",
+      "value": null,
+      "commitment": "44540183b0bb4de8349f886015c7c65f6b12694808e011dacd6f9bd40f317702"
+    }
+  ],
+  "genesis": {
+    "created_at": "2026-09-28T00:00:00.000000Z",
+    "entry_hash": "e7be5330076067f7dd9a0e83868fabb9821fce2238689f525483589724b0eb50",
+    "event_type": "ledger.genesis",
+    "payload": {
+      "canonicalization": "hqai-canonical-json-v1",
+      "commitment_scheme": "sha256-salted-v1",
+      "hash_algorithm": "sha256",
+      "protocol": "aqyl-kezek-transparency-ledger",
+      "protocol_version": 1
+    },
+    "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "seq": 1,
+    "subject": "ledger:aqyl-kezek"
+  },
+  "chain_source": [
+    {
+      "kind": "operational_intelligence",
+      "row": {
+        "id": 3,
+        "publication_id": "operational-intelligence-demo-v1",
+        "identity_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bundle_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "contract_version": "1.0.0",
+        "schema_version": "oi-v1",
+        "source_code_commit": "cccccccccccccccccccccccccccccccccccccccc",
+        "published_at": "2025-03-17T03:00:00.123456Z"
+      }
+    },
+    {
+      "kind": "hospital_decision",
+      "salt": "2222222222222222222222222222222222222222222222222222222222222222",
+      "row": {
+        "id": 5,
+        "created_at": "2025-03-17T09:30:00.000000Z",
+        "region_code": "39",
+        "org_code": "000V",
+        "profile_code": "391",
+        "recommendation_id": null,
+        "action": "defer",
+        "comment": "",
+        "actor": "Дежурный врач",
+        "alternative_org_code": null,
+        "idempotency_key": null,
+        "api_key_label": "demo"
+      }
+    },
+    {
+      "kind": "specialist_decision",
+      "salt": "1111111111111111111111111111111111111111111111111111111111111111",
+      "operational_publication_ledger_seq": 2,
+      "row": {
+        "id": 41,
+        "created_at": "2025-03-17T09:30:00.000000Z",
+        "origin": "2025-03-17",
+        "run_id": "run-1",
+        "sim_day": 2,
+        "subject_kind": "alert",
+        "subject_id": "signal-7",
+        "region_code": "39",
+        "org_code": "000V",
+        "profile_code": "391",
+        "action": "accept",
+        "comment": "Согласовано с приёмным отделением",
+        "actor": "Иванова А.",
+        "api_key_label": "demo",
+        "idempotency_key": "demo-key-000041",
+        "publication_identity_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "kind": "referral_estimates",
+      "row": {
+        "id": 1,
+        "publication_id": "referral-estimates-demo-v1",
+        "identity_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "bundle_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "contract_version": "1.0.0",
+        "schema_version": "referral_estimates_v1",
+        "source_code_commit": "cccccccccccccccccccccccccccccccccccccccc",
+        "published_at": "2025-03-17T10:00:00.000000Z"
+      }
+    },
+    {
+      "kind": "verification_worklist",
+      "row": {
+        "id": 1,
+        "publication_id": "verification-worklist-demo-v2",
+        "identity_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "bundle_sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+        "contract_version": "2.0.0",
+        "schema_version": "verification_worklist_v2",
+        "source_code_commit": "cccccccccccccccccccccccccccccccccccccccc",
+        "published_at": "2025-03-17T10:00:00.000001Z"
+      }
+    }
+  ],
+  "chain": [
+    {
+      "created_at": "2026-09-28T00:00:00.000000Z",
+      "entry_hash": "e7be5330076067f7dd9a0e83868fabb9821fce2238689f525483589724b0eb50",
+      "event_type": "ledger.genesis",
+      "payload": {
+        "canonicalization": "hqai-canonical-json-v1",
+        "commitment_scheme": "sha256-salted-v1",
+        "hash_algorithm": "sha256",
+        "protocol": "aqyl-kezek-transparency-ledger",
+        "protocol_version": 1
+      },
+      "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "seq": 1,
+      "subject": "ledger:aqyl-kezek"
+    },
+    {
+      "created_at": "2025-03-17T03:00:00.123456Z",
+      "entry_hash": "4bcaf81cd7eb51e12481ddda9abcc6258db4443a2635c6bfc9711a5ff5078427",
+      "event_type": "publication.published",
+      "payload": {
+        "bundle_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "contract_version": "1.0.0",
+        "identity_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "publication_id": "operational-intelligence-demo-v1",
+        "publication_kind": "operational_intelligence",
+        "published_at": "2025-03-17T03:00:00.123456Z",
+        "schema_version": "oi-v1",
+        "snapshot_id": 3,
+        "source_code_commit": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "prev_hash": "e7be5330076067f7dd9a0e83868fabb9821fce2238689f525483589724b0eb50",
+      "seq": 2,
+      "subject": "publication:operational_intelligence:operational-intelligence-demo-v1"
+    },
+    {
+      "created_at": "2025-03-17T09:30:00.000000Z",
+      "entry_hash": "3beb0f1ba44e59b1b97f250fc80594e95acd53d9905333ad11e700831f27541f",
+      "event_type": "decision.recorded",
+      "payload": {
+        "action": "defer",
+        "alternative_org_code": null,
+        "commitments": {
+          "actor": "a80c13c1b848928014fe2a693cd5392c43af30d79f34ef112e341dd4d9483f32",
+          "api_key_label": "db93c9c316d2366661ba1b7260b1186cee8e2d4bb7a100c9ef6eae306bfb57b3",
+          "comment": "5488797d94d2305783dfed2413e58fc9487c99c13e21e138c46f15d7e53c3d0f",
+          "idempotency_key": "a774d53f01fca31b1bc47b3b7207c2012cb44d202c1dc5e653af12ca3357b44a",
+          "recommendation_id": "85745d8add3e52d98b5617f6ed223f1bc5dc53b79a3654d867f6022d98f02af7"
+        },
+        "decision_id": 5,
+        "decision_kind": "hospital_decision",
+        "org_code": "000V",
+        "profile_code": "391",
+        "region_code": "39"
+      },
+      "prev_hash": "4bcaf81cd7eb51e12481ddda9abcc6258db4443a2635c6bfc9711a5ff5078427",
+      "seq": 3,
+      "subject": "hospital_decision:5"
+    },
+    {
+      "created_at": "2025-03-17T09:30:00.000000Z",
+      "entry_hash": "c19e58d6ccbb52f8fd0ac916d87fba80eab3a4c227ee70b30d8d664192d4c75b",
+      "event_type": "decision.recorded",
+      "payload": {
+        "action": "accept",
+        "commitments": {
+          "actor": "e6a456dcb8860b986e5548cfea8e2142024bf64d1ecf886f2ac353c1342f0330",
+          "api_key_label": "482c9237be0d43f5a26a6b7feb0aaf0c678bc17381a0ec7b1d868a4cb145162f",
+          "comment": "b216edf9665ab96cff4638c8e8e9c904a10d4d210eb8b042a42baaac323ad3ac",
+          "idempotency_key": "1c4cb607da31517add54e92c5c0a91607c101c30238e943a8e866cd81ac31950",
+          "run_id": "ec62bb7231babe48886025f27b14734cb8c68d97699e00e009c824cf7ca99e87",
+          "subject_id": "635aa8fddb5800ef387be32654df2f5bea61d5f2c7a3572e80ce716209486512"
+        },
+        "decision_id": 41,
+        "decision_kind": "specialist_decision",
+        "evidence": {
+          "operational_publication_identity_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "operational_publication_ledger_seq": 2
+        },
+        "org_code": "000V",
+        "origin": "2025-03-17",
+        "profile_code": "391",
+        "region_code": "39",
+        "sim_day": 2,
+        "subject_kind": "alert"
+      },
+      "prev_hash": "3beb0f1ba44e59b1b97f250fc80594e95acd53d9905333ad11e700831f27541f",
+      "seq": 4,
+      "subject": "specialist_decision:41"
+    },
+    {
+      "created_at": "2025-03-17T10:00:00.000000Z",
+      "entry_hash": "8f598f0cade32baa251c5145c67112c1e612460b6273aae2f7a30429fb4ea771",
+      "event_type": "publication.published",
+      "payload": {
+        "bundle_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "contract_version": "1.0.0",
+        "identity_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "publication_id": "referral-estimates-demo-v1",
+        "publication_kind": "referral_estimates",
+        "published_at": "2025-03-17T10:00:00.000000Z",
+        "schema_version": "referral_estimates_v1",
+        "snapshot_id": 1,
+        "source_code_commit": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "prev_hash": "c19e58d6ccbb52f8fd0ac916d87fba80eab3a4c227ee70b30d8d664192d4c75b",
+      "seq": 5,
+      "subject": "publication:referral_estimates:referral-estimates-demo-v1"
+    },
+    {
+      "created_at": "2025-03-17T10:00:00.000001Z",
+      "entry_hash": "23818ae120625811847bbc3678a1dbd9e20cf9ff07f2dc480b28a3a625cfe30e",
+      "event_type": "publication.published",
+      "payload": {
+        "bundle_sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+        "contract_version": "2.0.0",
+        "identity_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "publication_id": "verification-worklist-demo-v2",
+        "publication_kind": "verification_worklist",
+        "published_at": "2025-03-17T10:00:00.000001Z",
+        "schema_version": "verification_worklist_v2",
+        "snapshot_id": 1,
+        "source_code_commit": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "prev_hash": "8f598f0cade32baa251c5145c67112c1e612460b6273aae2f7a30429fb4ea771",
+      "seq": 6,
+      "subject": "publication:verification_worklist:verification-worklist-demo-v2"
+    }
+  ]
+}

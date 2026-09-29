@@ -10,7 +10,8 @@
 # `update` refuses while PostgreSQL recovers or when no backup can precede incoming migrations, backs up with mode
 # 600 before fast-forwarding exactly the inspected commits, fixes permissions under umask 0007, is idempotent, and
 # fails when the app — not only its containers — is unhealthy; that `rollback` backs up and downgrades before
-# checking out; and that no command ever prints a value from .env.
+# checking out, but refuses — before any backup, downgrade or checkout, whatever DEPLOY_ALLOW_* says — to downgrade
+# across an audit-sensitive migration (the transparency ledger); and that no command ever prints a value from .env.
 set -euo pipefail
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -43,7 +44,7 @@ echo "== no destructive or privileged command in tools/deploy.sh"
 code=$(grep -v '^[[:space:]]*#' "$SCRIPT")
 # shellcheck disable=SC2016 # literal strings to search for, not expansions
 for forbidden in 'sudo ' 'down -v' 'volume rm' 'volume prune' 'system prune' 'reset --hard' 'push --force' \
-  'push -f' 'clean -f' 'rm -rf' 'set -x' 'cat "$ENV_FILE"' '. "$ENV_FILE"' 'source '; do
+  'push -f' 'clean -f' 'rm -rf' 'set -x' 'cat "$ENV_FILE"' '. "$ENV_FILE"' 'source ' 'transparency_audit'; do
   if printf '%s' "$code" | grep -qF -- "$forbidden"; then failed "deploy.sh contains '$forbidden'"; else pass "no '$forbidden'"; fi
 done
 if printf '%s' "$code" | grep -q 'git pull' && ! printf '%s' "$code" | grep -q 'pull --ff-only'; then
@@ -364,6 +365,71 @@ git -C "$REPO" reset --quiet --hard "origin/$BRANCH" # the test's own cleanup, n
 push_upstream "revision = '0017'" backend/alembic/versions/0017_new.py
 STUB_PG=down STUB_PG_UNTIL_UP="$WORK/started" DEPLOY_ALLOW_NO_BACKUP=1 run_deploy update
 expect "DEPLOY_ALLOW_NO_BACKUP=1 proceeds without a backup, saying so" 0 "warn.*no backup was taken"
+
+echo "== tools/deploy.sh rollback across the transparency ledger's audit-sensitive migrations"
+PRE_AUDIT=$(git -C "$REPO" rev-parse HEAD)
+push_migration() { # file name, migration file body
+  mkdir -p "$UP/backend/alembic/versions"
+  printf '%b' "$2" > "$UP/backend/alembic/versions/$1"
+  git -C "$UP" add .
+  git -C "$UP" -c user.name=t -c user.email=t@example.invalid commit --quiet -m "$1"
+  git -C "$UP" push --quiet origin HEAD
+}
+push_migration 0018_ledger.py "revision = '0018'\nAUDIT_SENSITIVE = True\n"
+AUDIT=$(git -C "$UP" rev-parse HEAD)
+STUB_REVISION=0017 run_deploy update
+expect "update to the release with the ledger migration" 0 "update complete"
+state_before=$(cat "$state")
+
+refused_unchanged() { # description
+  if head_is "$AUDIT" && [ "$(git -C "$REPO" rev-parse --abbrev-ref HEAD)" = "$BRANCH" ] \
+    && [ -z "$(git -C "$REPO" status --porcelain)" ] && [ "$(cat "$state")" = "$state_before" ] \
+    && ! called "alembic downgrade" && ! called "backup" && ! called "make --no-print-directory up"; then
+    pass "$1: git, database and state untouched (no backup, downgrade, checkout or restart)"
+  else
+    failed "$1: something changed"
+    sed 's/^/        | /' "$CALLS"
+  fi
+}
+
+: > "$CALLS"
+STUB_REVISION=0018 run_deploy rollback
+expect "rollback across AUDIT_SENSITIVE 0018 is refused" 1 "FAIL.*audit-sensitive migration: rolling back to .* crosses 0018_ledger\.py"
+refused_unchanged "refused rollback"
+for step in "nothing was changed" "no override" "roll back the application only" "tools/deploy.sh rollback <commit>" \
+  "$(git -C "$REPO" rev-parse --short "$AUDIT") or a later commit" "roll forward" "transparency/export" \
+  "transparency/head" "make restore FILE=backups/"; do
+  if grep -qF -- "$step" "$OUT"; then pass "refusal explains: $step"; else failed "refusal does not say '$step'"; fi
+done
+
+: > "$CALLS"
+STUB_REVISION=0018 STUB_MEM=800 DEPLOY_ALLOW_NO_BACKUP=1 DEPLOY_ALLOW_LOW_MEMORY=1 run_deploy rollback
+expect "DEPLOY_ALLOW_NO_BACKUP=1 DEPLOY_ALLOW_LOW_MEMORY=1 do not bypass it" 1 "audit-sensitive migration"
+refused_unchanged "refused rollback with every DEPLOY_ALLOW_*"
+
+: > "$CALLS"
+STUB_REVISION=0018 run_deploy rollback "$OLD"
+expect "an explicit older commit (revision unknown) is refused the same way" 1 "audit-sensitive migration.*crosses 0018_ledger\.py"
+refused_unchanged "refused explicit rollback"
+
+: > "$CALLS"
+STUB_REVISION=0017 run_deploy rollback
+expect "database never reached the ledger migration: rollback goes ahead without a downgrade" 0 "no downgrade needed"
+if head_is "$PRE_AUDIT" && ! called "alembic downgrade"; then pass "code rolled back, database left alone"; else failed "pre-migration rollback"; fi
+git -C "$REPO" checkout --quiet "$BRANCH"
+
+push_migration 0019_after.py "revision = '0019'\n"
+STUB_REVISION=0018 run_deploy update
+expect "update to a later release (ordinary migration)" 0 "update complete"
+: > "$CALLS"
+STUB_REVISION=0019 run_deploy rollback
+expect "rollback that stays above the ledger migration works as before" 0 "rollback complete"
+if head_is "$AUDIT" && called "alembic downgrade 0018" && called "make --no-print-directory backup"; then
+  pass "ordinary downgrade 0019 -> 0018 with a backup first"
+else
+  failed "ordinary rollback above the audit boundary"
+fi
+git -C "$REPO" checkout --quiet "$BRANCH"
 
 echo "local change" >> "$REPO/db/init.sql"
 run_deploy rollback "$OLD"

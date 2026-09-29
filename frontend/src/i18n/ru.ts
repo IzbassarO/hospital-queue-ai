@@ -6,12 +6,14 @@ import { control } from "./control";
 import { demo } from "./demo";
 import { hospital } from "./hospital";
 import { tower } from "./tower";
+import { verify } from "./verify";
 
 export const ru = {
   tower,
   demo,
   control,
   hospital,
+  verify,
   app: {
     title: "Очереди на плановую госпитализацию",
     subtitle: "Мониторинг нагрузки стационаров",

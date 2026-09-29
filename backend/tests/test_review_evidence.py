@@ -325,7 +325,7 @@ def _parsed(payload: dict) -> review_evidence.ParsedReviewBundle:
 
 
 @pytest.fixture(autouse=True)
-def synthetic_upstream() -> Iterator[None]:
+def synthetic_upstream(ledger_isolation) -> Iterator[None]:
     """Synthetic Model Assurance and operational baselines the review bundle may reference; removed afterwards."""
     with SessionLocal.begin() as session:
         previous = session.scalar(select(ReviewEvidenceSnapshot.id).where(ReviewEvidenceSnapshot.is_active.is_(True)))

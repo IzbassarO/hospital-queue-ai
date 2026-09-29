@@ -7,7 +7,8 @@ import datetime as dt
 from typing import Annotated, Literal
 from urllib.parse import quote
 
-from fastapi import APIRouter, Query, Response, status
+from fastapi import APIRouter, Path, Query, Response, status
+from fastapi.responses import StreamingResponse
 
 from app.api.deps import PaginationDep, SessionDep
 from app.core.config import get_settings
@@ -51,6 +52,7 @@ from app.schemas.specialist import (
     SpecialistDecisionCreate,
 )
 from app.schemas.status import HospitalProfileCard, HospitalProfileStatus, OverviewResponse, RegionDetailResponse
+from app.schemas.transparency import LedgerEntry, LedgerHead, LedgerVerification
 from app.schemas.verification_worklist import (
     VerificationWorklistPublicationResponse,
     WorklistAreaResponse,
@@ -76,6 +78,7 @@ from app.services import (
     referral_estimates,
     review_evidence,
     specialist_decisions,
+    transparency,
     verification_worklist,
     waiting_list,
 )
@@ -875,6 +878,118 @@ def get_verification_worklist_hospital(
 def get_dictionaries(session: SessionDep, _: ViewerDep) -> DictionariesResponse:
     """Regions and profiles for UI dropdowns."""
     return catalog.dictionaries(session)
+
+
+# ------------------------------------------------------------------------------------------ transparency ledger
+LEDGER_BUSY = {503: {"model": Message, "description": "another full-ledger verification or export is running"}}
+
+
+# Public, append-only record of publications and decisions (docs/transparency-ledger.md). Every endpoint returns
+# public data only — identifiers, hashes, salted commitments — so the viewer role is enough.
+@router.get(
+    "/transparency/head",
+    response_model=LedgerHead,
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="transparency_head_get",
+    tags=["transparency"],
+)
+def get_transparency_head(session: SessionDep, _: ViewerDep) -> LedgerHead:
+    """The newest entry: its seq (= chain length) and hash, plus the genesis hash and protocol identifiers."""
+    return transparency.head(session)
+
+
+@router.get(
+    "/transparency/entries",
+    response_model=Page[LedgerEntry],
+    responses=AUTH,
+    operation_id="transparency_entries_list",
+    tags=["transparency"],
+)
+def get_transparency_entries(
+    session: SessionDep,
+    page: PaginationDep,
+    _: ViewerDep,
+    order: Annotated[Literal["desc", "asc"], Query(description="by seq; desc = newest first")] = "desc",
+    event_type: Annotated[str | None, Query(max_length=64, description="e.g. decision.recorded")] = None,
+) -> Page[LedgerEntry]:
+    """Ledger entries by seq, exactly as hashed."""
+    return transparency.entries(
+        session, limit=page.limit, offset=page.offset, descending=order == "desc", event_type=event_type
+    )
+
+
+@router.get(
+    "/transparency/entries/{seq}",
+    response_model=LedgerEntry,
+    responses={**AUTH, **NOT_FOUND},
+    operation_id="transparency_entry_get",
+    tags=["transparency"],
+)
+def get_transparency_entry(
+    seq: Annotated[int, Path(ge=1, description="position in the ledger")], session: SessionDep, _: ViewerDep
+) -> LedgerEntry:
+    """One entry by its number."""
+    return transparency.entry(session, seq)
+
+
+@router.get(
+    "/transparency/lookup",
+    response_model=list[LedgerEntry],
+    responses={**AUTH, 422: {"model": Message, "description": "give exactly one of entry_hash or subject"}},
+    operation_id="transparency_lookup",
+    tags=["transparency"],
+)
+def get_transparency_lookup(
+    session: SessionDep,
+    _: ViewerDep,
+    entry_hash: Annotated[
+        str | None, Query(max_length=64, description="a receipt's hash, or a prefix of at least 8 hex characters")
+    ] = None,
+    subject: Annotated[
+        str | None, Query(max_length=256, description="e.g. specialist_decision:1427 or publication:<kind>:<id>")
+    ] = None,
+) -> list[LedgerEntry]:
+    """Entries by hash or by subject (at most 50, by seq)."""
+    return transparency.lookup(session, entry_hash=entry_hash, subject=subject)
+
+
+@router.get(
+    "/transparency/verify",
+    response_model=LedgerVerification,
+    responses={**AUTH, **LEDGER_BUSY},
+    operation_id="transparency_verify",
+    tags=["transparency"],
+)
+def get_transparency_verify(session: SessionDep, _: ViewerDep) -> LedgerVerification:
+    """Server verification: the whole chain, then every decision row and publication snapshot against its entry,
+    including the private commitments. Reports the first problem by seq with a machine-readable reason code."""
+    return transparency.verify(session)
+
+
+@router.get(
+    "/transparency/export",
+    response_class=StreamingResponse,
+    responses={
+        **AUTH,
+        **LEDGER_BUSY,
+        200: {
+            "content": {"application/x-ndjson": {"schema": {"type": "string"}}},
+            "description": "one canonical JSON entry per line, in seq order; no salts, no free text",
+        },
+    },
+    operation_id="transparency_export",
+    tags=["transparency"],
+)
+def get_transparency_export(session: SessionDep, _: ViewerDep) -> StreamingResponse:
+    """The public ledger as JSONL, for tools/ledger_verify.py and the browser verification."""
+    # read completely while the request's session is open, one export or verification at a time
+    # (docs/transparency-ledger.md §11)
+    lines = transparency.export(session)
+    return StreamingResponse(
+        iter(lines),
+        media_type="application/x-ndjson; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="aqyl-kezek-transparency-ledger.jsonl"'},
+    )
 
 
 # ------------------------------------------------------------------------------------------ admin

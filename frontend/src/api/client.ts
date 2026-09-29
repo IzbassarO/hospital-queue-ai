@@ -114,6 +114,38 @@ export async function request<T>(
   }
 }
 
+/** A non-JSON response as text (the transparency-ledger JSONL export), with the same auth and error handling. */
+export async function requestText(path: string): Promise<string> {
+  const url = absoluteUrl(path);
+  let response: Response;
+  try {
+    response = await fetch(url, { headers: { ...authHeaders() } });
+  } catch (cause) {
+    throw new ApiError(
+      "network",
+      url,
+      cause instanceof Error ? cause.message : String(cause),
+    );
+  }
+  const text = await response.text();
+  if (!response.ok) {
+    let detail: string | undefined;
+    try {
+      detail = extractDetail(JSON.parse(text));
+    } catch {
+      detail = undefined;
+    }
+    throw new ApiError(
+      errorKind(response.status),
+      url,
+      detail ?? `HTTP ${response.status}`,
+      response.status,
+      detail,
+    );
+  }
+  return text;
+}
+
 function authHeaders(): Record<string, string> {
   return API_KEY ? { [API_KEY_HEADER]: API_KEY } : {};
 }

@@ -73,7 +73,7 @@ export function TaskHost() {
       dispatchSim({ type: "decide", alertId, action, comment, text });
       return model
         ? persistDecision(model, runId, "alert", alertId, action, comment, day)
-        : Promise.resolve();
+        : Promise.resolve(null);
     },
     [text, model, runId, day],
   );
@@ -94,7 +94,7 @@ export function TaskHost() {
             comment,
             day,
           )
-        : Promise.resolve();
+        : Promise.resolve(null);
     },
     [text, model, runId, day],
   );

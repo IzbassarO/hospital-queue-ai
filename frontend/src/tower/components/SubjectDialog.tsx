@@ -1,6 +1,7 @@
 /** The modal around SubjectContent: closes on Escape, on the ×, on the cancel button and on a click outside. */
 import { useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
+import type { LedgerReceipt } from "../../api/transparency";
 import { t } from "../../i18n";
 import { closeExplorer } from "../ui";
 import type {
@@ -24,12 +25,12 @@ export function SubjectDialog({
     id: string,
     action: DecisionAction,
     comment: string,
-  ) => Promise<void>;
+  ) => Promise<LedgerReceipt | null>;
   onDecidePatient: (
     id: string,
     action: PatientAction,
     comment: string,
-  ) => Promise<void>;
+  ) => Promise<LedgerReceipt | null>;
   onClose: () => void;
 }) {
   const panel = useRef<HTMLDivElement>(null);

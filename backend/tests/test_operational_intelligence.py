@@ -238,7 +238,7 @@ def _parsed(payload: dict) -> operational_intelligence.ParsedOperationalBundle:
 
 
 @pytest.fixture(autouse=True)
-def preserve_current_snapshot() -> Iterator[None]:
+def preserve_current_snapshot(ledger_isolation) -> Iterator[None]:
     assurance_created = False
     with SessionLocal.begin() as session:
         previous = session.scalar(

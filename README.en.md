@@ -51,7 +51,9 @@ appears in the journal. The whole interface exists in Russian and Kazakh.
 A map of all 1 406 hospitals coloured by published signals, an inbox with a deterministic rank, the referral queue
 and the decision journal, the model passport with its hashes, a six-scene story of one signal, and an assistant that
 explains published facts and gives no advice. Without a provider key the assistant says it is not connected and
-everything else keeps working.
+everything else keeps working. "Verifiable AI" (`/verify`): every publication and every specialist decision enters a
+transparency ledger — a SHA-256 chain the browser verifies on its own — and each decision gets a cryptographic
+receipt ([docs/transparency-ledger.md](docs/transparency-ledger.md)).
 
 For the 17 March 2025 origin the system published 4 194 signals. The composition is worth naming precisely:
 
@@ -232,7 +234,8 @@ Weeks 1 and 2 are reconstructed from the programme plan.
 [docs/api.md](docs/api.md) for the 38 operations · [docs/data.md](docs/data.md) for sources and cleaning rules ·
 [docs/model_card.md](docs/model_card.md) and [docs/project-evidence-index.md](docs/project-evidence-index.md) for
 models and accepted runs · [docs/integration.md](docs/integration.md), [docs/security.md](docs/security.md),
-[docs/monitoring.md](docs/monitoring.md) for deployment · [models/README.md](models/README.md),
+[docs/monitoring.md](docs/monitoring.md) for deployment · [docs/transparency-ledger.md](docs/transparency-ledger.md) for
+the transparency ledger · [models/README.md](models/README.md),
 [seed/README.md](seed/README.md), [frontend/src/synthetic/README.md](frontend/src/synthetic/README.md).
 
 Licence: [MIT](LICENSE); the Ministry data and the evidence derived from it are not covered by it.

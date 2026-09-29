@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.transparency import LedgerReceipt
+
 SubjectKind = Literal["alert", "patient"]
 SpecialistAction = Literal["accept", "decline", "clarify", "confirm", "postpone"]
 
@@ -48,6 +50,11 @@ class SpecialistDecision(SpecialistDecisionCreate):
         description="identity of the operational-intelligence publication that was active when the decision was "
         "written (server-side, GET /operational-intelligence/overview -> snapshot.publication_identity_sha256); "
         "null when nothing was published"
+    )
+    receipt: LedgerReceipt | None = Field(
+        default=None,
+        description="transparency-ledger entry that records this decision (docs/transparency-ledger.md); an "
+        "idempotent replay returns the original entry, never a second one",
     )
 
 

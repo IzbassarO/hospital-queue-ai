@@ -141,6 +141,15 @@ describe("Control centre", () => {
     expect(
       await within(dialog).findByText(new RegExp(t.control.decision.recorded)),
     ).toBeVisible();
+    // ... with its transparency-ledger receipt: entry number, shortened hash, and a link to check it
+    const receipt = within(dialog).getByTestId("decision-receipt");
+    expect(receipt).toHaveTextContent(t.verify.receipt.entry(1427));
+    expect(within(receipt).getByTitle(/^83ab5f0c/)).toHaveTextContent(
+      "83ab5f0c…f90a12f9",
+    );
+    expect(
+      within(receipt).getByRole("link", { name: t.verify.receipt.verify }),
+    ).toHaveAttribute("href", "/verify?seq=1427");
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(

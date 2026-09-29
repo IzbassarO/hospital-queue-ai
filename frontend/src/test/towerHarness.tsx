@@ -71,6 +71,15 @@ export function towerMock(extra: typeof ALL = []) {
           idempotency_key: null,
           api_key_label: "test",
           publication_identity_sha256: null,
+          receipt: {
+            ledger_seq: 1427,
+            entry_hash:
+              "83ab5f0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f60718293a4b5c6d7e8f90a12f9",
+            event_type: "decision.recorded",
+            subject: "specialist_decision:1",
+            created_at: "2026-09-23T21:00:00.000000Z",
+            verify_path: "/verify?seq=1427",
+          },
         },
         201,
       );
