@@ -1,6 +1,6 @@
 # ADR 0008: Transparency ledger for publications and decisions
 
-Status: Proposed
+Status: Accepted
 Date: 2026-09-28
 Owners: BizAI
 
