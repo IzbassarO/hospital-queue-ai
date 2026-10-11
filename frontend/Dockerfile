@@ -2,7 +2,7 @@
 # Stage 1 builds the static bundle; stage 2 serves it with nginx and proxies /api to the backend service,
 # so the browser talks to one origin (no CORS) and the API URL is never baked into the bundle.
 
-FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS build
+FROM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 AS build
 # tag node:22-alpine, digest resolved 2026-09-27 with `docker buildx imagetools inspect node:22-alpine`
 WORKDIR /app
 # dependencies first (cached until the lockfile changes)
